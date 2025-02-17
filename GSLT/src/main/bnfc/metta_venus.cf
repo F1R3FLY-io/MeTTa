@@ -2,9 +2,74 @@
     MeTTa IL: Language definition
 -}
 
+-- A Space is a GSLT and a FactBase
+
+SpaceDeclNoDepsImpl . SpaceDecl ::= "Space" Name "(" [VariableDecl] ")" "=" "{" [Fact] [FactComprehension] "}" ;
+SpaceDeclDepsImpl . SpaceDecl ::= "Space" Name "(" [VariableDecl] ";" [VariableDecl] ")" "=" "{" [Fact] [FactComprehension] "}" ;
+
+SpaceInstImpl . SpaceInst ::= Name "(" [ThInst] ";" [SpaceInst] ")" ;
+SpaceInstRec . SpaceInst ::= "let" Var "=" SpaceInst "in" SpaceInst ;
+SpaceInstRef . SpaceInst ::= Var ;
+separator SpaceInst "," ; 
+
+-- Names
+NameWildcard. Name ::= "_" ;
+NameVar.      Name ::= Var ;
+--NameQuote.    Name ::= "@" Proc12 ;
+separator Name "," ;
+
+NameRemainderVar.   NameRemainder ::= "..." "@" Var ;
+NameRemainderEmpty. NameRemainder ::= "" ;
+
+VarDecl . VariableDecl ::= Var ":" Name ;
+separator VariableDecl "," ;
+
+FactImpl . Fact ::= Item ;
+separator Fact "," ;
+
+FactComprehensionImpl . FactComprehension ::= "for" "(" [ReceiptSymm] ")" "{" SpaceInst "}" ;
+separator FactComprehension "," ;
+
+-- ReceiptSymm
+ReceiptSymmLinear.    ReceiptSymm ::= ReceiptSymmLinearImpl ;
+ReceiptSymmRepeated.  ReceiptSymm ::= ReceiptSymmRepeatedImpl ;
+ReceiptSymmPeek.      ReceiptSymm ::= ReceiptSymmPeekImpl ;
+separator nonempty ReceiptSymm ";" ;
+
+-- Linear ReceiptSymms
+LinearSymmSimple. ReceiptSymmLinearImpl ::= [LinearBindSymm] ;
+-- Implementing this will be tricky.
+-- for (x <- a; y <- b if *x)
+-- LinearCond.   Linear ::= [LinearBindSymm] "if" Proc ;
+
+-- Single Linear BindSymm
+LinearBindSymmImpl. LinearBindSymm ::= [Name] NameRemainder "<->" NameSymmSource ;
+separator nonempty LinearBindSymm "&" ;
+
+SimpleSymmSource.         NameSymmSource ::= Name ;
+ReceiveSendSymmSource.    NameSymmSource ::= Name "?!" ;
+SendReceiveSymmSource.    NameSymmSource ::= Name "!?" "(" [Fact] ")" ;
+
+-- Repeated ReceiptSymms
+RepeatedSymmSimple. ReceiptSymmRepeatedImpl ::= [RepeatedBindSymm] ;
+-- Single Repeated BindSymm
+RepeatedBindSymmImpl. RepeatedBindSymm ::= [Name] NameRemainder "<=>" Name ;
+separator nonempty RepeatedBindSymm "&" ;
+
+-- Peek ReceiptSymms
+PeekSymmSimple. ReceiptSymmPeekImpl ::= [PeekBindSymm] ;
+-- Single Peek
+PeekBindSymmImpl. PeekBindSymm ::= [Name] NameRemainder "<<->>" Name ;
+separator nonempty PeekBindSymm "&" ;
+
 -- A GSLT is a Grammar, a set of equations, and a list of rewrite rules
 
-GSLT . FinitelyPresented ::= FreeTheory ";" Equations ";" Rewrites "." ;
+GSLTDecl . ThDecl ::= "Theory" Name "(" [VariableDecl] ")" "=" "{" FreeTheory ";" Equations ";" Rewrites "}" ;
+
+GSLTInst . ThInst ::= Name "(" [ThInst] ")" ;
+GSLTRec . ThInst ::= "let" Var "=" ThInst "in" ThInst ;
+GSLTRef . ThInst ::= Var ;
+separator ThInst "," ;
 
 Generators . FreeTheory ::= "Terms" "{" Grammar "}" ;
 Relations . Equations ::= "Equations" "{" [Equation] "}" ;
@@ -129,6 +194,8 @@ Recursion . Rewrite ::= Hypotheses "=>" Transform ;
 TransformImpl . Transform ::= Item "->" Item ;
 
 HypothesesImpl . Hypotheses ::= [Transform] ;
+
+token Var (((letter | '\'') (letter | digit | '_' | '\'')*)|(('_') (letter | digit | '_' | '\'')+)) ;
 
 -- comments in BNF source
 comment "--" ;

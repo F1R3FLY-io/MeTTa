@@ -1,5 +1,5 @@
 {-
-    MeTTa IL: Language definition
+    MeTTa IL: Language Syntax Definition
 -}
 
 -- A Space is a GSLT and a FactBase
@@ -7,21 +7,26 @@
 SpaceDeclNoDepsImpl . SpaceDecl ::= "Space" Name "(" [VariableDecl] ")" "=" "{" [Fact] [FactComprehension] "}" ;
 SpaceDeclDepsImpl . SpaceDecl ::= "Space" Name "(" [VariableDecl] ";" [VariableDecl] ")" "=" "{" [Fact] [FactComprehension] "}" ;
 
-SpaceInstImpl . SpaceInst ::= Name "(" [ThInst] ";" [SpaceInst] ")" ;
-SpaceInstRec . SpaceInst ::= "let" Var "=" SpaceInst "in" SpaceInst ;
-SpaceInstRef . SpaceInst ::= Var ;
+_. SpaceInst  ::= SpaceInst1 ;
+_. SpaceInst1 ::= "{" SpaceInst "}" ;
+
+SpaceInstEmpty. SpaceInst1 ::= "Empty" ;
+SpaceInstImpl . SpaceInst1 ::= Name "(" [ThInst] ";" [SpaceInst] ")" ;
+SpaceInstRec . SpaceInst1 ::= "let" Ident "=" SpaceInst1 "in" SpaceInst ;
+SpaceInstRef . SpaceInst1 ::= Ident ;
+SpaceInstPar . SpaceInst ::= SpaceInst "|" SpaceInst1 ;
 separator SpaceInst "," ; 
 
 -- Names
 NameWildcard. Name ::= "_" ;
-NameVar.      Name ::= Var ;
+NameVar.      Name ::= Ident ;
 --NameQuote.    Name ::= "@" Proc12 ;
 separator Name "," ;
 
-NameRemainderVar.   NameRemainder ::= "..." "@" Var ;
+NameRemainderVar.   NameRemainder ::= "..." "@" Ident ;
 NameRemainderEmpty. NameRemainder ::= "" ;
 
-VarDecl . VariableDecl ::= Var ":" Name ;
+VarDecl . VariableDecl ::= Ident ":" Name ;
 separator VariableDecl "," ;
 
 FactImpl . Fact ::= Item ;
@@ -47,6 +52,7 @@ LinearBindSymmImpl. LinearBindSymm ::= [Name] NameRemainder "<->" NameSymmSource
 separator nonempty LinearBindSymm "&" ;
 
 SimpleSymmSource.         NameSymmSource ::= Name ;
+Self.                     NameSymmSource ::= "self" ;
 ReceiveSendSymmSource.    NameSymmSource ::= Name "?!" ;
 SendReceiveSymmSource.    NameSymmSource ::= Name "!?" "(" [Fact] ")" ;
 
@@ -67,8 +73,8 @@ separator nonempty PeekBindSymm "&" ;
 GSLTDecl . ThDecl ::= "Theory" Name "(" [VariableDecl] ")" "=" "{" FreeTheory ";" Equations ";" Rewrites "}" ;
 
 GSLTInst . ThInst ::= Name "(" [ThInst] ")" ;
-GSLTRec . ThInst ::= "let" Var "=" ThInst "in" ThInst ;
-GSLTRef . ThInst ::= Var ;
+GSLTRec . ThInst ::= "let" Ident "=" ThInst "in" ThInst ;
+GSLTRef . ThInst ::= Ident ;
 separator ThInst "," ;
 
 Generators . FreeTheory ::= "Terms" "{" Grammar "}" ;
@@ -175,27 +181,25 @@ _. Reg3 ::= "(" Reg ")" ;
 
 -- Equations
 
-[] .  [Equation] ::= ;
-(:) . [Equation] ::= Equation ";" [Equation] ;
-
 EquationImpl . Equation ::= Item "==" Item ;
+separator Equation ";" ;
 
 -- Rewrites
 
-[] .  [Rewrite] ::= ;
-(:) . [Rewrite] ::= Rewrite ";" [Rewrite] ;
-
 BaseCase . Rewrite ::= Transform ;
 Recursion . Rewrite ::= Hypotheses "=>" Transform ;
-
-[] .  [Transform] ::= ;
-(:) . [Transform] ::= Transform "&" [Transform] ;
+separator Rewrite ";" ;
 
 TransformImpl . Transform ::= Item "->" Item ;
+separator Transform "&" ;
 
 HypothesesImpl . Hypotheses ::= [Transform] ;
 
-token Var (((letter | '\'') (letter | digit | '_' | '\'')*)|(('_') (letter | digit | '_' | '\'')+)) ;
+--token Var (((letter | '\'') (letter | digit | '_' | '\'')*)|(('_') (letter | digit | '_' | '\'')+)) ;
+
+--token CapIdent (((upper | '\'') (letter | digit | '_' | '\'')*)|(('_') (letter | digit | '_' | '\'')+)) ;
+
+--token Ident (((upper | '\'') (letter | digit | '_' | '\'')*)|(('_') (letter | digit | '_' | '\'')+)) ;
 
 -- comments in BNF source
 comment "--" ;

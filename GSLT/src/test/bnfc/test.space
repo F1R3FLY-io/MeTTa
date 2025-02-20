@@ -1,0 +1,7 @@
+Space S() = {
+  for(x <-> y) {
+    z(
+      rhocalc;
+    )
+  }
+}

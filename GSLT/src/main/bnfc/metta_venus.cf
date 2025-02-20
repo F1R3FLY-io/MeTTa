@@ -4,6 +4,9 @@
 
 -- A Space is a GSLT and a FactBase
 
+SpaceDeclProg . Prog ::= SpaceDecl ;
+ThDeclProg . Prog ::= ThDecl ;
+
 SpaceDeclNoDepsImpl . SpaceDecl ::= "Space" Name "(" [VariableDecl] ")" "=" "{" [Fact] [FactComprehension] "}" ;
 SpaceDeclDepsImpl . SpaceDecl ::= "Space" Name "(" [VariableDecl] ";" [VariableDecl] ")" "=" "{" [Fact] [FactComprehension] "}" ;
 
@@ -79,7 +82,7 @@ separator ThInst "," ;
 
 Generators . FreeTheory ::= "Terms" "{" Grammar "}" ;
 Relations . Equations ::= "Equations" "{" [Equation] "}" ;
-Transitions . Rewrites ::= "Rewrites" "{" [Rewrite] "}" ;
+Transitions . Rewrites ::= "Rewrites" "{" [RewriteDecl] "}" ;
 
 -- A Grammar is a sequence of definitions
 
@@ -95,8 +98,19 @@ MkGrammar . Grammar ::= [Def] ;
 Rule . Def ::= Label "." Cat "::=" [Item] ;
 
 -- Items
-Terminal  . Item ::= String ;
-NTerminal . Item ::= Cat ;
+Terminal     . Item ::= String ;
+NTerminal    . Item ::= Cat ;
+-- IntList specifies where in the term the variable is bound.
+--    Lam. T ::= "λ" (Bind [1]) "." T                             -- bound in body
+--    For. P ::= "for" "(" (Bind [2]) "<-" Ident ")" "{" P "}"    -- not bound in channel name
+-- Can bind the variable in subterms appearing before the binder.
+--    Foo. P ::= "foo" P "bar" (Bind [0, 3]) "baz" P ":" P        -- not bound in slot 2
+-- Error if the list is empty, contains its own slot, or contains
+--    a number greater than or equal to the number of slots.
+-- Error if Ident is the RHS of any rule for categories in named slots.
+-- Effectively adds Ident as RHS of new rule.
+-- Parser generated from GSLT accepts Ident in this position.
+BindTerminal . Item ::= "(" "Bind" IntList ")" ;
 
 -- Categories
 ListCat  . Cat ::= "[" Cat "]" ;
@@ -181,19 +195,25 @@ _. Reg3 ::= "(" Reg ")" ;
 
 -- Equations
 
-EquationImpl . Equation ::= Item "==" Item ;
+EquationImpl . Equation ::= AST "==" AST ;
 separator Equation ";" ;
 
 -- Rewrites
 
-BaseCase . Rewrite ::= Transform ;
-Recursion . Rewrite ::= Hypotheses "=>" Transform ;
-separator Rewrite ";" ;
+RDecl . RewriteDecl ::= Ident ":" Rewrite ;
+separator RewriteDecl ";" ;
 
-TransformImpl . Transform ::= Item "->" Item ;
-separator Transform "&" ;
+RewriteBase    . Rewrite ::= AST "~>" AST ;
+RewriteContext . Rewrite ::= "let" Hypothesis "in" Rewrite ;
 
-HypothesesImpl . Hypotheses ::= [Transform] ;
+ASTSubst . AST ::= "(" "Subst" AST AST Ident ")";
+ASTVar   . AST ::= Ident ;
+ASTSExp  . AST ::= "(" Ident "." Ident [AST] ")" ;
+
+[]  . [AST] ::= ;
+(:) . [AST] ::= AST [AST] ;
+
+Hyp . Hypothesis ::= Ident "~>" Ident ;
 
 --token Var (((letter | '\'') (letter | digit | '_' | '\'')*)|(('_') (letter | digit | '_' | '\'')+)) ;
 

@@ -1,5 +1,5 @@
 bnfc -m -d GSLT/src/main/bnfc/metta_venus.cf
 alex MettaVenus/Lex.x
 happy -iMettaVenus/Par.info MettaVenus/Par.y
-ghc MettaVenus/Test.hs
+make
 rm MettaVenus/*.bak 2> /dev/null

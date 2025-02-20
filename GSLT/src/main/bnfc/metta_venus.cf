@@ -7,14 +7,14 @@
 SpaceDeclNoDepsImpl . SpaceDecl ::= "Space" Name "(" [VariableDecl] ")" "=" "{" [Fact] [FactComprehension] "}" ;
 SpaceDeclDepsImpl . SpaceDecl ::= "Space" Name "(" [VariableDecl] ";" [VariableDecl] ")" "=" "{" [Fact] [FactComprehension] "}" ;
 
-_. SpaceInst  ::= SpaceInst1 ;
-_. SpaceInst1 ::= "{" SpaceInst "}" ;
+SpaceInstBraces . SpaceInst2 ::= "{" SpaceInst "}" ;
+SpaceInstEmpty. SpaceInst2 ::= "Empty" ;
+SpaceInstImpl . SpaceInst2 ::= Name "(" [ThInst] ";" [SpaceInst] ")" ;
+SpaceInstRef . SpaceInst2 ::= Ident ;
+SpaceInstPar . SpaceInst1 ::= SpaceInst1 "|" SpaceInst2 ;
+SpaceInstRec . SpaceInst ::= "let" Ident "=" SpaceInst "in" SpaceInst ;
 
-SpaceInstEmpty. SpaceInst1 ::= "Empty" ;
-SpaceInstImpl . SpaceInst1 ::= Name "(" [ThInst] ";" [SpaceInst] ")" ;
-SpaceInstRec . SpaceInst1 ::= "let" Ident "=" SpaceInst1 "in" SpaceInst ;
-SpaceInstRef . SpaceInst1 ::= Ident ;
-SpaceInstPar . SpaceInst ::= SpaceInst "|" SpaceInst1 ;
+coercions SpaceInst 2 ;
 separator SpaceInst "," ; 
 
 -- Names

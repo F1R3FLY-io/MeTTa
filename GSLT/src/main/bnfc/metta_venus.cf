@@ -204,7 +204,7 @@ RDecl . RewriteDecl ::= Ident ":" Rewrite ;
 separator RewriteDecl ";" ;
 
 RewriteBase    . Rewrite ::= AST "~>" AST ;
-RewriteContext . Rewrite ::= Hypothesis "=>" Rewrite ;
+RewriteContext . Rewrite ::= "let" Hypothesis "in" Rewrite ;
 
 ASTSubst . AST ::= "(" "Subst" AST AST Ident ")";
 ASTVar   . AST ::= Ident ;

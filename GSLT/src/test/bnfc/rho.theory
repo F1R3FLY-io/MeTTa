@@ -17,7 +17,7 @@ Theory rhocalc () = {
   };
   Rewrites {
     RComm : ( PPar.Proc (PRecv.Proc y x P) ( PSend.Proc x Q)  ) ~> (Subst P (NQuote.Name Q) y) ;
-    RPar1 : Src ~> Tgt => ( PPar.Proc Src Q ) ~> ( PPar.Proc Tgt Q ) ;
-    RPar2 : Src1 ~> Tgt1 => Src2 ~> Tgt2 => ( PPar.Proc Src1 Src2 ) ~> ( PPar.Proc Tgt1 Tgt2 ) ;
+    RPar1 : let Src ~> Tgt in ( PPar.Proc Src Q ) ~> ( PPar.Proc Tgt Q ) ;
+    RPar2 : let Src1 ~> Tgt1 in let Src2 ~> Tgt2 in ( PPar.Proc Src1 Src2 ) ~> ( PPar.Proc Tgt1 Tgt2 ) ;
   }
 }

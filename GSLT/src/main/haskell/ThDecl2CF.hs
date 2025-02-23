@@ -1,36 +1,18 @@
 module Main where
 
 import Prelude
-  ( ($), (.)
-  , Either(..)
-  , Int, (>)
-  , String, (++), concat, unlines
-  , Show, show
-  , IO, (>>), (>>=), map, mapM_, putStrLn, error
-  , FilePath
-  , getContents, readFile
-  )
 import System.Environment ( getArgs )
 import System.Exit        ( exitFailure )
-import Control.Monad      ( when )
+import Control.Monad      ( when, forM_ )
 
 import MettaVenus.Abs 
-  ( ThDecl(..)
-  , Prog(..)
-  , Grammar(..)
-  , Def(..)       
-  , Item(..)      
-  , Cat(..)       
-  , Ident(..)     
-  , FreeTheory(..)
-  )
-
 import MettaVenus.Lex   ( Token, mkPosToken )
 import MettaVenus.Par   ( pThDecl, myLexer )
 import MettaVenus.Print ( Print, printTree )
 import MettaVenus.Skel  ()
 
--- | Transformation functions to traverse the Grammar AST.
+--------------------------------------------------------------------------------
+-- Transformation functions to traverse the Grammar AST.
 -- Replace every BindTerminal with an NTerminal representing "Ident".
 transformItem :: Item -> Item
 transformItem (BindTerminal ints) = NTerminal (IdCat (Ident "Ident"))
@@ -43,6 +25,53 @@ transformDef d                      = d
 
 transformGrammar :: Grammar -> Grammar
 transformGrammar (MkGrammar defs) = MkGrammar (map transformDef defs)
+
+--------------------------------------------------------------------------------
+-- Checking BindTerminal properties
+
+-- | Traverse a Grammar and check every production for correct BindTerminal usage.
+checkGrammar :: Grammar -> Either String ()
+checkGrammar (MkGrammar defs) = mapM_ checkDef defs
+
+-- | Only production definitions (Rule or Internal) contain a right-hand side.
+checkDef :: Def -> Either String ()
+checkDef (Rule label _ items)     = checkProduction ("production " ++ show label) items
+checkDef (Internal label _ items) = checkProduction ("internal production " ++ show label) items
+checkDef _                        = Right ()
+
+-- | For a given production, compute the number of non-string items and,
+-- while traversing the items in order (ignoring Terminal items),
+-- check every BindTerminal.
+checkProduction :: String -> [Item] -> Either String ()
+checkProduction prodName items =
+  let total = fromIntegral (length (filter (not . isTerminal) items)) :: Integer
+      -- go: traverse items with a counter (curr) for the current non-string item index.
+      go :: [Item] -> Integer -> Either String ()
+      go [] _ = Right ()
+      go (x:xs) curr =
+        case x of
+          Terminal _ -> go xs curr
+          BindTerminal (Ints indices) ->
+            if null indices
+              then Left (prodName ++ ": BindTerminal at non-string position " ++ show curr ++ " has an empty IntList.")
+              else do
+                forM_ indices $ \j -> 
+                  if j < 0 || j >= total
+                    then Left (prodName ++ ": BindTerminal at non-string position " ++ show curr ++ " contains index " ++ show j ++ " which is out of range [0," ++ show total ++ ").")
+                    else if j == curr
+                      then Left (prodName ++ ": BindTerminal at non-string position " ++ show curr ++ " contains its own index " ++ show j ++ ".")
+                      else Right ()
+                go xs (curr + 1)
+          _ -> go xs (curr + 1)
+  in go items 0
+
+-- | Determines whether an item is a Terminal (i.e. a quoted string).
+isTerminal :: Item -> Bool
+isTerminal (Terminal _) = True
+isTerminal _            = False
+
+--------------------------------------------------------------------------------
+-- Main driver and parsing
 
 type Err        = Either String
 type ParseFun a = [Token] -> Err a
@@ -65,10 +94,15 @@ run v p s =
       exitFailure
     Right thDecl -> do
       putStrLn "\nParse Successful!"
-      -- Extract the Grammar subtree from the FreeTheory part of the theory.
       let grammar = case thDecl of
                       GSLTDecl _ _ (Generators g) _ _ -> g
                       _ -> error "Unexpected ThDecl structure."
+      -- Check BindTerminal properties before proceeding.
+      case checkGrammar grammar of
+        Left errMsg -> do
+          putStrLn $ "\nError: " ++ errMsg
+          exitFailure
+        Right () -> return ()
       -- Transform the Grammar by replacing BindTerminal nodes.
       let transformedGrammar = transformGrammar grammar
       putStrLn "\nTransformed Grammar:"

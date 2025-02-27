@@ -1,19 +1,17 @@
-Theory rhocalc () = {
+Theory pi () = {
   Terms {
     PZero . Proc ::= "0" ;
     PPar  . Proc ::= Proc "|" Proc ;
     PSend . Proc ::= Name "!" "(" Name ")" ;
-    PRecv . Proc ::= "for" "(" (Bind [2]) "<-" Name ")" "{" Proc "}" ;
+    PRecv . Proc ::= "for" "(" (Bind Name [2]) "<-" Name ")" "{" Proc "}" ;
     PDrop . Proc ::= "!" Proc ;
-    PNew  . Proc ::= "new" (Bind [1]) "in" Proc ;
-    
-    NImpl . Name ::= Ident ;
+    PNew  . Proc ::= "new" (Bind Name [1]) "in" Proc ;
   };
   Equations {
     ( PPar.Proc P Q ) == ( PPar.Proc Q P ) ;
     ( PPar.Proc ( PPar.Proc P Q ) R ) == ( PPar.Proc P ( PPar.Proc Q R ) ) ;
     ( PPar.Proc P ( PZero.Proc ) ) == P ;
-    ( PPar.Proc ( PNew.Proc x P ) Q ) == ( PNew.Proc x ( PPar.Proc P Q ) ) ;
+    if x # Q then ( PPar.Proc ( PNew.Proc x P ) Q ) == ( PNew.Proc x ( PPar.Proc P Q ) ) ;
     ( PNew.Proc x ( PNew.Proc x P ) ) == ( PNew.Proc x P ) ;
     ( PNew.Proc x ( PNew.Proc y P ) ) == ( PNew.Proc y ( PNew.Proc x P ) ) ;
   };

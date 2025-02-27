@@ -3,7 +3,7 @@ Theory rhocalc () = {
     PZero . Proc ::= "0" ;
     PPar  . Proc ::= Proc "|" Proc ;
     PSend . Proc ::= Name "!" "(" Proc ")" ;
-    PRecv . Proc ::= "for" "(" (Bind [2]) "<-" Name ")" "{" Proc "}" ;
+    PRecv . Proc ::= "for" "(" (Bind Name [2]) "<-" Name ")" "{" Proc "}" ;
     PDrop . Proc ::= "*" Proc ;
 
     NQuote . Name ::= "@" Proc ;

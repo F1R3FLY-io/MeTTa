@@ -1,7 +1,7 @@
 Theory lambda () = {
   Terms {
     App . T ::= "(" T T ")" ;
-    Lam . T ::= "λ" (Bind [1]) "." T ;
+    Lam . T ::= "λ" (Bind T [1]) "." T ;
   };
   Equations {};
   Rewrites {

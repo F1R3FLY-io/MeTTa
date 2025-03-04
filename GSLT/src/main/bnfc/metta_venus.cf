@@ -76,8 +76,9 @@ separator nonempty PeekBindSymm "&" ;
 GSLTDecl . ThDecl ::= "Theory" Name "(" [VariableDecl] ")" "=" "{" Exports FreeTheory Equations Rewrites "}" ;
 
 GSLTInst . ThInst ::= Name "(" [ThInst] ")" ;
-GSLTRec . ThInst ::= "let" Ident "=" ThInst "in" ThInst ;
-GSLTRef . ThInst ::= Ident ;
+GSLTRec  . ThInst ::= "let" Ident "=" ThInst "in" ThInst ;
+GSLTRec2 . ThInst ::= "let" "(" [Ident] ")" "=" "(" [ThInst] ")" "in" ThInst ;
+GSLTRef  . ThInst ::= Ident ;
 separator ThInst "," ;
 
 Categories . Exports ::= "Exports" "{" [Export] "}" ;

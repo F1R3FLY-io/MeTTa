@@ -1,0 +1,15 @@
+Theory RhoCalc(m: MinPi) = {
+  Exports {
+    Proc extends m.Proc ;
+    Name extends m.Name ;
+  }
+  Terms {
+    PDrop . Proc ::= "*" Name ;
+    NQuote . Name ::= "@" Proc ;
+  }
+  Equations {
+    ( PDrop.Proc ( NQuote.Name P ) ) == P ;
+    ( NQuote.Name ( PDrop.Proc N ) ) == N ;
+  }
+  Rewrites {}
+}

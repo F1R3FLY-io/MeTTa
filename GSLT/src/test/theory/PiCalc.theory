@@ -1,0 +1,21 @@
+Theory PiCalc(m: MinPi) = {
+  Exports {
+    Proc extends m.Proc ; -- So Proc rewrites extend m.Proc rewrites
+    Name extends m.Name ;
+  }
+  Terms {
+    PRepl . Proc ::= "!" Proc ;
+    PNew  . Proc ::= "new" (Bind Name [1]) "in" Proc ;
+  }
+  Equations {
+    if x # Q then
+      ( PPar.Proc ( PNew.Proc x P ) Q ) == ( PNew.Proc x ( PPar.Proc P Q ) ) ;
+    ( PNew.Proc x ( PNew.Proc x P ) ) == ( PNew.Proc x P ) ;
+    ( PNew.Proc x ( PNew.Proc y P ) ) == ( PNew.Proc y ( PNew.Proc x P ) ) ;
+    ( PRepl.Proc P ) == ( PPar.Proc P ( PRepl.Proc P ) ) ;
+  }
+  Rewrites {
+    RNew  : let Src ~> Tgt in
+            (PNew.Proc x Src) ~> (PNew.Proc x Tgt) ;
+  }
+}

@@ -92,17 +92,16 @@ Transitions . Rewrites ::= "Rewrites" "{" [RewriteDecl] "}" ;
 (:) . [Export] ::= Export ";" [Export] ;
 
 SimpleExp . Export ::= Ident ;
-Extends . Export ::= Ident "extends" [Import];
+Extends . Export ::= Ident "extends" Import Imports ;
 
 -- Imports
-
-[]  . [Import] ::= ;
-(:) . [Import] ::= Import "and" [Import] ;
-
 SimpleImp . Import ::= Ident "." Ident Where;
 
 Empty . Where ::= ;
 Block . Where ::= "where" "{" [Replacement] "}" ;
+
+EmptyImp . Imports ::= ;
+AndImp . Imports ::= "and" Import Imports;
 
 -- May eventually generalize to
 -- Replacement ::= Label "." Cat "=>" Def ;
@@ -125,8 +124,9 @@ MkGrammar . Grammar ::= [Def] ;
 Rule . Def ::= Label "." Cat "::=" [Item] ;
 
 -- Items
-Terminal     . Item ::= String ;
-NTerminal    . Item ::= Cat ;
+Terminal         . Item ::= String ;
+NTerminal        . Item ::= Cat ;
+ImportedTerminal . Item ::= Ident "." Cat ;
 
 -- BindTerminal Item
 BindTerminal . Item ::= "(" "Bind" Ident IntList ")" ;

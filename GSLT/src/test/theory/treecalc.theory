@@ -3,6 +3,7 @@ Theory TreeCalc() = {
   Terms {
     D . T ::= "Δ" ;
     App . T ::= "(" T T ")" ;
+
     Let . T ::= "let" (Bind T [2]) "=" T "in" T ;
     New . T ::= "new" (Bind T [1]) "in" T ;
   }

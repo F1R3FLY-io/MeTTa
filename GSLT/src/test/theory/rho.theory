@@ -1,4 +1,4 @@
-Theory rhocalc () = {
+Theory RhoCalc () = {
   Exports { Proc; Name; }
   Terms {
     PZero . Proc ::= "0" ;

@@ -15,6 +15,7 @@ Theory PiCalc() = {
     if x # Q then ( PPar.Proc ( PNew.Proc x P ) Q ) == ( PNew.Proc x ( PPar.Proc P Q ) ) ;
     ( PNew.Proc x ( PNew.Proc x P ) ) == ( PNew.Proc x P ) ;
     ( PNew.Proc x ( PNew.Proc y P ) ) == ( PNew.Proc y ( PNew.Proc x P ) ) ;
+    ( PRepl.Proc P ) == (PPar.Proc P ( PRepl.Proc P ) ) ;
   }
   Rewrites {
     RComm : ( PPar.Proc ( PRecv.Proc y x P) ( PSend.Proc x z ) ) ~> ( Subst P z y ) ;

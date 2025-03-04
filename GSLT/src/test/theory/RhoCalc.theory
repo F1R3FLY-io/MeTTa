@@ -1,15 +1,15 @@
-Theory RhoCalc(m: MinPi) = {
+Theory RhoCalc(qd: QuoteDropCalc) = {
   Exports {
-    Proc extends m.Proc ;
-    Name extends m.Name ;
+    Proc extends qd.Proc ;
+    Name extends qd.Name ;
   }
   Terms {
-    PDrop . Proc ::= "*" Name ;
-    NQuote . Name ::= "@" Proc ;
+    PSend . Proc ::= Name "!" "(" Proc ")" ;
+    PRecv . Proc ::= "for" "(" (Bind Name [2]) "<-" Name ")" "{" Proc "}" ;
   }
   Equations {
-    ( PDrop.Proc ( NQuote.Name P ) ) == P ;
-    ( NQuote.Name ( PDrop.Proc N ) ) == N ;
   }
-  Rewrites {}
+  Rewrites {
+    RComm : ( PPar.Proc ( PRecv.Proc y x P) ( PSend.Proc x Q ) ) ~> ( Subst P ( NQuote.Name Q ) y ) ;
+  }
 }

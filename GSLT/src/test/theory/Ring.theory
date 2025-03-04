@@ -1,0 +1,18 @@
+Theory Ring(add: CommutativeMonoid, mult: Monoid) = {
+  Exports {
+    Proc 
+      extends add.Proc where {
+        One . Proc => Zero . Proc ::= "0" ;
+        Mult . Proc => Plus . Proc ::= "(" Proc "+" Proc ")" ;
+      }
+      and mult.Proc;
+  }
+  Terms {}
+  Equations {
+    (Mult.Proc x (Plus.Proc y z)) == (Plus.Proc (Mult.Proc x y) (Mult.Proc x z));
+    (Mult.Proc (Plus.Proc x y) z) == (Plus.Proc (Mult.Proc x z) (Mult.Proc y z));
+    (Mult.Proc x (Zero.Proc)) == (Zero.Proc);
+    (Mult.Proc (Zero.Proc) x) == (Zero.Proc);
+  }
+  Rewrites {}
+}

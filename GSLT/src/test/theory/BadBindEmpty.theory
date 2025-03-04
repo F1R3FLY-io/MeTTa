@@ -1,4 +1,4 @@
-Theory RhoCalc () = {
+Theory BadBindEmpty () = {
   Exports { Proc; }
   Terms {
     PRecv . Proc ::= "for" "(" (Bind []) "<-" Name ")" "{" Proc "}" ;

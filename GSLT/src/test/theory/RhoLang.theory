@@ -1,10 +1,11 @@
-Theory Rholang(p: PiCalc, r: RhoCalc, std: Std) = {
+Theory Rholang(nr: NewReplCalc, r: RhoCalc, std: Std) = {
   Exports {
-    Proc extends p.Proc and r.Proc;
-    Name extends p.Name and r.Name;
+    Proc extends nr.Proc and r.Proc;
+    Name extends nr.Name and r.Name;
   }
   Terms {
     IntProc . Proc ::= std.IntExpr ;
+    -- etc.
   }
   Equations {}
   Rewrites {}

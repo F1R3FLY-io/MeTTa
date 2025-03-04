@@ -1,0 +1,17 @@
+Theory ParMonoid(cm: CommutativeMonoid) = {
+  Exports {
+    Proc extends cm.Proc where {
+      One.Proc => PZero.Proc ::= "0";
+      Mult.Proc => PPar.Proc ::= Proc "|" Proc;
+    };
+  }
+  Terms {}
+  Equations {}
+  Rewrites {
+    RPar1 : let Src ~> Tgt in
+            ( PPar.Proc Src Q ) ~> ( PPar.Proc Tgt Q ) ;
+    RPar2 : let Src1 ~> Tgt1 in
+            let Src2 ~> Tgt2 in
+            ( PPar.Proc Src1 Src2 ) ~> ( PPar.Proc Tgt1 Tgt2 ) ;
+  }
+}

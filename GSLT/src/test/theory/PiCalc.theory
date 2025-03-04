@@ -1,21 +1,14 @@
-Theory PiCalc(m: MinPi) = {
+Theory PiCalc(nr: NewReplCalc) = {
   Exports {
-    Proc extends m.Proc ; -- So Proc rewrites extend m.Proc rewrites
-    Name extends m.Name ;
+    Proc extends nr.Proc ;
+    Name extends nr.Name ;
   }
   Terms {
-    PRepl . Proc ::= "!" Proc ;
-    PNew  . Proc ::= "new" (Bind Name [1]) "in" Proc ;
+    PSend . Proc ::= Name "!" "(" Name ")" ;
+    PRecv . Proc ::= "for" "(" (Bind Name [2]) "<-" Name ")" "{" Proc "}" ;
   }
-  Equations {
-    if x # Q then
-      ( PPar.Proc ( PNew.Proc x P ) Q ) == ( PNew.Proc x ( PPar.Proc P Q ) ) ;
-    ( PNew.Proc x ( PNew.Proc x P ) ) == ( PNew.Proc x P ) ;
-    ( PNew.Proc x ( PNew.Proc y P ) ) == ( PNew.Proc y ( PNew.Proc x P ) ) ;
-    ( PRepl.Proc P ) == ( PPar.Proc P ( PRepl.Proc P ) ) ;
-  }
+  Equations {}
   Rewrites {
-    RNew  : let Src ~> Tgt in
-            (PNew.Proc x Src) ~> (PNew.Proc x Tgt) ;
+    RComm : ( PPar.Proc ( PRecv.Proc y x P) ( PSend.Proc x z ) ) ~> ( Subst P z y ) ;
   }
 }

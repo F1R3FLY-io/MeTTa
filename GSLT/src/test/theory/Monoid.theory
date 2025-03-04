@@ -1,0 +1,15 @@
+Theory Monoid() = {
+  Exports {
+    Proc ;
+  }
+  Terms {
+    One . Proc ::= "1" ;
+    Mult . Proc ::= "(" Proc "*" Proc ")" ;
+  }
+  Equations {
+    (Mult.Proc (Mult.Proc x y) z) == (Mult.Proc x (Mult.Proc y z));
+    (Mult.Proc x (Id.Proc)) == x;
+    (Mult.Proc (Id.Proc) x) == x;
+  }
+  Rewrites {}
+}

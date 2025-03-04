@@ -1,0 +1,31 @@
+Theory TreeCalc() = {
+  Exports { T; }
+  Terms {
+    D . T ::= "Δ" ;
+    App . T ::= "(" T T ")" ;
+    Let . T ::= "let" (Bind T [2]) "=" T "in" T ;
+    New . T ::= "new" (Bind T [1]) "in" T ;
+  }
+  Equations {
+    if x # Q then (App.T (New.T x P) Q) == (New.T x (App.T P Q)) ;
+  }
+  Rewrites {
+    K : (App.T (App.T (App.T (D.T) (D.T)) y) z) ~> y ;
+    S : (App.T (App.T (App.T (D.T) (App.T (D.T) x)) y) z) ~>
+        (App.T (App.T y z) (App.T x z)) ;
+    F : (App.T (App.T (D.T) (App.T (App.T (D.T) w) x) y) z) ~>
+        (App.T (App.T z w) x) ;
+    head : let Src ~> Tgt in
+           (App.T Src x) ~> (App.T Tgt x) ;
+    let1 : let Src ~> Tgt in
+           (Let.T x Src y) ~> (Let.T x Tgt y) ;
+    let2 : let Src ~> Tgt in
+           (Let.T x y Src) ~> (Let.T x y Tgt) ;
+    let3 : let Src1 ~> Tgt1 in
+           let Src2 ~> Tgt2 in
+           (Let.T x Src1 Src2) ~> (Let.T x Tgt1 Tgt2) ;
+    beta : (Let.T x y z) ~> (Subst z y x) ;
+    new : let Src ~> Tgt in
+          (New.T x Src) ~> (New.T x Tgt) ;
+  }
+}

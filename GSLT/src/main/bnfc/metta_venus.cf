@@ -73,16 +73,42 @@ separator nonempty PeekBindSymm "&" ;
 
 -- A GSLT is a Grammar, a set of equations, and a list of rewrite rules
 
-GSLTDecl . ThDecl ::= "Theory" Name "(" [VariableDecl] ")" "=" "{" FreeTheory ";" Equations ";" Rewrites "}" ;
+GSLTDecl . ThDecl ::= "Theory" Name "(" [VariableDecl] ")" "=" "{" Exports FreeTheory Equations Rewrites "}" ;
 
 GSLTInst . ThInst ::= Name "(" [ThInst] ")" ;
 GSLTRec . ThInst ::= "let" Ident "=" ThInst "in" ThInst ;
 GSLTRef . ThInst ::= Ident ;
 separator ThInst "," ;
 
+Categories . Exports ::= "Exports" "{" [Export] "}" ;
 Generators . FreeTheory ::= "Terms" "{" Grammar "}" ;
 Relations . Equations ::= "Equations" "{" [Equation] "}" ;
 Transitions . Rewrites ::= "Rewrites" "{" [RewriteDecl] "}" ;
+
+-- Exports
+
+[]  . [Export] ::= ;
+(:) . [Export] ::= Export ";" [Export] ;
+
+SimpleExp . Export ::= Ident ;
+Extends . Export ::= Ident "extends" [Import];
+
+-- Imports
+
+[]  . [Import] ::= ;
+(:) . [Import] ::= Import "and" [Import] ;
+
+SimpleImp . Import ::= Ident "." Ident Where;
+
+Empty . Where ::= ;
+Block . Where ::= "where" "{" [Replacement] "}" ;
+
+-- May eventually generalize to
+-- Replacement ::= Label "." Cat "=>" Def ;
+SimpleRepl . Replacement ::= Ident "." Ident "=>" Ident "." Ident "::=" [Item] ;
+
+[]  . [Replacement] ::= ;
+(:) . [Replacement] ::= Replacement ";" [Replacement] ;
 
 -- A Grammar is a sequence of definitions
 

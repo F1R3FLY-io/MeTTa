@@ -132,7 +132,7 @@ run v p s =
     Right thDecl -> do
       putStrLn "\nParse Successful!"
       let grammar = case thDecl of
-                      GSLTDecl _ _ (Generators g) _ _ -> g
+                      GSLTDecl _ _ _ (Generators g) _ _ -> g
                       _ -> error "Unexpected ThDecl structure."
       -- Check BindTerminal properties before proceeding.
       case checkGrammar grammar of

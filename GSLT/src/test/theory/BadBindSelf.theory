@@ -1,9 +1,8 @@
-Theory rhocalc () = {
+Theory RhoCalc () = {
+  Exports { Proc; Name; }
   Terms {
     PRecv . Proc ::= "for" "(" (Bind [0]) "<-" Name ")" "{" Proc "}" ;
-  };
-  Equations {
-  };
-  Rewrites {
   }
+  Equations {}
+  Rewrites {}
 }

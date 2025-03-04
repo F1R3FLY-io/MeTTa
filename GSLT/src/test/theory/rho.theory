@@ -1,22 +1,23 @@
-Theory pi () = {
+Theory rhocalc () = {
+  Exports { Proc; Name; }
   Terms {
     PZero . Proc ::= "0" ;
     PPar  . Proc ::= Proc "|" Proc ;
-    PSend . Proc ::= Name "!" "(" Name ")" ;
+    PSend . Proc ::= Name "!" "(" Proc ")" ;
     PRecv . Proc ::= "for" "(" (Bind Name [2]) "<-" Name ")" "{" Proc "}" ;
-    PDrop . Proc ::= "!" Proc ;
-    PNew  . Proc ::= "new" (Bind Name [1]) "in" Proc ;
-  };
+    PDrop . Proc ::= "*" Proc ;
+
+    NQuote . Name ::= "@" Proc ;
+  }
   Equations {
     ( PPar.Proc P Q ) == ( PPar.Proc Q P ) ;
     ( PPar.Proc ( PPar.Proc P Q ) R ) == ( PPar.Proc P ( PPar.Proc Q R ) ) ;
     ( PPar.Proc P ( PZero.Proc ) ) == P ;
-    if x # Q then ( PPar.Proc ( PNew.Proc x P ) Q ) == ( PNew.Proc x ( PPar.Proc P Q ) ) ;
-    ( PNew.Proc x ( PNew.Proc x P ) ) == ( PNew.Proc x P ) ;
-    ( PNew.Proc x ( PNew.Proc y P ) ) == ( PNew.Proc y ( PNew.Proc x P ) ) ;
-  };
+    ( PDrop.Proc ( NQuote.Name P ) ) == P ;
+    ( NQuote.Name ( PDrop.Proc N ) ) == N ;
+  }
   Rewrites {
-    RComm : ( PPar.Proc ( PRecv.Proc y x P) ( PSend.Proc x z ) ) ~> ( Subst P z y ) ;
+    RComm : ( PPar.Proc (PRecv.Proc y x P) ( PSend.Proc x Q)  ) ~> (Subst P (NQuote.Name Q) y) ;
     RPar1 : let Src ~> Tgt in 
             ( PPar.Proc Src Q ) ~> ( PPar.Proc Tgt Q ) ;
     RPar2 : let Src1 ~> Tgt1 in 

@@ -1,9 +1,8 @@
-Theory rhocalc () = {
+Theory BadBindOOB () = {
+  Exports { Proc; Name; }
   Terms {
     PRecv . Proc ::= "for" "(" (Bind [3]) "<-" Name ")" "{" Proc "}" ;
-  };
-  Equations {
-  };
-  Rewrites {
   }
+  Equations {}
+  Rewrites {}
 }

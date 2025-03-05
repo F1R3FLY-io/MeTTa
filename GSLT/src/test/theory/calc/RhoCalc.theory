@@ -1,0 +1,15 @@
+Theory RhoCalc(qd: QuoteDropCalc) = {
+  Exports {
+    Proc extends qd.Proc ;
+    Name extends qd.Name ;
+  }
+  Terms {
+    PSend . Proc ::= Name "!" "(" Proc ")" ;
+    PRecv . Proc ::= "for" "(" (Bind Name [2]) "<-" Name ")" "{" Proc "}" ;
+  }
+  Equations {
+  }
+  Rewrites {
+    RComm : ( PPar ( PRecv y x P) ( PSend x Q ) ) ~> ( Subst P ( NQuote Q ) y ) ;
+  }
+}

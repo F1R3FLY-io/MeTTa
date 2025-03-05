@@ -4,6 +4,7 @@ import Prelude
 import System.Environment ( getArgs )
 import System.Exit        ( exitFailure )
 import Control.Monad      ( when, forM_ )
+import Data.List          ( nub )
 
 import MettaVenus.Abs 
 import MettaVenus.Lex   ( Token, mkPosToken )
@@ -13,18 +14,54 @@ import MettaVenus.Skel  ()
 
 --------------------------------------------------------------------------------
 -- Transformation functions to traverse the Grammar AST.
--- Replace every BindTerminal with an NTerminal representing "Ident".
-transformItem :: Item -> Item
-transformItem (BindTerminal ints) = NTerminal (IdCat (Ident "Ident"))
-transformItem other               = other
+-- For every BindTerminal occurrence (now of the form: BindTerminal m ints)
+-- we replace it with an NTerminal representing "Ident" and, additionally,
+-- add a new production to the grammar:
+--
+--    Id . m ::= Ident ;
+--
+-- The new production has:
+--   - Label "Id"
+--   - LHS category taken from the identifier m of the BindTerminal,
+--   - RHS containing a single item, NTerminal (IdCat (Ident "Ident")).
 
-transformDef :: Def -> Def
-transformDef (Rule l cat items)     = Rule l cat (map transformItem items)
-transformDef (Internal l cat items) = Internal l cat (map transformItem items)
-transformDef d                      = d
+-- transformItem returns a tuple: ([Def], Item)
+transformItem :: Item -> ([Def], Item)
+transformItem (BindTerminal m ints) =
+  ( [ newDef m ]
+  , NTerminal (IdCat (Ident "Ident"))
+  )
+  where
+    newDef mIdent = Rule (LabNoP (Id (Ident "Id")))
+                         (IdCat mIdent)
+                         [NTerminal (IdCat (Ident "Ident"))]
+transformItem other = ([], other)
 
+-- transformItems: Transform a list of Items, accumulating extra Defs.
+transformItems :: [Item] -> ([Def], [Item])
+transformItems [] = ([], [])
+transformItems (x:xs) =
+  let (extras1, x')      = transformItem x
+      (extrasRest, xs')  = transformItems xs
+  in (extras1 ++ extrasRest, x' : xs')
+
+-- transformDef: Process a production (Def), returning any extra productions.
+transformDef :: Def -> ([Def], Def)
+transformDef (Rule l cat items) =
+  let (extras, items') = transformItems items
+  in (extras, Rule l cat items')
+transformDef (Internal l cat items) =
+  let (extras, items') = transformItems items
+  in (extras, Internal l cat items')
+transformDef d = ([], d)
+
+-- transformGrammar: Apply transformDef to every production and append any extra ones,
+-- ensuring that extra productions are deduplicated.
 transformGrammar :: Grammar -> Grammar
-transformGrammar (MkGrammar defs) = MkGrammar (map transformDef defs)
+transformGrammar (MkGrammar defs) =
+  let (extrasList, defs') = unzip (map transformDef defs)
+      extras = nub (concat extrasList)
+  in MkGrammar (defs' ++ extras)
 
 --------------------------------------------------------------------------------
 -- Checking BindTerminal properties
@@ -51,7 +88,7 @@ checkProduction prodName items =
       go (x:xs) curr =
         case x of
           Terminal _ -> go xs curr
-          BindTerminal (Ints indices) ->
+          BindTerminal _ (Ints indices) ->
             if null indices
               then Left (prodName ++ ": BindTerminal at non-string position " ++ show curr ++ " has an empty IntList.")
               else do
@@ -95,7 +132,7 @@ run v p s =
     Right thDecl -> do
       putStrLn "\nParse Successful!"
       let grammar = case thDecl of
-                      GSLTDecl _ _ (Generators g) _ _ -> g
+                      GSLTDecl _ _ _ (Generators g) _ _ -> g
                       _ -> error "Unexpected ThDecl structure."
       -- Check BindTerminal properties before proceeding.
       case checkGrammar grammar of
@@ -103,7 +140,7 @@ run v p s =
           putStrLn $ "\nError: " ++ errMsg
           exitFailure
         Right () -> return ()
-      -- Transform the Grammar by replacing BindTerminal nodes.
+      -- Transform the Grammar by replacing BindTerminal nodes and adding new productions.
       let transformedGrammar = transformGrammar grammar
       putStrLn "\nTransformed Grammar:"
       putStrLn (printTree transformedGrammar)

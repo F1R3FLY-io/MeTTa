@@ -1,0 +1,15 @@
+Theory QuoteDropCalc(pm: ParMonoid) = {
+  Exports {
+    Proc extends pm.Proc ;
+    Name ;
+  }
+  Terms {
+    PDrop . Proc ::= "*" Name ;
+    NQuote . Name ::= "@" Proc ;
+  }
+  Equations {
+    ( NQuote ( PDrop N ) ) == N ;
+    ( PDrop ( NQuote P ) ) == P ;
+  }
+  Rewrites {}
+}

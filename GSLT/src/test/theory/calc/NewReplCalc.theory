@@ -9,13 +9,13 @@ Theory NewReplCalc(pm: ParMonoid) = {
   }
   Equations {
     if x # Q then
-      ( PPar.Proc ( PNew.Proc x P ) Q ) == ( PNew.Proc x ( PPar.Proc P Q ) ) ;
-    ( PNew.Proc x ( PNew.Proc x P ) ) == ( PNew.Proc x P ) ;
-    ( PNew.Proc x ( PNew.Proc y P ) ) == ( PNew.Proc y ( PNew.Proc x P ) ) ;
-    ( PRepl.Proc P ) == ( PPar.Proc P ( PRepl.Proc P ) ) ;
+      ( PPar ( PNew x P ) Q ) == ( PNew x ( PPar P Q ) ) ;
+    ( PNew x ( PNew x P ) ) == ( PNew x P ) ;
+    ( PNew x ( PNew y P ) ) == ( PNew y ( PNew x P ) ) ;
+    ( PRepl P ) == ( PPar P ( PRepl P ) ) ;
   }
   Rewrites {
     RNew  : let Src ~> Tgt in
-            (PNew.Proc x Src) ~> (PNew.Proc x Tgt) ;
+            (PNew x Src) ~> (PNew x Tgt) ;
   }
 }

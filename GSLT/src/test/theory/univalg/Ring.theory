@@ -9,10 +9,10 @@ Theory Ring(add: CommutativeMonoid, mult: Monoid) = {
   }
   Terms {}
   Equations {
-    (Mult.Proc x (Plus.Proc y z)) == (Plus.Proc (Mult.Proc x y) (Mult.Proc x z));
-    (Mult.Proc (Plus.Proc x y) z) == (Plus.Proc (Mult.Proc x z) (Mult.Proc y z));
-    (Mult.Proc x (Zero.Proc)) == (Zero.Proc);
-    (Mult.Proc (Zero.Proc) x) == (Zero.Proc);
+    (Mult x (Plus y z)) == (Plus (Mult x y) (Mult x z));
+    (Mult (Plus x y) z) == (Plus (Mult x z) (Mult y z));
+    (Mult x (Zero)) == (Zero);
+    (Mult (Zero) x) == (Zero);
   }
   Rewrites {}
 }

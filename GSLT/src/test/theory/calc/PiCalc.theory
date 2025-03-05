@@ -9,6 +9,6 @@ Theory PiCalc(nr: NewReplCalc) = {
   }
   Equations {}
   Rewrites {
-    RComm : ( PPar.Proc ( PRecv.Proc y x P) ( PSend.Proc x z ) ) ~> ( Subst P z y ) ;
+    RComm : ( PPar ( PRecv y x P) ( PSend x z ) ) ~> ( Subst P z y ) ;
   }
 }

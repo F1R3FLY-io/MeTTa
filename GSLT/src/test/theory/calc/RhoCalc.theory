@@ -10,6 +10,6 @@ Theory RhoCalc(qd: QuoteDropCalc) = {
   Equations {
   }
   Rewrites {
-    RComm : ( PPar.Proc ( PRecv.Proc y x P) ( PSend.Proc x Q ) ) ~> ( Subst P ( NQuote.Name Q ) y ) ;
+    RComm : ( PPar ( PRecv y x P) ( PSend x Q ) ) ~> ( Subst P ( NQuote Q ) y ) ;
   }
 }

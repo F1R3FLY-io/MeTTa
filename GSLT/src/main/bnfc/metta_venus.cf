@@ -2,23 +2,32 @@
     MeTTa IL: Language Syntax Definition
 -}
 
+-- A module is a collection of decls and instances
+
+ModuleImpl . Module ::= "Module" Name "{" [Prog] "}" ;
+
+ProgDecl . Prog ::= Decl ;
+ProgInst . Prog ::= Inst ;
+separator Prog "." ;
+
 -- A Space is a GSLT and a FactBase
 
-SpaceDeclProg . Prog ::= SpaceDecl ;
-ThDeclProg . Prog ::= ThDecl ;
+_. Inst  ::= Inst1 ;
+_. Inst1 ::= "{" Inst "}" ;
 
-SpaceDeclNoDepsImpl . SpaceDecl ::= "Space" Name "(" [VariableDecl] ")" "=" "{" [Fact] [FactComprehension] "}" ;
-SpaceDeclDepsImpl . SpaceDecl ::= "Space" Name "(" [VariableDecl] ";" [VariableDecl] ")" "=" "{" [Fact] [FactComprehension] "}" ;
+InstEmpty . Inst1 ::= "Nil" ;
+InstCtor . Inst ::= Name "(" [Inst] ")" ;
+InstRec . Inst1 ::= "let" Ptrn "=" Inst1 "in" Inst1 ;
+InstRef . Inst1 ::= Ident ;
+InstPar . Inst ::= Inst "|" Inst1 ;
+separator Inst "," ;
 
-_. SpaceInst  ::= SpaceInst1 ;
-_. SpaceInst1 ::= "{" SpaceInst "}" ;
+PtrnSeq . Ptrn ::= "(" [Ptrn] ")" ;
+PtrnInst . Ptrn ::= Inst1 ;
+separator Ptrn "," ;
 
-SpaceInstEmpty. SpaceInst1 ::= "Empty" ;
-SpaceInstImpl . SpaceInst1 ::= Name "(" [ThInst] ";" [SpaceInst] ")" ;
-SpaceInstRec . SpaceInst1 ::= "let" Ident "=" SpaceInst1 "in" SpaceInst1 ;
-SpaceInstRef . SpaceInst1 ::= Ident ;
-SpaceInstPar . SpaceInst ::= SpaceInst "|" SpaceInst1 ;
-separator SpaceInst "," ; 
+SpaceDecl . Decl ::= "Space" Name "(" [VariableDecl] ")" "=" "{" [Fact] [FactComprehension] "}" ;
+GSLTDecl . Decl ::= "Theory" Name "(" [VariableDecl] ")" "=" "{" Exports FreeTheory Equations Rewrites "}" ;
 
 -- Names
 NameWildcard. Name ::= "_" ;
@@ -35,7 +44,7 @@ separator VariableDecl "," ;
 FactImpl . Fact ::= Item ;
 separator Fact "," ;
 
-FactComprehensionImpl . FactComprehension ::= "for" "(" [ReceiptSymm] ")" "{" SpaceInst "}" ;
+FactComprehensionImpl . FactComprehension ::= "for" "(" [ReceiptSymm] ")" "{" Inst "}" ;
 separator FactComprehension "," ;
 
 -- ReceiptSymm
@@ -72,14 +81,6 @@ PeekBindSymmImpl. PeekBindSymm ::= [Name] NameRemainder "<<->>" Name ;
 separator nonempty PeekBindSymm "&" ;
 
 -- A GSLT is a Grammar, a set of equations, and a list of rewrite rules
-
-GSLTDecl . ThDecl ::= "Theory" Name "(" [VariableDecl] ")" "=" "{" Exports FreeTheory Equations Rewrites "}" ;
-
-GSLTInst . ThInst ::= Name "(" [ThInst] ")" ;
-GSLTRec  . ThInst ::= "let" Ident "=" ThInst "in" ThInst ;
-GSLTRec2 . ThInst ::= "let" "(" [Ident] ")" "=" "(" [ThInst] ")" "in" ThInst ;
-GSLTRef  . ThInst ::= Ident ;
-separator ThInst "," ;
 
 Categories . Exports ::= "Exports" "{" [Export] "}" ;
 Generators . FreeTheory ::= "Terms" "{" Grammar "}" ;

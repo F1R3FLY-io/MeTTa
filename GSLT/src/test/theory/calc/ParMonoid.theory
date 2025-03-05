@@ -9,9 +9,9 @@ Theory ParMonoid(cm: CommutativeMonoid) = {
   Equations {}
   Rewrites {
     RPar1 : let Src ~> Tgt in
-            ( PPar.Proc Src Q ) ~> ( PPar.Proc Tgt Q ) ;
+            ( PPar Src Q ) ~> ( PPar Tgt Q ) ;
     RPar2 : let Src1 ~> Tgt1 in
             let Src2 ~> Tgt2 in
-            ( PPar.Proc Src1 Src2 ) ~> ( PPar.Proc Tgt1 Tgt2 ) ;
+            ( PPar Src1 Src2 ) ~> ( PPar Tgt1 Tgt2 ) ;
   }
 }

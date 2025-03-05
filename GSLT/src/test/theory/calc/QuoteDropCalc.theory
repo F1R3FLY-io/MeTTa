@@ -8,8 +8,8 @@ Theory QuoteDropCalc(pm: ParMonoid) = {
     NQuote . Name ::= "@" Proc ;
   }
   Equations {
-    ( NQuote.Name ( PDrop.Proc N ) ) == N ;
-    ( PDrop.Proc ( NQuote.Name P ) ) == P ;
+    ( NQuote ( PDrop N ) ) == N ;
+    ( PDrop ( NQuote P ) ) == P ;
   }
   Rewrites {}
 }

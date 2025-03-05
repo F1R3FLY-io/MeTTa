@@ -4,7 +4,7 @@ Theory CommutativeMonoid(m: Monoid) = {
   }
   Terms {}
   Equations {
-    (Mult.Proc x y) == (Mult.Proc y x);
+    (Mult x y) == (Mult y x);
   }
   Rewrites {}
 }

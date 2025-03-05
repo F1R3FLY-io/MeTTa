@@ -127,7 +127,6 @@ Rule . Def ::= Label "." Cat "::=" [Item] ;
 -- Items
 Terminal         . Item ::= String ;
 NTerminal        . Item ::= Cat ;
-ImportedTerminal . Item ::= Ident "." Cat ;
 
 -- BindTerminal Item
 BindTerminal . Item ::= "(" "Bind" Ident IntList ")" ;
@@ -146,8 +145,9 @@ BindTerminal . Item ::= "(" "Bind" Ident IntList ")" ;
 
 
 -- Categories
-ListCat  . Cat ::= "[" Cat "]" ;
-IdCat    . Cat ::= Ident ;
+ListCat     . Cat ::= "[" Cat "]" ;
+IdCat       . Cat ::= Ident ;
+ImportedCat . Cat ::= Ident "." Ident;
 
 -- labels with or without profiles
 LabNoP   . Label ::= LabelId ;
@@ -242,7 +242,7 @@ RewriteContext . Rewrite ::= "let" Hypothesis "in" Rewrite ;
 
 ASTSubst . AST ::= "(" "Subst" AST AST Ident ")";
 ASTVar   . AST ::= Ident ;
-ASTSExp  . AST ::= "(" Ident "." Ident [AST] ")" ;
+ASTSExp  . AST ::= "(" Ident [AST] ")" ;
 
 []  . [AST] ::= ;
 (:) . [AST] ::= AST [AST] ;

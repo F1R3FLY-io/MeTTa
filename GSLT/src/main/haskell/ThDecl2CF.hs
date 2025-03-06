@@ -8,7 +8,7 @@ import Data.List          ( nub )
 
 import MettaVenus.Abs 
 import MettaVenus.Lex   ( Token, mkPosToken )
-import MettaVenus.Par   ( pThDecl, myLexer )
+import MettaVenus.Par   ( pDecl, myLexer )
 import MettaVenus.Print ( Print, printTree )
 import MettaVenus.Skel  ()
 
@@ -117,10 +117,10 @@ type Verbosity  = Int
 putStrV :: Verbosity -> String -> IO ()
 putStrV v s = when (v > 1) $ putStrLn s
 
-runFile :: (Print ThDecl, Show ThDecl) => Verbosity -> ParseFun ThDecl -> FilePath -> IO ()
+runFile :: (Print Decl, Show Decl) => Verbosity -> ParseFun Decl -> FilePath -> IO ()
 runFile v p f = putStrLn f >> readFile f >>= run v p
 
-run :: (Print ThDecl, Show ThDecl) => Verbosity -> ParseFun ThDecl -> String -> IO ()
+run :: (Print Decl, Show Decl) => Verbosity -> ParseFun Decl -> String -> IO ()
 run v p s =
   case p ts of
     Left err -> do
@@ -133,7 +133,7 @@ run v p s =
       putStrLn "\nParse Successful!"
       let grammar = case thDecl of
                       GSLTDecl _ _ _ (Generators g) _ _ -> g
-                      _ -> error "Unexpected ThDecl structure."
+                      _ -> error "Unexpected Decl structure."
       -- Check BindTerminal properties before proceeding.
       case checkGrammar grammar of
         Left errMsg -> do
@@ -153,8 +153,8 @@ usage = do
   putStrLn $ unlines
     [ "usage: Call with one of the following argument combinations:"
     , "  --help          Display this help message."
-    , "  (no arguments)  Parse stdin verbosely as a ThDecl."
-    , "  (files)         Parse content of files verbosely as a ThDecl."
+    , "  (no arguments)  Parse stdin verbosely as a Decl."
+    , "  (files)         Parse content of files verbosely as a Decl."
     , "  -s (files)      Silent mode. Parse content of files silently."
     ]
 
@@ -163,6 +163,6 @@ main = do
   args <- getArgs
   case args of
     ["--help"] -> usage
-    []         -> getContents >>= run 2 pThDecl
-    "-s":fs    -> mapM_ (runFile 0 pThDecl) fs
-    fs         -> mapM_ (runFile 2 pThDecl) fs
+    []         -> getContents >>= run 2 pDecl
+    "-s":fs    -> mapM_ (runFile 0 pDecl) fs
+    fs         -> mapM_ (runFile 2 pDecl) fs

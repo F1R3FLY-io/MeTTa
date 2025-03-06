@@ -28,7 +28,7 @@ InstRec . Inst7 ::= "let" Ptrn "=" Inst7 "in" Inst7 ;
 InstTail . Inst7 ::= "tail" Inst7 ;
 InstSup . Inst7 ::= "sup" Inst7 ;
 InstInf . Inst7 ::= "inf" Inst7 ;
-InstComp . Inst6 ::= Inst6 ":" Inst7 ;
+InstComp . Inst6 ::= Inst6 "::" Inst7 ;
 InstConj . Inst5 ::= Inst5 "/\\" Inst6 ;
 InstDisj . Inst4 ::= Inst4 "\\/" Inst5 ;
 InstSub . Inst3 ::= Inst3 "\\" Inst4 ;

@@ -3,6 +3,7 @@
 -}
 
 -- A module is a collection of decls and instances
+-- and communications between instances.
 
 ModuleImpl . Module ::= "Module" Name "{" [Prog] "}" ;
 
@@ -30,6 +31,8 @@ InstRec . Inst7 ::= "let" Ptrn "=" Inst7 "in" Inst7 ;
 InstTail . Inst7 ::= "tail" Inst7 ;
 InstSup . Inst7 ::= "sup" Inst7 ;
 InstInf . Inst7 ::= "inf" Inst7 ;
+InstFree . Inst7 ::= "free" "(" Name ")" ;
+InstFreeL . Inst7 ::= "free" "(" Name ")" "=>" "{" [Prog] "}" ;
 InstComp . Inst6 ::= Inst6 "::" Inst7 ;
 InstConj . Inst5 ::= Inst5 "/\\" Inst6 ;
 InstDisj . Inst4 ::= Inst4 "\\/" Inst5 ;

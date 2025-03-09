@@ -9,7 +9,7 @@ ModuleImpl . Module ::= "Module" Name "{" [Prog] "}" ;
 ProgDecl . Prog ::= Decl ;
 ProgInst . Prog ::= Inst ;
 ProgRecv . Prog ::= FactComprehension ;
-separator Prog "." ;
+separator nonempty Prog "" ;
 
 -- A Space is a GSLT and a FactBase
 
@@ -24,6 +24,7 @@ _. Inst7 ::= "{" Inst "}" ;
 
 InstEmpty . Inst7 ::= "Nil" ;
 InstCtor . Inst7 ::= Name "(" [Inst] ")" ;
+InstCtorK . Inst7 ::= Name "(" [Inst] ")" "=>" "{" [Prog] "}" ;
 InstRef . Inst7 ::= Ident ;
 InstRec . Inst7 ::= "let" Ptrn "=" Inst7 "in" Inst7 ;
 InstTail . Inst7 ::= "tail" Inst7 ;
@@ -42,8 +43,8 @@ PtrnSeq . Ptrn ::= "(" [Ptrn] ")" ;
 PtrnInst . Ptrn ::= Inst1 ;
 separator Ptrn "," ;
 
-SpaceDecl . Decl ::= "Space" Name "(" [VariableDecl] ")" "=" "{" [Fact] [FactComprehension] "}" ;
-GSLTDecl . Decl ::= "Theory" Name "(" [VariableDecl] ")" "=" "{" Exports FreeTheory Equations Rewrites "}" ;
+SpaceDecl   . Decl ::= "Space" Name "(" [VariableDecl] ")" "=" "{" [Fact] [FactComprehension] "}" ;
+GSLTDeclAll . Decl ::= "Theory" Name "(" [VariableDecl] ")" "=" "{" Exports FreeTheory Equations Rewrites "}" ;
 
 -- Names
 NameWildcard. Name ::= "_" ;

@@ -8,6 +8,7 @@ ModuleImpl . Module ::= "Module" Name "{" [Prog] "}" ;
 
 ProgDecl . Prog ::= Decl ;
 ProgInst . Prog ::= Inst ;
+ProgRecv . Prog ::= FactComprehension ;
 separator Prog "." ;
 
 -- A Space is a GSLT and a FactBase
@@ -35,7 +36,7 @@ InstSub . Inst3 ::= Inst3 "\\" Inst4 ;
 InstRest . Inst2 ::= Inst2 "<|" Inst3 ;
 InstGCD . Inst1 ::= Inst1 "**" Inst2 ;
 InstPar . Inst ::= Inst "|" Inst1 ;
-separator Inst "," ;
+separator nonempty Inst "," ;
 
 PtrnSeq . Ptrn ::= "(" [Ptrn] ")" ;
 PtrnInst . Ptrn ::= Inst1 ;
@@ -57,16 +58,51 @@ VarDecl . VariableDecl ::= Ident ":" Name ;
 separator VariableDecl "," ;
 
 FactImpl . Fact ::= Item ;
-separator Fact "," ;
+separator nonempty Fact ";" ;
 
-FactComprehensionImpl . FactComprehension ::= "for" "(" [ReceiptSymm] ")" "{" Inst "}" ;
+PRecv.           FactComprehension ::= "for" "(" [Receipt] ")" Inst7 ;
+PSend.           FactComprehension ::= Name Send "(" [Fact] ")" ;
+PSendEmtpy.      FactComprehension ::= Name Send "(" ")" ;
+PSendSynch.      FactComprehension ::= Name "!?" "(" [Fact] ")" SynchSendCont ;
+PSendSynchEmpty. FactComprehension ::= Name "!?" "(" ")" SynchSendCont ;
 separator FactComprehension "," ;
 
+-- Receipt
+ReceiptLinear.        Receipt ::= ReceiptLinearImpl ;
+ReceiptRepeated.      Receipt ::= ReceiptRepeatedImpl ;
+ReceiptPeek.          Receipt ::= ReceiptPeekImpl ;
 -- ReceiptSymm
-ReceiptSymmLinear.    ReceiptSymm ::= ReceiptSymmLinearImpl ;
-ReceiptSymmRepeated.  ReceiptSymm ::= ReceiptSymmRepeatedImpl ;
-ReceiptSymmPeek.      ReceiptSymm ::= ReceiptSymmPeekImpl ;
-separator nonempty ReceiptSymm ";" ;
+ReceiptSymmLinear.    Receipt ::= ReceiptSymmLinearImpl ;
+ReceiptSymmRepeated.  Receipt ::= ReceiptSymmRepeatedImpl ;
+ReceiptSymmPeek.      Receipt ::= ReceiptSymmPeekImpl ;
+separator nonempty Receipt ";" ;
+
+-- Linear Receipts
+LinearSimple. ReceiptLinearImpl ::= [LinearBind] ;
+-- Implementing this will be tricky.
+-- for (x <- a; y <- b if *x)
+-- LinearCond.   Linear ::= [LinearBind] "if" Proc ;
+
+-- Single Linear Bind
+LinearBindImpl. LinearBind ::= [Name] NameRemainder "<-" NameSource ;
+separator nonempty LinearBind "&" ;
+
+SimpleSource.         NameSource ::= Name ;
+Self.                 NameSource ::= "self" ;
+ReceiveSendSource.    NameSource ::= Name "?!" ;
+SendReceiveSource.    NameSource ::= Name "!?" "(" [Fact] ")" ;
+
+-- Repeated Receipts
+RepeatedSimple. ReceiptRepeatedImpl ::= [RepeatedBind] ;
+-- Single Repeated Bind
+RepeatedBindImpl. RepeatedBind ::= [Name] NameRemainder "<=" Name ;
+separator nonempty RepeatedBind "&" ;
+
+-- Peek Receipts
+PeekSimple. ReceiptPeekImpl ::= [PeekBind] ;
+-- Single Peek
+PeekBindImpl. PeekBind ::= [Name] NameRemainder "<<-" Name ;
+separator nonempty PeekBind "&" ;
 
 -- Linear ReceiptSymms
 LinearSymmSimple. ReceiptSymmLinearImpl ::= [LinearBindSymm] ;
@@ -75,13 +111,8 @@ LinearSymmSimple. ReceiptSymmLinearImpl ::= [LinearBindSymm] ;
 -- LinearCond.   Linear ::= [LinearBindSymm] "if" Proc ;
 
 -- Single Linear BindSymm
-LinearBindSymmImpl. LinearBindSymm ::= [Name] NameRemainder "<->" NameSymmSource ;
+LinearBindSymmImpl. LinearBindSymm ::= [Name] NameRemainder "<->" NameSource ;
 separator nonempty LinearBindSymm "&" ;
-
-SimpleSymmSource.         NameSymmSource ::= Name ;
-Self.                     NameSymmSource ::= "self" ;
-ReceiveSendSymmSource.    NameSymmSource ::= Name "?!" ;
-SendReceiveSymmSource.    NameSymmSource ::= Name "!?" "(" [Fact] ")" ;
 
 -- Repeated ReceiptSymms
 RepeatedSymmSimple. ReceiptSymmRepeatedImpl ::= [RepeatedBindSymm] ;
@@ -94,6 +125,14 @@ PeekSymmSimple. ReceiptSymmPeekImpl ::= [PeekBindSymm] ;
 -- Single Peek
 PeekBindSymmImpl. PeekBindSymm ::= [Name] NameRemainder "<<->>" Name ;
 separator nonempty PeekBindSymm "&" ;
+
+EmptyCont.      SynchSendCont ::= "." ;
+NonEmptyCont.   SynchSendCont ::= ";" Inst ;
+
+-- Types of Send:
+SendSingle.   Send ::= "!" ;
+SendMultiple. Send ::= "!!" ;
+SendSymm.     Send ::= "!$" ;
 
 -- A GSLT is a Grammar, a set of equations, and a list of rewrite rules
 

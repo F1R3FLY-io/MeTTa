@@ -205,7 +205,7 @@ BindTerminal . Item ::= "(" "Bind" Ident IntList ")" ;
 -- Categories
 ListCat     . Cat ::= "[" Cat "]" ;
 IdCat       . Cat ::= Ident ;
-ImportedCat . Cat ::= Ident "." Ident;
+ImportedCat . Cat ::= Ident "." Cat;
 
 -- labels with or without profiles
 LabNoP   . Label ::= LabelId ;

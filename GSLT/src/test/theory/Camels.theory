@@ -1,0 +1,34 @@
+-- Four tasmanian camels traveling on a very narrow
+-- ledge encounter four tasmanian camels coming the other way.
+--
+-- As everyone knows, tasmanian camels never go
+-- backwards, especially when on a precarious ledge.
+-- The camels will climb over each other, but only
+-- if there is a camel sized space on the other side.
+--
+-- The camels didn't see each other until there was
+-- only exactly one camel's width between the two
+-- groups.
+--
+-- How can all camels pass, allowing both groups to
+-- go on their way, without any camel reversing?
+Theory Camels() = {
+  Exports { T; }
+  Terms {
+    A.T ::= "A";
+    B.T ::= "B";
+    X.T ::= "X";
+    M.T ::= "(" T T ")";
+  }
+  Equations {
+    (M (M x y) z) == (M x (M y z));
+  }
+  Rewrites {
+    -- Starting at      AAAAXBBBB , 
+    -- can you get to   BBBBXAAAA ?
+    AX_XA: (M (A) (X)) ~> (M (X) (A));
+    XB_BX: (M (X) (B)) ~> (M (B) (X));
+    ABX_XBA: (M (A) (M (B) (X))) ~> (M (X) (M (B) (A)));
+    XAB_BAX: (M (X) (M (A) (B))) ~> (M (B) (M (A) (X)));
+  }
+}

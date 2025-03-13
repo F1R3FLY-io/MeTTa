@@ -12,42 +12,49 @@ import MettaVenus.Par   ( pModule, myLexer )  -- use pModule for parsing a Modul
 import MettaVenus.Print ( Print, printTree )
 import MettaVenus.Skel  ()
 
---------------------------------------------------------------------------------
--- Base Transformation Functions (as in step 1)
+labelToString :: Label -> String
+labelToString (LabNoP (Id (Ident s)))      = s
+labelToString (LabP   (Id (Ident s)) _)    = s
+labelToString (LabPF  (Id (Ident s)) _ _)  = s
+labelToString (LabF   (Id (Ident s)) _)    = s
 
--- | transformItem returns a tuple: ([Def], Item)
---   (This version is used as the base for BindTerminal processing.)
-baseTransformItem :: Item -> ([Def], Item)
-baseTransformItem (BindTerminal m ints) =
-  ( [ newDef m ]
+baseTransformItem :: String -> String -> Integer -> Item -> ([Def], Item)
+baseTransformItem th ruleLabel slot (BindTerminal m ints) =
+  ( [ newDef th ruleLabel slot m ]
   , NTerminal (IdCat (Ident "Ident"))
   )
   where
-    newDef mIdent = Rule (LabNoP (Id (Ident "Id")))
-                         (IdCat mIdent)
-                         [NTerminal (IdCat (Ident "Ident"))]
-baseTransformItem other = ([], other)
+    newDef th ruleLabel slot mIdent =
+      Rule (LabNoP (Id (Ident (th ++ "_" ++ ruleLabel ++ "_" ++ show slot ++ "_Id"))))
+           (mangleCat th (IdCat mIdent))
+           [NTerminal (IdCat (Ident "Ident"))]
+baseTransformItem _ _ _ other = ([], other)
 
-baseTransformItems :: [Item] -> ([Def], [Item])
-baseTransformItems [] = ([], [])
-baseTransformItems (x:xs) =
-  let (extras1, x')      = baseTransformItem x
-      (extrasRest, xs')  = baseTransformItems xs
-  in (extras1 ++ extrasRest, x' : xs')
+baseTransformItems :: String -> String -> [Item] -> ([Def], [Item])
+baseTransformItems th ruleLabel items = go 0 items
+  where
+    go _ [] = ([], [])
+    go curr (item:xs) =
+      let (defs, newItem) = baseTransformItem th ruleLabel curr item
+          nextSlot = if isTerminal item then curr else curr + 1
+          (defsRest, newItems) = go nextSlot xs
+      in (defs ++ defsRest, newItem : newItems)
 
 baseTransformDef :: Def -> ([Def], Def)
 baseTransformDef (Rule l cat items) =
-  let (extras, items') = baseTransformItems items
+  let ruleLabelStr         = labelToString l
+      (extras, items')     = baseTransformItems "base" ruleLabelStr items
   in (extras, Rule l cat items')
 baseTransformDef (Internal l cat items) =
-  let (extras, items') = baseTransformItems items
+  let ruleLabelStr         = labelToString l
+      (extras, items')     = baseTransformItems "base" ruleLabelStr items
   in (extras, Internal l cat items')
 baseTransformDef d = ([], d)
 
 baseTransformGrammar :: Grammar -> Grammar
 baseTransformGrammar (MkGrammar defs) =
   let (extrasList, defs') = unzip (map baseTransformDef defs)
-      extras = nub (concat extrasList)
+      extras              = nub (concat extrasList)
   in MkGrammar (defs' ++ extras)
 
 mangleCat :: String -> Cat -> Cat
@@ -62,60 +69,58 @@ mangleCat th cat =
     flattenImported (ListCat c)                    = flattenImported c
     flattenImported _                              = []
 
--- A version of transformItem that also updates NTerminal items using mangleCat.
-transformItemWithTheory :: String -> Item -> ([Def], Item)
-transformItemWithTheory th (NTerminal cat) =
+transformItemWithTheory :: String -> String -> Integer -> Item -> ([Def], Item)
+transformItemWithTheory th ruleLabel slot (NTerminal cat) =
   ([], NTerminal (mangleCat th cat))
-transformItemWithTheory th (BindTerminal m ints) =
-  -- We keep the BindTerminal transformation as in baseTransformItem.
-  ( [ newDef m ]
+transformItemWithTheory th ruleLabel slot (BindTerminal m ints) =
+  ( [ newDef th ruleLabel slot m ]
   , NTerminal (IdCat (Ident "Ident"))
   )
   where
-    newDef mIdent = Rule (LabNoP (Id (Ident "Id")))
-                         (IdCat mIdent)
-                         [NTerminal (IdCat (Ident "Ident"))]
-transformItemWithTheory _ other = ([], other)
+    newDef th ruleLabel slot mIdent =
+      Rule (LabNoP (Id (Ident (th ++ "_" ++ ruleLabel ++ "_" ++ show slot ++ "_Id"))))
+           (mangleCat th (IdCat mIdent))
+           [NTerminal (IdCat (Ident "Ident"))]
+transformItemWithTheory _ _ _ other = ([], other)
 
-transformItemsWithTheory :: String -> [Item] -> ([Def], [Item])
-transformItemsWithTheory _ [] = ([], [])
-transformItemsWithTheory th (x:xs) =
-  let (extras1, x')      = transformItemWithTheory th x
-      (extrasRest, xs')  = transformItemsWithTheory th xs
-  in (extras1 ++ extrasRest, x' : xs')
+transformItemsWithTheory :: String -> String -> [Item] -> ([Def], [Item])
+transformItemsWithTheory th ruleLabel items = go 0 items
+  where
+    go _ [] = ([], [])
+    go curr (item:xs) =
+      let (defs, newItem) = transformItemWithTheory th ruleLabel curr item
+          nextSlot = if isTerminal item then curr else curr + 1
+          (defsRest, newItems) = go nextSlot xs
+      in (defs ++ defsRest, newItem : newItems)
 
 transformDefWithTheory :: String -> Def -> ([Def], Def)
 transformDefWithTheory th (Rule l cat items) =
-  let (extras, items') = transformItemsWithTheory th items
-      newCat = mangleCat th cat
+  let ruleLabelStr         = labelToString l
+      (extras, items')     = transformItemsWithTheory th ruleLabelStr items
+      newCat               = mangleCat th cat
   in (extras, Rule l newCat items')
 transformDefWithTheory th (Internal l cat items) =
-  let (extras, items') = transformItemsWithTheory th items
-      newCat = mangleCat th cat
+  let ruleLabelStr         = labelToString l
+      (extras, items')     = transformItemsWithTheory th ruleLabelStr items
+      newCat               = mangleCat th cat
   in (extras, Internal l newCat items')
 transformDefWithTheory _ d = ([], d)
 
 transformGrammarWithTheory :: String -> Grammar -> Grammar
 transformGrammarWithTheory th (MkGrammar defs) =
   let (extrasList, defs') = unzip (map (transformDefWithTheory th) defs)
-      extras = nub (concat extrasList)
+      extras              = nub (concat extrasList)
   in MkGrammar (defs' ++ extras)
 
---------------------------------------------------------------------------------
--- Module Traversal and Transformation
 
--- | Transform a module by applying our transformation (with theory-specific mangling)
---   to every GSLTDeclAll production.
 transformModule :: Module -> Module
 transformModule (ModuleImpl name progs) =
   ModuleImpl name (map transformProg progs)
 
--- | Process a Prog: if it is a declaration, transform it.
 transformProg :: Prog -> Prog
 transformProg (ProgDecl d) = ProgDecl (transformDecl d)
 transformProg other        = other
 
--- | Transform a declaration: if it is a GSLTDeclAll, update its grammar.
 transformDecl :: Decl -> Decl
 transformDecl (GSLTDeclAll thName varDecls exports (Generators g) eqns rewrites) =
   let thStr = case thName of
@@ -124,8 +129,6 @@ transformDecl (GSLTDeclAll thName varDecls exports (Generators g) eqns rewrites)
   in GSLTDeclAll thName varDecls exports (Generators (transformGrammarWithTheory thStr g)) eqns rewrites
 transformDecl d = d
 
---------------------------------------------------------------------------------
--- Module Checking (unchanged from step 1)
 
 checkGrammar :: Grammar -> Either String ()
 checkGrammar (MkGrammar defs) = mapM_ checkDef defs
@@ -161,7 +164,6 @@ isTerminal :: Item -> Bool
 isTerminal (Terminal _) = True
 isTerminal _            = False
 
--- | Check all GSLTDeclAll productions in the module.
 checkModule :: Module -> Either String ()
 checkModule (ModuleImpl _ progs) = mapM_ checkProg progs
 
@@ -173,8 +175,6 @@ checkDecl :: Decl -> Either String ()
 checkDecl (GSLTDeclAll _ _ _ (Generators g) _ _) = checkGrammar g
 checkDecl _                                      = Right ()
 
---------------------------------------------------------------------------------
--- Main Driver and Parsing
 
 type Err        = Either String
 type ParseFun a = [Token] -> Err a

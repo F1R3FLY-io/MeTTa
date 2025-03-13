@@ -4,7 +4,7 @@ import Prelude
 import System.Environment ( getArgs )
 import System.Exit        ( exitFailure )
 import Control.Monad      ( when, forM_ )
-import Data.List          ( nub )
+import Data.List          ( nub, intercalate )
 
 import MettaVenus.Abs 
 import MettaVenus.Lex   ( Token, mkPosToken )
@@ -13,11 +13,12 @@ import MettaVenus.Print ( Print, printTree )
 import MettaVenus.Skel  ()
 
 --------------------------------------------------------------------------------
--- Transformation functions (from ThDecl2CF.hs)
+-- Base Transformation Functions (as in step 1)
 
 -- | transformItem returns a tuple: ([Def], Item)
-transformItem :: Item -> ([Def], Item)
-transformItem (BindTerminal m ints) =
+--   (This version is used as the base for BindTerminal processing.)
+baseTransformItem :: Item -> ([Def], Item)
+baseTransformItem (BindTerminal m ints) =
   ( [ newDef m ]
   , NTerminal (IdCat (Ident "Ident"))
   )
@@ -25,54 +26,118 @@ transformItem (BindTerminal m ints) =
     newDef mIdent = Rule (LabNoP (Id (Ident "Id")))
                          (IdCat mIdent)
                          [NTerminal (IdCat (Ident "Ident"))]
-transformItem other = ([], other)
+baseTransformItem other = ([], other)
 
--- | transformItems: Transform a list of Items, accumulating extra Defs.
-transformItems :: [Item] -> ([Def], [Item])
-transformItems [] = ([], [])
-transformItems (x:xs) =
-  let (extras1, x')      = transformItem x
-      (extrasRest, xs')  = transformItems xs
+baseTransformItems :: [Item] -> ([Def], [Item])
+baseTransformItems [] = ([], [])
+baseTransformItems (x:xs) =
+  let (extras1, x')      = baseTransformItem x
+      (extrasRest, xs')  = baseTransformItems xs
   in (extras1 ++ extrasRest, x' : xs')
 
--- | transformDef: Process a production (Def), returning any extra productions.
-transformDef :: Def -> ([Def], Def)
-transformDef (Rule l cat items) =
-  let (extras, items') = transformItems items
+baseTransformDef :: Def -> ([Def], Def)
+baseTransformDef (Rule l cat items) =
+  let (extras, items') = baseTransformItems items
   in (extras, Rule l cat items')
-transformDef (Internal l cat items) =
-  let (extras, items') = transformItems items
+baseTransformDef (Internal l cat items) =
+  let (extras, items') = baseTransformItems items
   in (extras, Internal l cat items')
-transformDef d = ([], d)
+baseTransformDef d = ([], d)
 
--- | transformGrammar: Apply transformDef to every production and append any extra ones,
--- ensuring that extra productions are deduplicated.
-transformGrammar :: Grammar -> Grammar
-transformGrammar (MkGrammar defs) =
-  let (extrasList, defs') = unzip (map transformDef defs)
+baseTransformGrammar :: Grammar -> Grammar
+baseTransformGrammar (MkGrammar defs) =
+  let (extrasList, defs') = unzip (map baseTransformDef defs)
+      extras = nub (concat extrasList)
+  in MkGrammar (defs' ++ extras)
+
+mangleCat :: String -> Cat -> Cat
+mangleCat th cat =
+  case flattenImported cat of
+    [] -> cat
+    xs -> IdCat (Ident (th ++ "_" ++ intercalate "_" xs))
+  where
+    flattenImported :: Cat -> [String]
+    flattenImported (ImportedCat (Ident s) rest) = s : flattenImported rest
+    flattenImported (IdCat (Ident s))            = [s]
+    flattenImported (ListCat c)                    = flattenImported c
+    flattenImported _                              = []
+
+-- A version of transformItem that also updates NTerminal items using mangleCat.
+transformItemWithTheory :: String -> Item -> ([Def], Item)
+transformItemWithTheory th (NTerminal cat) =
+  ([], NTerminal (mangleCat th cat))
+transformItemWithTheory th (BindTerminal m ints) =
+  -- We keep the BindTerminal transformation as in baseTransformItem.
+  ( [ newDef m ]
+  , NTerminal (IdCat (Ident "Ident"))
+  )
+  where
+    newDef mIdent = Rule (LabNoP (Id (Ident "Id")))
+                         (IdCat mIdent)
+                         [NTerminal (IdCat (Ident "Ident"))]
+transformItemWithTheory _ other = ([], other)
+
+transformItemsWithTheory :: String -> [Item] -> ([Def], [Item])
+transformItemsWithTheory _ [] = ([], [])
+transformItemsWithTheory th (x:xs) =
+  let (extras1, x')      = transformItemWithTheory th x
+      (extrasRest, xs')  = transformItemsWithTheory th xs
+  in (extras1 ++ extrasRest, x' : xs')
+
+transformDefWithTheory :: String -> Def -> ([Def], Def)
+transformDefWithTheory th (Rule l cat items) =
+  let (extras, items') = transformItemsWithTheory th items
+      newCat = mangleCat th cat
+  in (extras, Rule l newCat items')
+transformDefWithTheory th (Internal l cat items) =
+  let (extras, items') = transformItemsWithTheory th items
+      newCat = mangleCat th cat
+  in (extras, Internal l newCat items')
+transformDefWithTheory _ d = ([], d)
+
+transformGrammarWithTheory :: String -> Grammar -> Grammar
+transformGrammarWithTheory th (MkGrammar defs) =
+  let (extrasList, defs') = unzip (map (transformDefWithTheory th) defs)
       extras = nub (concat extrasList)
   in MkGrammar (defs' ++ extras)
 
 --------------------------------------------------------------------------------
--- Checking BindTerminal properties
+-- Module Traversal and Transformation
 
--- | Traverse a Grammar and check every production for correct BindTerminal usage.
+-- | Transform a module by applying our transformation (with theory-specific mangling)
+--   to every GSLTDeclAll production.
+transformModule :: Module -> Module
+transformModule (ModuleImpl name progs) =
+  ModuleImpl name (map transformProg progs)
+
+-- | Process a Prog: if it is a declaration, transform it.
+transformProg :: Prog -> Prog
+transformProg (ProgDecl d) = ProgDecl (transformDecl d)
+transformProg other        = other
+
+-- | Transform a declaration: if it is a GSLTDeclAll, update its grammar.
+transformDecl :: Decl -> Decl
+transformDecl (GSLTDeclAll thName varDecls exports (Generators g) eqns rewrites) =
+  let thStr = case thName of
+                NameVar (Ident s) -> s
+                _                 -> "Wildcard"
+  in GSLTDeclAll thName varDecls exports (Generators (transformGrammarWithTheory thStr g)) eqns rewrites
+transformDecl d = d
+
+--------------------------------------------------------------------------------
+-- Module Checking (unchanged from step 1)
+
 checkGrammar :: Grammar -> Either String ()
 checkGrammar (MkGrammar defs) = mapM_ checkDef defs
 
--- | Only production definitions (Rule or Internal) contain a right-hand side.
 checkDef :: Def -> Either String ()
 checkDef (Rule label _ items)     = checkProduction ("production " ++ show label) items
 checkDef (Internal label _ items) = checkProduction ("internal production " ++ show label) items
 checkDef _                        = Right ()
 
--- | For a given production, compute the number of non-string items and,
--- while traversing the items in order (ignoring Terminal items),
--- check every BindTerminal.
 checkProduction :: String -> [Item] -> Either String ()
 checkProduction prodName items =
   let total = fromIntegral (length (filter (not . isTerminal) items)) :: Integer
-      -- go: traverse items with a counter (curr) for the current non-string item index.
       go :: [Item] -> Integer -> Either String ()
       go [] _ = Right ()
       go (x:xs) curr =
@@ -92,32 +157,9 @@ checkProduction prodName items =
           _ -> go xs (curr + 1)
   in go items 0
 
--- | Determines whether an item is a Terminal (i.e. a quoted string).
 isTerminal :: Item -> Bool
 isTerminal (Terminal _) = True
 isTerminal _            = False
-
---------------------------------------------------------------------------------
--- New functions to traverse and transform a Module
-
--- | Transform a module by applying transformGrammar to every GSLTDeclAll.
-transformModule :: Module -> Module
-transformModule (ModuleImpl name progs) =
-  ModuleImpl name (map transformProg progs)
-
--- | Process a Prog: if it is a declaration, transform it.
-transformProg :: Prog -> Prog
-transformProg (ProgDecl d) = ProgDecl (transformDecl d)
-transformProg other        = other
-
--- | Transform a declaration: if it is a GSLTDeclAll, update its grammar.
-transformDecl :: Decl -> Decl
-transformDecl (GSLTDeclAll thName varDecls exports (Generators g) eqns rewrites) =
-  GSLTDeclAll thName varDecls exports (Generators (transformGrammar g)) eqns rewrites
-transformDecl d = d
-
---------------------------------------------------------------------------------
--- New functions to check a Module
 
 -- | Check all GSLTDeclAll productions in the module.
 checkModule :: Module -> Either String ()
@@ -132,7 +174,7 @@ checkDecl (GSLTDeclAll _ _ _ (Generators g) _ _) = checkGrammar g
 checkDecl _                                      = Right ()
 
 --------------------------------------------------------------------------------
--- Main driver and parsing
+-- Main Driver and Parsing
 
 type Err        = Either String
 type ParseFun a = [Token] -> Err a
@@ -141,11 +183,9 @@ type Verbosity  = Int
 putStrV :: Verbosity -> String -> IO ()
 putStrV v s = when (v > 1) $ putStrLn s
 
--- | Run a file given a parser for Module.
 runFile :: (Print Module, Show Module) => Verbosity -> ParseFun Module -> FilePath -> IO ()
 runFile v p f = putStrLn f >> readFile f >>= run v p
 
--- | Run the parser on the input string.
 run :: (Print Module, Show Module) => Verbosity -> ParseFun Module -> String -> IO ()
 run v p s =
   case p ts of
@@ -153,19 +193,18 @@ run v p s =
       putStrLn "\nParse Failed...\n"
       putStrLn err
       exitFailure
-    Right mod ->
-      do
-        putStrLn "\nParse Successful!"
-        -- Check every GSLTDeclAll's grammar
-        case checkModule mod of
-          Left errMsg -> do
-            putStrLn $ "\nError: " ++ errMsg
-            exitFailure
-          Right () -> return ()
-        -- Transform each grammar and update the module
-        let transformedModule = transformModule mod
-        putStrLn "\nTransformed Module:"
-        putStrLn (printTree transformedModule)
+    Right mod -> do
+      putStrLn "\nParse Successful!"
+      -- Check every GSLTDeclAll's grammar
+      case checkModule mod of
+        Left errMsg -> do
+          putStrLn $ "\nError: " ++ errMsg
+          exitFailure
+        Right () -> return ()
+      -- Transform each grammar (with name mangling) and update the module
+      let transformedModule = transformModule mod
+      putStrLn "\nTransformed Module:"
+      putStrLn (printTree transformedModule)
   where
     ts = myLexer s
 

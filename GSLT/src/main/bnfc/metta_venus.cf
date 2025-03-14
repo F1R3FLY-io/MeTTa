@@ -154,7 +154,7 @@ SimpleExp . Export ::= Ident ;
 Extends . Export ::= Ident "extends" Import Imports ;
 
 -- Imports
-SimpleImp . Import ::= Ident "." Ident Where;
+SimpleImp . Import ::= Cat Where;
 
 Empty . Where ::= ;
 Block . Where ::= "where" "{" [Replacement] "}" ;

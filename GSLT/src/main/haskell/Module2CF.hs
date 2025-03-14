@@ -11,7 +11,6 @@ import MettaVenus.Lex   ( Token, mkPosToken )
 import MettaVenus.Par   ( pModule, myLexer )
 import MettaVenus.Print ( Print, printTree )
 import MettaVenus.Skel  ()
-
 labelToString :: Label -> String
 labelToString (LabNoP (Id (Ident s)))      = s
 labelToString (LabP   (Id (Ident s)) _)    = s
@@ -25,7 +24,7 @@ baseTransformItem th ruleLabel slot (BindTerminal m ints) =
   )
   where
     newDef th ruleLabel slot mIdent =
-      Rule (LabNoP (Id (Ident (th ++ "_" ++ ruleLabel ++ "_" ++ show slot ++ "_Id"))))
+      Rule (LabNoP (Id (Ident (ruleLabel ++ "_" ++ show slot ++ "_Id"))))
            (mangleCat th (IdCat mIdent))
            [NTerminal (IdCat (Ident "Ident"))]
 baseTransformItem _ _ _ other = ([], other)
@@ -68,6 +67,17 @@ mangleCat th cat =
     flattenImported (IdCat (Ident s))            = [s]
     flattenImported (ListCat c)                    = flattenImported c
     flattenImported _                              = []
+prefixLabel :: String -> Label -> Label
+prefixLabel th (LabNoP (Id (Ident s)))      = LabNoP (Id (Ident (th ++ "_" ++ s)))
+prefixLabel th (LabP   (Id (Ident s)) prof)   = LabP   (Id (Ident (th ++ "_" ++ s))) prof
+prefixLabel th (LabPF  (Id (Ident s)) l2 prof)  = LabPF  (Id (Ident (th ++ "_" ++ s))) l2 prof
+prefixLabel th (LabF   (Id (Ident s)) l2)       = LabF   (Id (Ident (th ++ "_" ++ s))) l2
+prefixLabel _  lab                              = lab
+baseFromImported :: String -> String
+baseFromImported s =
+  case break (=='_') s of
+    (base, "")   -> base
+    (base, _rest) -> base
 
 transformItemWithTheory :: String -> String -> Integer -> Item -> ([Def], Item)
 transformItemWithTheory th ruleLabel slot (NTerminal cat) =
@@ -92,18 +102,19 @@ transformItemsWithTheory th ruleLabel items = go 0 items
           nextSlot = if isTerminal item then curr else curr + 1
           (defsRest, newItems) = go nextSlot xs
       in (defs ++ defsRest, newItem : newItems)
-
 transformDefWithTheory :: String -> Def -> ([Def], Def)
 transformDefWithTheory th (Rule l cat items) =
   let ruleLabelStr         = labelToString l
+      newLabel             = prefixLabel th l
       (extras, items')     = transformItemsWithTheory th ruleLabelStr items
       newCat               = mangleCat th cat
-  in (extras, Rule l newCat items')
+  in (extras, Rule newLabel newCat items')
 transformDefWithTheory th (Internal l cat items) =
   let ruleLabelStr         = labelToString l
+      newLabel             = prefixLabel th l
       (extras, items')     = transformItemsWithTheory th ruleLabelStr items
       newCat               = mangleCat th cat
-  in (extras, Internal l newCat items')
+  in (extras, Internal newLabel newCat items')
 transformDefWithTheory _ d = ([], d)
 
 transformGrammarWithTheory :: String -> Grammar -> Grammar
@@ -151,13 +162,14 @@ transformWhere :: String -> String -> Where -> Where
 transformWhere _ _ Empty = Empty
 transformWhere th impStr (Block reps) =
   Block (map (transformReplacement th impStr) reps)
-
 transformReplacement :: String -> String -> Replacement -> Replacement
 transformReplacement th impStr (SimpleRepl (Ident preName) (Ident _preCat) (Ident postName) (Ident postCat) items) =
-  let newPreCat = impStr
+  let impBase    = baseFromImported impStr
+      newPre     = impBase ++ "_" ++ preName
+      newPost    = th ++ "_" ++ postName
       newPostCat = mangleLocalIdent th postCat
       (_, newItems) = transformItemsExport th items
-  in SimpleRepl (Ident preName) (Ident newPreCat) (Ident postName) (Ident newPostCat) newItems
+  in SimpleRepl (Ident newPre) (Ident impStr) (Ident newPost) (Ident newPostCat) newItems
 
 transformItemsExport :: String -> [Item] -> ([Def], [Item])
 transformItemsExport th items = ([], map (transformItemExport th) items)
@@ -186,7 +198,6 @@ transformImportedCat mapping (ImportedCat (Ident q) c) =
         Nothing -> ImportedCat (Ident q) c
     _ -> ImportedCat (Ident q) c
 transformImportedCat _ cat = cat
-
 
 transformModule :: Module -> Module
 transformModule (ModuleImpl name progs) =

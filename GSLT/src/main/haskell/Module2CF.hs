@@ -8,7 +8,7 @@ import Data.List          ( nub, intercalate )
 
 import MettaVenus.Abs 
 import MettaVenus.Lex   ( Token, mkPosToken )
-import MettaVenus.Par   ( pModule, myLexer )  -- use pModule for parsing a Module
+import MettaVenus.Par   ( pModule, myLexer )
 import MettaVenus.Print ( Print, printTree )
 import MettaVenus.Skel  ()
 
@@ -112,6 +112,81 @@ transformGrammarWithTheory th (MkGrammar defs) =
       extras              = nub (concat extrasList)
   in MkGrammar (defs' ++ extras)
 
+buildMapping :: [VariableDecl] -> [(String,String)]
+buildMapping [] = []
+buildMapping (VarDecl (Ident v) name : rest) =
+  case name of
+    NameVar (Ident t) -> (v, t) : buildMapping rest
+    _ -> buildMapping rest
+
+transformExports :: String -> [(String,String)] -> Exports -> Exports
+transformExports th mapping (Categories exps) =
+  Categories (map (transformExport th mapping) exps)
+
+transformExport :: String -> [(String,String)] -> Export -> Export
+transformExport th mapping (SimpleExp ident) =
+  SimpleExp (mangleLocalIdent' th ident)
+transformExport th mapping (Extends (Ident localCat) imp imps) =
+  let (imp', impStr) = transformImport th mapping imp
+      imps' = transformImports th mapping imps
+  in Extends (Ident (mangleLocalIdent th localCat)) imp' imps'
+
+transformImport :: String -> [(String,String)] -> Import -> (Import, String)
+transformImport th mapping (SimpleImp cat wh) =
+  let newCat = transformImportedCat mapping cat
+      impStr = case newCat of
+                 IdCat (Ident s) -> s
+                 _ -> ""
+      newWh = transformWhere th impStr wh
+  in (SimpleImp newCat newWh, impStr)
+
+transformImports :: String -> [(String,String)] -> Imports -> Imports
+transformImports th mapping EmptyImp = EmptyImp
+transformImports th mapping (AndImp imp imps) =
+  let (imp', _) = transformImport th mapping imp
+      imps' = transformImports th mapping imps
+  in AndImp imp' imps'
+
+transformWhere :: String -> String -> Where -> Where
+transformWhere _ _ Empty = Empty
+transformWhere th impStr (Block reps) =
+  Block (map (transformReplacement th impStr) reps)
+
+transformReplacement :: String -> String -> Replacement -> Replacement
+transformReplacement th impStr (SimpleRepl (Ident preName) (Ident _preCat) (Ident postName) (Ident postCat) items) =
+  let newPreCat = impStr
+      newPostCat = mangleLocalIdent th postCat
+      (_, newItems) = transformItemsExport th items
+  in SimpleRepl (Ident preName) (Ident newPreCat) (Ident postName) (Ident newPostCat) newItems
+
+transformItemsExport :: String -> [Item] -> ([Def], [Item])
+transformItemsExport th items = ([], map (transformItemExport th) items)
+
+transformItemExport :: String -> Item -> Item
+transformItemExport th (NTerminal cat) = NTerminal (mangleLocalCat th cat)
+transformItemExport _ item = item
+
+mangleLocalCat :: String -> Cat -> Cat
+mangleLocalCat th (IdCat (Ident s)) = IdCat (Ident (th ++ "_" ++ s))
+mangleLocalCat th (ListCat c) = ListCat (mangleLocalCat th c)
+mangleLocalCat th (ImportedCat _ c) = mangleLocalCat th c
+
+mangleLocalIdent :: String -> String -> String
+mangleLocalIdent th s = th ++ "_" ++ s
+
+mangleLocalIdent' :: String -> Ident -> Ident
+mangleLocalIdent' th (Ident s) = Ident (th ++ "_" ++ s)
+
+transformImportedCat :: [(String,String)] -> Cat -> Cat
+transformImportedCat mapping (ImportedCat (Ident q) c) =
+  case c of
+    IdCat (Ident s) ->
+      case lookup q mapping of
+        Just t -> IdCat (Ident (t ++ "_" ++ s))
+        Nothing -> ImportedCat (Ident q) c
+    _ -> ImportedCat (Ident q) c
+transformImportedCat _ cat = cat
+
 
 transformModule :: Module -> Module
 transformModule (ModuleImpl name progs) =
@@ -123,12 +198,14 @@ transformProg other        = other
 
 transformDecl :: Decl -> Decl
 transformDecl (GSLTDeclAll thName varDecls exports (Generators g) eqns rewrites) =
-  let thStr = case thName of
-                NameVar (Ident s) -> s
-                _                 -> "Wildcard"
-  in GSLTDeclAll thName varDecls exports (Generators (transformGrammarWithTheory thStr g)) eqns rewrites
+  let thStr   = case thName of
+                  NameVar (Ident s) -> s
+                  _                 -> "Wildcard"
+      mapping = buildMapping varDecls
+      newExports  = transformExports thStr mapping exports
+      newGrammar  = transformGrammarWithTheory thStr g
+  in GSLTDeclAll thName varDecls newExports (Generators newGrammar) eqns rewrites
 transformDecl d = d
-
 
 checkGrammar :: Grammar -> Either String ()
 checkGrammar (MkGrammar defs) = mapM_ checkDef defs
@@ -175,7 +252,6 @@ checkDecl :: Decl -> Either String ()
 checkDecl (GSLTDeclAll _ _ _ (Generators g) _ _) = checkGrammar g
 checkDecl _                                      = Right ()
 
-
 type Err        = Either String
 type ParseFun a = [Token] -> Err a
 type Verbosity  = Int
@@ -195,13 +271,11 @@ run v p s =
       exitFailure
     Right mod -> do
       putStrLn "\nParse Successful!"
-      -- Check every GSLTDeclAll's grammar
       case checkModule mod of
         Left errMsg -> do
           putStrLn $ "\nError: " ++ errMsg
           exitFailure
         Right () -> return ()
-      -- Transform each grammar (with name mangling) and update the module
       let transformedModule = transformModule mod
       putStrLn "\nTransformed Module:"
       putStrLn (printTree transformedModule)

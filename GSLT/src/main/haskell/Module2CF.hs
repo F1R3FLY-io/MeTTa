@@ -277,19 +277,7 @@ type Verbosity  = Int
 
 putStrV :: Verbosity -> String -> IO ()
 putStrV v s = when (v > 1) $ putStrLn s
-
----------------------------------------------------------
--- * Accumulation of Extended Theory Rules
----------------------------------------------------------
-
--- When a theory extends another, we need to copy (accumulate) the production rules
--- from the extended theory’s grammar, renaming the extended theory’s prefix to the
--- current theory’s prefix. If replacement rules are provided (via a where clause),
--- then only those replacements (converted to production rules) are accumulated.
-
--- Renaming helpers: given an old prefix and a new prefix, replace occurrences
--- in identifiers, labels, categories, items, and definitions.
-
+         
 renameIdent :: String -> String -> Ident -> Ident
 renameIdent old new (Ident s) =
   if (old ++ "_") `isPrefixOf` s then Ident (new ++ drop (length old) s) else Ident s
@@ -326,17 +314,14 @@ renameGrammar :: String -> String -> Grammar -> [Def]
 renameGrammar old new (MkGrammar defs) =
   [ renameDef old new d | d <- defs, isProduction d ]
 
--- Convert a Replacement into a production rule (Def)
 replacementToDef :: Replacement -> Def
 replacementToDef (SimpleRepl _ _ (Ident post) (Ident postCat) items) =
   Rule (LabNoP (Id (Ident post))) (IdCat (Ident postCat)) items
 
--- Helper: Flatten an Import and its following Imports into a list.
 flattenImports :: Import -> Imports -> [Import]
 flattenImports imp EmptyImp            = [imp]
 flattenImports imp (AndImp imp' rest)    = imp : flattenImports imp' rest
 
--- Accumulate production rules from a single import.
 accumulateSingleImport :: TheoryMap -> String -> Import -> [Def]
 accumulateSingleImport tm currentTh (SimpleImp cat wh) =
   case cat of
@@ -349,29 +334,18 @@ accumulateSingleImport tm currentTh (SimpleImp cat wh) =
            Block replacements ->
                   map replacementToDef replacements
     _ -> []
-      
--- For an export of the form Extends, process all imports (using "and" if present).
+
 accumulateExport :: TheoryMap -> String -> Export -> [Def]
 accumulateExport tm currentTh (Extends (Ident _localCat) imp imps) =
   let allImps = flattenImports imp imps
   in concatMap (accumulateSingleImport tm currentTh) allImps
 accumulateExport _ _ _ = []
 
--- Accumulation pass over theory declarations.
--- We thread a mapping from theory name to the (accumulated) Grammar.
 type TheoryMap = [(String, Grammar)]
 
----------------------------------------------------------
--- * Deduplication of Duplicate Production Rules
----------------------------------------------------------
-
--- Given two production rules, if they have the same left-hand side category and identical right-hand sides,
--- then we merge their labels.
--- We assume production rules are built using the Rule constructor.
 deduplicateRules :: [Def] -> [Def]
 deduplicateRules defs =
   let (others, rules) = partition (not . isProductionDef) defs
-      -- Group production rules by their key: (category, items)
       grouped = groupBy ((==) `on` ruleKey) (sortBy (compare `on` ruleKey) rules)
       deduped = map combineGroup grouped
   in others ++ deduped
@@ -387,20 +361,13 @@ deduplicateRules defs =
           newLabel = combineLabels labels
       in Rule newLabel cat items
 
--- Combine a list of labels into a single label.
--- We assume each label is of the form LabNoP (Id (Ident s)).
 combineLabels :: [Label] -> Label
 combineLabels ls = LabNoP (Id (Ident (combineLabelStrings (map extractLabelString ls))))
 
--- Extract the string from a generated label.
 extractLabelString :: Label -> String
 extractLabelString (LabNoP (Id (Ident s))) = s
 extractLabelString lab = error ("Unexpected label format: " ++ show lab)
 
--- Combine label strings by splitting on underscores and merging.
--- For example, combining
---   "Rholang_PNew_0_Id" and "Rholang_PRecv_0_Id"
--- produces "Rholang_PNew_0_PRecv_0_Id".
 combineLabelStrings :: [String] -> String
 combineLabelStrings lbls =
   let unique = nub lbls
@@ -419,11 +386,9 @@ combineLabelStrings lbls =
                              ) rest
              in joinUnderscores ([theory] ++ mid ++ restMids ++ [suffix])
 
--- Utility: split a string on underscore.
 splitUnderscores :: String -> [String]
 splitUnderscores s = wordsWhen (=='_') s
 
--- Utility: join tokens with underscores.
 joinUnderscores :: [String] -> String
 joinUnderscores = intercalate "_"
 
@@ -433,12 +398,6 @@ wordsWhen p s =  case dropWhile p s of
                       s' -> w : wordsWhen p s''
                             where (w, s'') = break p s'
 
----------------------------------------------------------
--- * Updated Accumulation Pass
----------------------------------------------------------
-
--- In accumulateProg, when building the new grammar from the base definitions and extra (accumulated) rules,
--- we now apply deduplication.
 accumulateProg :: TheoryMap -> Prog -> (TheoryMap, Prog)
 accumulateProg tm (ProgDecl d@(GSLTDeclAll thName varDecls exports freeTheory eqns rewrites)) =
   let thStr = case thName of
@@ -447,7 +406,6 @@ accumulateProg tm (ProgDecl d@(GSLTDeclAll thName varDecls exports freeTheory eq
       (Generators (MkGrammar baseDefs)) = freeTheory
       extraRules = case exports of
                      Categories exps -> concatMap (accumulateExport tm thStr) exps
-      -- Merge base definitions with extra rules and deduplicate them.
       newGrammar = MkGrammar (deduplicateRules (baseDefs ++ extraRules))
       newFreeTheory = Generators newGrammar
       newDecl = GSLTDeclAll thName varDecls exports newFreeTheory eqns rewrites

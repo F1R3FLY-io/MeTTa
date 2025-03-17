@@ -1,3 +1,6 @@
+-- | Main module: entry point for the compiler.
+-- This module handles command-line arguments, file input, parsing,
+-- transformation, and error reporting.
 module Main where
 
 import Prelude
@@ -14,14 +17,28 @@ import MettaVenus.Print ( Print, printTree )
 import Transform ( transformModule )
 import Check     ( checkModule )
 
--- | A parser is a function from a list of tokens to either an error message or a parsed value.
+--------------------------------------------------------------------------------
+-- * Type Synonyms for Clarity
+--------------------------------------------------------------------------------
+
+-- | Parser error type.
 type Err        = Either String
+
+-- | Type for parser functions that consume a list of tokens.
 type ParseFun a = [Token] -> Err a
+
+-- | Verbosity level for printing messages.
 type Verbosity  = Int
 
+--------------------------------------------------------------------------------
+-- * Running the Parser and Transformer
+--------------------------------------------------------------------------------
+
+-- | Reads a file, parses it, checks the module, applies transformation, and prints output.
 runFile :: (Print Module, Show Module) => Verbosity -> ParseFun Module -> FilePath -> IO ()
 runFile v p f = putStrLn f >> readFile f >>= run v p
 
+-- | Parses the input string, checks the module for errors, transforms it, and prints results.
 run :: (Print Module, Show Module) => Verbosity -> ParseFun Module -> String -> IO ()
 run v p s =
   case p ts of
@@ -42,6 +59,11 @@ run v p s =
   where
     ts = myLexer s
 
+--------------------------------------------------------------------------------
+-- * Usage Information and Main Entry Point
+--------------------------------------------------------------------------------
+
+-- | Prints usage instructions.
 usage :: IO ()
 usage = do
   putStrLn $ unlines
@@ -52,6 +74,8 @@ usage = do
     , "  -s (files)      Silent mode. Parse content of files silently."
     ]
 
+-- | Main entry point.
+-- It processes command-line arguments and dispatches to runFile or run.
 main :: IO ()
 main = do
   args <- getArgs

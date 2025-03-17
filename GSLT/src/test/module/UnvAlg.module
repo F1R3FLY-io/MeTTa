@@ -1,0 +1,45 @@
+Module UnivAlg {
+  Theory Monoid() = {
+    Exports {
+      Proc ;
+    }
+    Terms {
+      One . Proc ::= "1" ;
+      Mult . Proc ::= "(" Proc "*" Proc ")" ;
+    }
+    Equations {
+      (Mult (Mult x y) z) == (Mult x (Mult y z));
+      (Mult x (One)) == x;
+      (Mult (One) x) == x;
+    }
+    Rewrites {}
+  }
+  Theory CommutativeMonoid(m: Monoid) = {
+    Exports {
+      Proc extends m.Proc ;
+    }
+    Terms {}
+    Equations {
+      (Mult x y) == (Mult y x);
+    }
+    Rewrites {}
+  }
+  Theory Ring(add: CommutativeMonoid, mult: Monoid) = {
+    Exports {
+      Proc 
+        extends add.Proc where {
+          One . Proc => Zero . Proc ::= "0" ;
+          Mult . Proc => Plus . Proc ::= "(" Proc "+" Proc ")" ;
+        }
+        and mult.Proc;
+    }
+    Terms {}
+    Equations {
+      (Mult x (Plus y z)) == (Plus (Mult x y) (Mult x z));
+      (Mult (Plus x y) z) == (Plus (Mult x z) (Mult y z));
+      (Mult x (Zero)) == (Zero);
+      (Mult (Zero) x) == (Zero);
+    }
+    Rewrites {}
+  }
+}

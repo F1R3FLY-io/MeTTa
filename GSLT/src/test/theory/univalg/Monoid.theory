@@ -8,8 +8,8 @@ Theory Monoid() = {
   }
   Equations {
     (Mult (Mult x y) z) == (Mult x (Mult y z));
-    (Mult x (Id)) == x;
-    (Mult (Id) x) == x;
+    (Mult x (One)) == x;
+    (Mult (One) x) == x;
   }
   Rewrites {}
 }

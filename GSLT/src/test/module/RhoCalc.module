@@ -9,8 +9,8 @@ Module Rhocalc {
     }
     Equations {
       (Mult (Mult x y) z) == (Mult x (Mult y z));
-      (Mult x (Id)) == x;
-      (Mult (Id) x) == x;
+      (Mult x (One)) == x;
+      (Mult (One) x) == x;
     }
     Rewrites {}
   }
@@ -30,7 +30,7 @@ Module Rhocalc {
     Exports {
       Proc extends cm.Proc where {
         One.Proc => PZero.Proc ::= "0";
-        Mult.Proc => PPar.Proc ::= Proc "|" Proc;
+        Mult.Proc => PPar.Proc ::= "(" Proc "|" Proc ")";
       };
     }
     Terms {}
@@ -96,5 +96,16 @@ Module Rhocalc {
     Rewrites {
       RComm : ( PPar ( PRecv y x P) ( PSend x Q ) ) ~> ( Subst P ( NQuote Q ) y ) ;
     }
+  }
+  
+  Theory Rholang(nr: NewReplCalc, r: RhoCalc, std: Std) = {
+    Exports {
+      Proc extends nr.Proc and r.Proc;
+      Name extends nr.Name and r.Name;
+    }
+    Terms {
+    }
+    Equations {}
+    Rewrites {}
   }
 }

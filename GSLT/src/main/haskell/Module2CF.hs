@@ -4,13 +4,15 @@ import Prelude
 import System.Environment ( getArgs )
 import System.Exit        ( exitFailure )
 import Control.Monad      ( when, forM_ )
-import Data.List          ( nub, intercalate )
+import Data.List
+import Data.Function      (on)
 
 import MettaVenus.Abs 
 import MettaVenus.Lex   ( Token, mkPosToken )
 import MettaVenus.Par   ( pModule, myLexer )
 import MettaVenus.Print ( Print, printTree )
 import MettaVenus.Skel  ()
+
 labelToString :: Label -> String
 labelToString (LabNoP (Id (Ident s)))      = s
 labelToString (LabP   (Id (Ident s)) _)    = s
@@ -67,12 +69,14 @@ mangleCat th cat =
     flattenImported (IdCat (Ident s))            = [s]
     flattenImported (ListCat c)                    = flattenImported c
     flattenImported _                              = []
+    
 prefixLabel :: String -> Label -> Label
 prefixLabel th (LabNoP (Id (Ident s)))      = LabNoP (Id (Ident (th ++ "_" ++ s)))
 prefixLabel th (LabP   (Id (Ident s)) prof)   = LabP   (Id (Ident (th ++ "_" ++ s))) prof
 prefixLabel th (LabPF  (Id (Ident s)) l2 prof)  = LabPF  (Id (Ident (th ++ "_" ++ s))) l2 prof
 prefixLabel th (LabF   (Id (Ident s)) l2)       = LabF   (Id (Ident (th ++ "_" ++ s))) l2
 prefixLabel _  lab                              = lab
+
 baseFromImported :: String -> String
 baseFromImported s =
   case break (=='_') s of
@@ -102,6 +106,7 @@ transformItemsWithTheory th ruleLabel items = go 0 items
           nextSlot = if isTerminal item then curr else curr + 1
           (defsRest, newItems) = go nextSlot xs
       in (defs ++ defsRest, newItem : newItems)
+      
 transformDefWithTheory :: String -> Def -> ([Def], Def)
 transformDefWithTheory th (Rule l cat items) =
   let ruleLabelStr         = labelToString l
@@ -162,6 +167,7 @@ transformWhere :: String -> String -> Where -> Where
 transformWhere _ _ Empty = Empty
 transformWhere th impStr (Block reps) =
   Block (map (transformReplacement th impStr) reps)
+
 transformReplacement :: String -> String -> Replacement -> Replacement
 transformReplacement th impStr (SimpleRepl (Ident preName) (Ident _preCat) (Ident postName) (Ident postCat) items) =
   let impBase    = baseFromImported impStr
@@ -201,7 +207,9 @@ transformImportedCat _ cat = cat
 
 transformModule :: Module -> Module
 transformModule (ModuleImpl name progs) =
-  ModuleImpl name (map transformProg progs)
+  let transformedProgs = map transformProg progs
+      accumulatedProgs = accumulateTheories transformedProgs
+  in ModuleImpl name accumulatedProgs
 
 transformProg :: Prog -> Prog
 transformProg (ProgDecl d) = ProgDecl (transformDecl d)
@@ -269,6 +277,145 @@ type Verbosity  = Int
 
 putStrV :: Verbosity -> String -> IO ()
 putStrV v s = when (v > 1) $ putStrLn s
+         
+renameIdent :: String -> String -> Ident -> Ident
+renameIdent old new (Ident s) =
+  if (old ++ "_") `isPrefixOf` s then Ident (new ++ drop (length old) s) else Ident s
+
+renameLabel :: String -> String -> Label -> Label
+renameLabel old new (LabNoP (Id ident))      = LabNoP (Id (renameIdent old new ident))
+renameLabel old new (LabP   (Id ident) prof)   = LabP   (Id (renameIdent old new ident)) prof
+renameLabel old new (LabPF  (Id ident) l2 prof)  = LabPF  (Id (renameIdent old new ident)) l2 prof
+renameLabel old new (LabF   (Id ident) l2)       = LabF   (Id (renameIdent old new ident)) l2
+renameLabel _ _ lab                             = lab
+
+renameCat :: String -> String -> Cat -> Cat
+renameCat old new (IdCat ident) = IdCat (renameIdent old new ident)
+renameCat old new (ListCat c)   = ListCat (renameCat old new c)
+renameCat old new (ImportedCat ident c) = ImportedCat ident (renameCat old new c)
+
+renameItem :: String -> String -> Item -> Item
+renameItem old new (NTerminal cat) = NTerminal (renameCat old new cat)
+renameItem _ _ item                = item
+
+renameDef :: String -> String -> Def -> Def
+renameDef old new (Rule l cat items) =
+  Rule (renameLabel old new l) (renameCat old new cat) (map (renameItem old new) items)
+renameDef old new (Internal l cat items) =
+  Internal (renameLabel old new l) (renameCat old new cat) (map (renameItem old new) items)
+renameDef _ _ d = d
+
+isProduction :: Def -> Bool
+isProduction (Rule _ _ _)     = True
+isProduction (Internal _ _ _) = True
+isProduction _                = False
+
+renameGrammar :: String -> String -> Grammar -> [Def]
+renameGrammar old new (MkGrammar defs) =
+  [ renameDef old new d | d <- defs, isProduction d ]
+
+replacementToDef :: Replacement -> Def
+replacementToDef (SimpleRepl _ _ (Ident post) (Ident postCat) items) =
+  Rule (LabNoP (Id (Ident post))) (IdCat (Ident postCat)) items
+
+flattenImports :: Import -> Imports -> [Import]
+flattenImports imp EmptyImp            = [imp]
+flattenImports imp (AndImp imp' rest)    = imp : flattenImports imp' rest
+
+accumulateSingleImport :: TheoryMap -> String -> Import -> [Def]
+accumulateSingleImport tm currentTh (SimpleImp cat wh) =
+  case cat of
+    IdCat (Ident s) ->
+      let extTh = takeWhile (/= '_') s  -- e.g. "Monoid" from "Monoid_Proc"
+      in case wh of
+           Empty -> case lookup extTh tm of
+                      Just extGrammar -> renameGrammar extTh currentTh extGrammar
+                      Nothing -> []  -- extended theory not found
+           Block replacements ->
+                  map replacementToDef replacements
+    _ -> []
+
+accumulateExport :: TheoryMap -> String -> Export -> [Def]
+accumulateExport tm currentTh (Extends (Ident _localCat) imp imps) =
+  let allImps = flattenImports imp imps
+  in concatMap (accumulateSingleImport tm currentTh) allImps
+accumulateExport _ _ _ = []
+
+type TheoryMap = [(String, Grammar)]
+
+deduplicateRules :: [Def] -> [Def]
+deduplicateRules defs =
+  let (others, rules) = partition (not . isProductionDef) defs
+      grouped = groupBy ((==) `on` ruleKey) (sortBy (compare `on` ruleKey) rules)
+      deduped = map combineGroup grouped
+  in others ++ deduped
+  where
+    isProductionDef (Rule _ _ _) = True
+    isProductionDef _ = False
+    ruleKey (Rule _ cat items) = (cat, items)
+    ruleKey _ = error "Not a production rule"
+    combineGroup :: [Def] -> Def
+    combineGroup [r] = r
+    combineGroup rs@(Rule _ cat items : _) =
+      let labels = map (\(Rule lab _ _) -> lab) rs
+          newLabel = combineLabels labels
+      in Rule newLabel cat items
+
+combineLabels :: [Label] -> Label
+combineLabels ls = LabNoP (Id (Ident (combineLabelStrings (map extractLabelString ls))))
+
+extractLabelString :: Label -> String
+extractLabelString (LabNoP (Id (Ident s))) = s
+extractLabelString lab = error ("Unexpected label format: " ++ show lab)
+
+combineLabelStrings :: [String] -> String
+combineLabelStrings lbls =
+  let unique = nub lbls
+  in case unique of
+       [] -> error "No labels to combine"
+       (s:rest) ->
+         case splitUnderscores s of
+           [] -> s
+           tokens ->
+             let theory  = head tokens
+                 suffix  = last tokens
+                 mid     = tail (init tokens)
+                 restMids = concatMap (\str ->
+                               let ts = splitUnderscores str
+                               in drop 1 (take (length ts - 1) ts)
+                             ) rest
+             in joinUnderscores ([theory] ++ mid ++ restMids ++ [suffix])
+
+splitUnderscores :: String -> [String]
+splitUnderscores s = wordsWhen (=='_') s
+
+joinUnderscores :: [String] -> String
+joinUnderscores = intercalate "_"
+
+wordsWhen :: (Char -> Bool) -> String -> [String]
+wordsWhen p s =  case dropWhile p s of
+                      "" -> []
+                      s' -> w : wordsWhen p s''
+                            where (w, s'') = break p s'
+
+accumulateProg :: TheoryMap -> Prog -> (TheoryMap, Prog)
+accumulateProg tm (ProgDecl d@(GSLTDeclAll thName varDecls exports freeTheory eqns rewrites)) =
+  let thStr = case thName of
+                NameVar (Ident s) -> s
+                _                 -> "Wildcard"
+      (Generators (MkGrammar baseDefs)) = freeTheory
+      extraRules = case exports of
+                     Categories exps -> concatMap (accumulateExport tm thStr) exps
+      newGrammar = MkGrammar (deduplicateRules (baseDefs ++ extraRules))
+      newFreeTheory = Generators newGrammar
+      newDecl = GSLTDeclAll thName varDecls exports newFreeTheory eqns rewrites
+      newTM = (thStr, newGrammar) : tm
+  in (newTM, ProgDecl newDecl)
+accumulateProg tm prog = (tm, prog)
+
+accumulateTheories :: [Prog] -> [Prog]
+accumulateTheories progs =
+  snd (mapAccumL accumulateProg [] progs)
 
 runFile :: (Print Module, Show Module) => Verbosity -> ParseFun Module -> FilePath -> IO ()
 runFile v p f = putStrLn f >> readFile f >>= run v p
@@ -311,3 +458,4 @@ main = do
     []         -> getContents >>= run 2 pModule
     "-s":fs    -> mapM_ (runFile 0 pModule) fs
     fs         -> mapM_ (runFile 2 pModule) fs
+

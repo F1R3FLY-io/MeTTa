@@ -1,5 +1,36 @@
-bnfc -m -d GSLT/src/main/bnfc/metta_venus.cf
+#!/bin/sh
+
+# Create the target and build_files directories (if they don't already exist)
+mkdir -p target
+mkdir -p build_files
+
+# Change into build_files
+cd build_files
+
+# Run BNFC: use the .cf file in the source tree.
+bnfc -m -d ../GSLT/src/main/bnfc/metta_venus.cf
+
+# Run alex on the generated Lex.x file.
 alex MettaVenus/Lex.x
+
+# Run happy on the generated parser file.
 happy -iMettaVenus/Par.info MettaVenus/Par.y
+
+# Build BNFC-generated files using make.
 make
+
+# Remove backup files created by BNFC (if any)
 rm MettaVenus/*.bak 2> /dev/null
+
+# Copy the Haskell source (your manually written modules) into build_files.
+# This assumes your modules are located in GSLT/src/main/haskell/Module2CF/
+cp -r ../GSLT/src/main/haskell/Module2CF/* .
+
+# Compile the complete program using GHC.
+ghc --make Main.hs
+
+# Move the resulting executable (Main) to the target directory.
+mv Main ../target/
+
+# Change back to the project root.
+cd ..

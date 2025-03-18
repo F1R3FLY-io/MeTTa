@@ -64,35 +64,29 @@ collectVars (ASTVar ident) = [ident]
 collectVars (ASTSubst a1 a2 ident) = collectVars a1 ++ collectVars a2 ++ [ident]
 collectVars (ASTSExp _ asts) = concatMap collectVars asts
 
--- | Extracts variable identifiers from a hypothesis.
-collectHypVars :: Hypothesis -> [Ident]
-collectHypVars (Hyp ident1 ident2) = [ident1, ident2]
+-- | Recursively gathers the base left-hand side, right-hand side,
+-- and accumulates hypothesis variables from nested RewriteContext layers.
+gatherRewrite :: Rewrite -> Either String (AST, AST, [Ident])
+gatherRewrite (RewriteBase lhs rhs) = Right (lhs, rhs, [])
+gatherRewrite (RewriteContext hyp inner) =
+  case gatherRewrite inner of
+    Right (lhs, rhs, extra) ->
+      let (Hyp ident1 ident2) = hyp
+      in Right (lhs, rhs, extra ++ [ident1, ident2])
+    Left err -> Left err
 
--- | Checks a RewriteBase rule ensuring all right-hand side variables appear on the left.
-checkRewriteBase :: String -> AST -> AST -> Either String ()
-checkRewriteBase ruleName lhs rhs =
-  let lhsVars = collectVars lhs
-      rhsVars = collectVars rhs
-      missing = filter (`notElem` lhsVars) rhsVars
-  in if null missing
-     then Right ()
-     else Left $ "Rewrite rule '" ++ ruleName ++ "' contains undefined variables on the right-hand side: " ++ show missing
-
--- | Checks a rewrite rule, incorporating hypotheses when present.
+-- | Checks a rewrite rule, incorporating hypotheses from arbitrarily nested RewriteContext productions.
 checkRewrite :: RewriteDecl -> Either String ()
-checkRewrite (RDecl (Ident ruleName) rewrite) = case rewrite of
-  RewriteBase lhs rhs -> checkRewriteBase ruleName lhs rhs
-  RewriteContext (Hyp ident1 ident2) innerRewrite ->
-    let extraVars = [ident1, ident2]  -- Include hypothesis variables
-    in case innerRewrite of
-         RewriteBase lhs rhs ->
-           let lhsVars = collectVars lhs ++ extraVars
-               rhsVars = collectVars rhs
-               missing = filter (`notElem` lhsVars) rhsVars
-           in if null missing
-              then Right ()
-              else Left $ "Rewrite rule '" ++ ruleName ++ "' (with hypothesis) contains undefined variables on the right-hand side: " ++ show missing
-         _ -> Left "Unexpected nested rewrite structure."
+checkRewrite (RDecl (Ident ruleName) rewrite) =
+  case gatherRewrite rewrite of
+    Right (lhs, rhs, extra) ->
+      let lhsVars = collectVars lhs ++ extra
+          rhsVars = collectVars rhs
+          missing = filter (`notElem` lhsVars) rhsVars
+      in if null missing
+         then Right ()
+         else Left $ "Rewrite rule '" ++ ruleName ++ "' contains undefined variables on the right-hand side: " ++ show missing
+    Left err -> Left $ "Rewrite rule '" ++ ruleName ++ "' error: " ++ err
 
 -- | Checks all rewrites in a declaration.
 checkRewrites :: Rewrites -> Either String ()

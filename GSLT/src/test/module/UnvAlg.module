@@ -16,22 +16,20 @@ Module UnivAlg {
   }
   Theory CommutativeMonoid(m: Monoid) = {
     Exports {
-      Proc extends m.Proc ;
+      Proc extends m.Proc where {
+        One . Proc => Zero . Proc ::= "0" ;
+        Mult . Proc => Plus . Proc ::= "(" Proc "+" Proc ")" ;
+      };
     }
     Terms {}
     Equations {
-      (Mult x y) == (Mult y x);
+      (Plus x y) == (Plus y x);
     }
     Rewrites {}
   }
-  Theory Ring(add: CommutativeMonoid, mult: Monoid) = {
+  Theory Rig(add: CommutativeMonoid, mult: Monoid) = {
     Exports {
-      Proc 
-        extends add.Proc where {
-          One . Proc => Zero . Proc ::= "0" ;
-          Mult . Proc => Plus . Proc ::= "(" Proc "+" Proc ")" ;
-        }
-        and mult.Proc;
+      Proc extends add.Proc and mult.Proc;
     }
     Terms {}
     Equations {
@@ -40,6 +38,44 @@ Module UnivAlg {
       (Mult x (Zero)) == (Zero);
       (Mult (Zero) x) == (Zero);
     }
+    Rewrites {}
+  }
+  Theory Group(m: Monoid) = {
+    Exports {
+      Proc extends m.Proc ;
+    }
+    Terms {
+      Inv . Proc ::= "inv" "(" Proc ")" ;
+    }
+    Equations {
+      (Mult x (Inv x)) == (One);
+      (Inv (Inv x)) == x;
+      (Inv (Mult x y)) == (Mult (Inv y) (Inv x));
+    }
+    Rewrites {}
+  }
+  -- Not necessary to use both, but I wanted to check that
+  -- "and" is taking the union
+  Theory AbelianGroup(g: Group, c: CommutativeMonoid) = {
+    Exports {
+      Proc
+        extends c.Proc
+        and g.Proc where {
+          One . Proc => Zero . Proc ::= "0" ;
+          Mult . Proc => Plus . Proc ::= "(" Proc "+" Proc ")" ;
+          Inv . Proc => Neg . Proc ::= "(" "-" Proc ")" ;
+        };
+    }
+    Terms {}
+    Equations {}
+    Rewrites {}
+  }
+  Theory Ring(r: Rig, add: AbelianGroup) = {
+    Exports {
+      Proc extends r.Proc and add.Proc;
+    }
+    Terms {}
+    Equations {}
     Rewrites {}
   }
 }

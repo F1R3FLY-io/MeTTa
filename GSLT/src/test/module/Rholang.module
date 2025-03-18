@@ -1,4 +1,4 @@
-Module Rhocalc {
+Module Rholang {
   Theory Monoid() = {
     Exports {
       Proc ;

@@ -1,0 +1,15 @@
+Module BadFreeVar {
+  Theory Baz() = {
+    Exports {
+      Term;
+    }
+    Terms {
+      Foo . Term ::= "Foo" "Charlie";
+      Bar . Term ::= "Bar" "Foxtrot";
+    }
+    Equations {}
+    Rewrites {
+      Baz: (Foo x) ~> (Bar y);
+    }
+  }
+}

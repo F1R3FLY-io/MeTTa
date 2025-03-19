@@ -1,4 +1,4 @@
-Theory PiCalc(nr: NewReplCalc) = {
+Theory PiCalc(nr: NewReplCalc) {
   Exports {
     Proc extends nr.Proc ;
     Name extends nr.Name ;

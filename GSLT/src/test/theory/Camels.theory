@@ -12,7 +12,7 @@
 --
 -- How can all camels pass, allowing both groups to
 -- go on their way, without any camel reversing?
-Theory Camels() = {
+Theory Camels() {
   Exports { T; }
   Terms {
     A.T ::= "A";

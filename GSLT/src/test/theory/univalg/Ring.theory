@@ -1,4 +1,4 @@
-Theory Ring(add: CommutativeMonoid, mult: Monoid) = {
+Theory Ring(add: CommutativeMonoid, mult: Monoid) {
   Exports {
     Proc 
       extends add.Proc where {

@@ -1,5 +1,5 @@
 Module Rholang {
-  Theory Monoid() = {
+  Theory Monoid() {
     Exports {
       Proc ;
     }
@@ -15,7 +15,7 @@ Module Rholang {
     Rewrites {}
   }
 
-  Theory CommutativeMonoid(m: Monoid) = {
+  Theory CommutativeMonoid(m: Monoid) {
     Exports {
       Proc extends m.Proc ;
     }
@@ -26,7 +26,7 @@ Module Rholang {
     Rewrites {}
   }
   
-  Theory ParMonoid(cm: CommutativeMonoid) = {
+  Theory ParMonoid(cm: CommutativeMonoid) {
     Exports {
       Proc extends cm.Proc where {
         One.Proc => PZero.Proc ::= "0";
@@ -44,7 +44,7 @@ Module Rholang {
     }
   }
   
-  Theory NewReplCalc(pm: ParMonoid) = {
+  Theory NewReplCalc(pm: ParMonoid) {
     Exports {
       Proc extends pm.Proc ;
       Name ;
@@ -66,7 +66,7 @@ Module Rholang {
     }
   }
   
-  Theory QuoteDropCalc(pm: ParMonoid) = {
+  Theory QuoteDropCalc(pm: ParMonoid) {
     Exports {
       Proc extends pm.Proc ;
       Name ;
@@ -82,7 +82,7 @@ Module Rholang {
     Rewrites {}
   }
   
-  Theory RhoCalc(qd: QuoteDropCalc) = {
+  Theory RhoCalc(qd: QuoteDropCalc) {
     Exports {
       Proc extends qd.Proc ;
       Name extends qd.Name ;
@@ -98,7 +98,7 @@ Module Rholang {
     }
   }
   
-  Theory Rholang(nr: NewReplCalc, r: RhoCalc, std: Std) = {
+  Theory Rholang(nr: NewReplCalc, r: RhoCalc, std: Std) {
     Exports {
       Proc extends nr.Proc and r.Proc;
       Name extends nr.Name and r.Name;

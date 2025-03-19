@@ -1,4 +1,4 @@
-Theory Monoid() = {
+Theory Monoid() {
   Exports {
     Proc ;
   }

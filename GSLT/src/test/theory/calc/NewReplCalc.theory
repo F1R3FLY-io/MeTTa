@@ -1,4 +1,4 @@
-Theory NewReplCalc(pm: ParMonoid) = {
+Theory NewReplCalc(pm: ParMonoid) {
   Exports {
     Proc extends pm.Proc ;
     Name ;

@@ -1,4 +1,4 @@
-Theory QuoteDropCalc(pm: ParMonoid) = {
+Theory QuoteDropCalc(pm: ParMonoid) {
   Exports {
     Proc extends pm.Proc ;
     Name ;

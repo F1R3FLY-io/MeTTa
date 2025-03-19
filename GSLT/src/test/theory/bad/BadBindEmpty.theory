@@ -1,4 +1,4 @@
-Theory BadBindEmpty () = {
+Theory BadBindEmpty () {
   Exports { Proc; }
   Terms {
     PRecv . Proc ::= "for" "(" (Bind []) "<-" Name ")" "{" Proc "}" ;

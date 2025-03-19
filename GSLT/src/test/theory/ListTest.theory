@@ -1,4 +1,4 @@
-Theory ListTest(t: T) = {
+Theory ListTest(t: T) {
   Exports {
     T;
   }

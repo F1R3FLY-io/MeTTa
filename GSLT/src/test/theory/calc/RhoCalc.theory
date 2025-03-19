@@ -1,4 +1,4 @@
-Theory RhoCalc(qd: QuoteDropCalc) = {
+Theory RhoCalc(qd: QuoteDropCalc) {
   Exports {
     Proc extends qd.Proc ;
     Name extends qd.Name ;

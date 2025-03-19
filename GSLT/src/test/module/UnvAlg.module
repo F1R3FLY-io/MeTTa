@@ -1,5 +1,5 @@
 Module UnivAlg {
-  Theory Monoid() = {
+  Theory Monoid() {
     Exports {
       Proc ;
     }
@@ -14,7 +14,7 @@ Module UnivAlg {
     }
     Rewrites {}
   }
-  Theory CommutativeMonoid(m: Monoid) = {
+  Theory CommutativeMonoid(m: Monoid) {
     Exports {
       Proc extends m.Proc where {
         One . Proc => Zero . Proc ::= "0" ;
@@ -27,7 +27,7 @@ Module UnivAlg {
     }
     Rewrites {}
   }
-  Theory Rig(add: CommutativeMonoid, mult: Monoid) = {
+  Theory Rig(add: CommutativeMonoid, mult: Monoid) {
     Exports {
       Proc extends add.Proc and mult.Proc;
     }
@@ -40,7 +40,7 @@ Module UnivAlg {
     }
     Rewrites {}
   }
-  Theory Group(m: Monoid) = {
+  Theory Group(m: Monoid) {
     Exports {
       Proc extends m.Proc ;
     }
@@ -56,7 +56,7 @@ Module UnivAlg {
   }
   -- Not necessary to use both, but I wanted to check that
   -- "and" is taking the union
-  Theory AbelianGroup(g: Group, c: CommutativeMonoid) = {
+  Theory AbelianGroup(g: Group, c: CommutativeMonoid) {
     Exports {
       Proc
         extends c.Proc
@@ -70,7 +70,7 @@ Module UnivAlg {
     Equations {}
     Rewrites {}
   }
-  Theory Ring(r: Rig, add: AbelianGroup) = {
+  Theory Ring(r: Rig, add: AbelianGroup) {
     Exports {
       Proc extends r.Proc and add.Proc;
     }

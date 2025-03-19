@@ -46,8 +46,14 @@ PtrnSeq . Ptrn ::= "(" [Ptrn] ")" ;
 PtrnInst . Ptrn ::= Inst1 ;
 separator Ptrn "," ;
 
-SpaceDecl   . Decl ::= "Space" Name "(" [VariableDecl] ")" "=" "{" [Fact] [FactComprehension] "}" ;
-GSLTDeclAll . Decl ::= "Theory" Name "(" [VariableDecl] ")" "=" "{" Exports FreeTheory Equations Rewrites "}" ;
+SpaceDecl   . Decl ::= "Space" Name "(" [VariableDecl] ")" "{" [Fact] [FactComprehension] "}" ;
+GSLTDeclAll . Decl ::= "Theory" Name "(" [VariableDecl] ")" "{" Exports Terms Equations Rewrites "}" ;
+
+VarDecl . VariableDecl ::= Ident ":" VariableType ;
+separator VariableDecl "," ;
+
+BaseVarType . VariableType ::= Ident ;
+QualifiedVarType . VariableType ::= Ident "." VariableType ;
 
 -- Names
 NameWildcard. Name ::= "_" ;
@@ -57,9 +63,6 @@ separator Name "," ;
 
 NameRemainderVar.   NameRemainder ::= "..." "@" Ident ;
 NameRemainderEmpty. NameRemainder ::= "" ;
-
-VarDecl . VariableDecl ::= Ident ":" Name ;
-separator VariableDecl "," ;
 
 FactImpl . Fact ::= Item ;
 separator nonempty Fact ";" ;
@@ -141,7 +144,7 @@ SendSymm.     Send ::= "!$" ;
 -- A GSLT is a Grammar, a set of equations, and a list of rewrite rules
 
 Categories . Exports ::= "Exports" "{" [Export] "}" ;
-Generators . FreeTheory ::= "Terms" "{" Grammar "}" ;
+Generators . Terms ::= "Terms" "{" Grammar "}" ;
 Relations . Equations ::= "Equations" "{" [Equation] "}" ;
 Transitions . Rewrites ::= "Rewrites" "{" [RewriteDecl] "}" ;
 

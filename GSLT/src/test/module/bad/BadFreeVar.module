@@ -1,5 +1,5 @@
 Module BadFreeVar {
-  Theory Baz() = {
+  Theory Baz() {
     Exports {
       Term;
     }

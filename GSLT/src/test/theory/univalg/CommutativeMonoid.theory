@@ -1,4 +1,4 @@
-Theory CommutativeMonoid(m: Monoid) = {
+Theory CommutativeMonoid(m: Monoid) {
   Exports {
     Proc extends m.Proc ;
   }

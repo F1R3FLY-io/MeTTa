@@ -1,4 +1,4 @@
-Theory ParMonoid(cm: CommutativeMonoid) = {
+Theory ParMonoid(cm: CommutativeMonoid) {
   Exports {
     Proc extends cm.Proc where {
       One.Proc => PZero.Proc ::= "0";

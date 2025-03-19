@@ -1,4 +1,4 @@
-Theory LambdaCalc () = {
+Theory LambdaCalc () {
   Exports { T; }
   Terms {
     App . T ::= "(" T T ")" ;

@@ -1,31 +1,7 @@
-Module Rholang {
-  Theory Monoid() {
-    new()
-      .addExports(
-        Proc;
-      )
-      .addTerms(
-        One . Proc ::= "1" ;
-        Mult . Proc ::= "(" Proc "*" Proc ")" ;
-      )
-      .addEquations(
-        (Mult (Mult x y) z) == (Mult x (Mult y z));
-        (Mult x (One)) == x;
-        (Mult (One) x) == x;
-      )
-  }
+import "UnivAlg" as u
 
-  Theory CommutativeMonoid(m: u.Monoid) {
-    m
-      .addExports(
-        Proc;
-      )
-      .addEquations(
-        (Mult x y) == (Mult y x);
-      )
-  }
-  
-  Theory ParMonoid(cm: CommutativeMonoid) {
+Module Rholang {
+  Theory ParMonoid(cm: u.CommutativeMonoid) {
     cm
       .addReplacements (
         One.Proc => PZero.Proc ::= "0";

@@ -5,7 +5,13 @@
 -- A module is a collection of decls and instances
 -- and communications between instances.
 
-ModuleImpl . Module ::= "Module" Name "{" [Prog] "}" ;
+ModuleImpl . Module ::= [Import] "Module" Name "{" [Prog] "}" ;
+
+ImportModuleAs . Import ::= "import" String "as" Ident ;
+ImportModule . Import ::= "import" String ;
+ImportFromModule . Import ::= "import" Ident "from" String ;
+[] . [Import] ::= ;
+(:) . [Import] ::= Import [Import] ;
 
 ProgDecl . Prog ::= Decl ;
 ProgInst . Prog ::= Inst ;

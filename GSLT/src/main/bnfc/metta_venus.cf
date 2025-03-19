@@ -47,13 +47,23 @@ PtrnInst . Ptrn ::= Inst1 ;
 separator Ptrn "," ;
 
 SpaceDecl   . Decl ::= "Space" Name "(" [VariableDecl] ")" "{" [Fact] [FactComprehension] "}" ;
-GSLTDeclAll . Decl ::= "Theory" Name "(" [VariableDecl] ")" "{" Exports Terms Equations Rewrites "}" ;
+GSLTDeclAll . Decl ::= "Theory" Name "(" [VariableDecl] ")" "{" TheoryExpr "}" ;
 
-VarDecl . VariableDecl ::= Ident ":" VariableType ;
+VarDecl . VariableDecl ::= Ident ":" [DottedPath] ;
 separator VariableDecl "," ;
 
-BaseVarType . VariableType ::= Ident ;
-QualifiedVarType . VariableType ::= Ident "." VariableType ;
+[]  . [DottedPath] ::= ;
+(:) . [DottedPath] ::= DottedPath "." [DottedPath] ;
+BaseDottedPath . DottedPath ::= Ident ;
+
+BaseThExpr . TheoryExpr ::= Ident ;
+LetThExpr . TheoryExpr ::= "let" Ident "=" TheoryExpr "in" "{" TheoryExpr "}" ;
+AddExportsThExpr . TheoryExpr ::= TheoryExpr "." "addExports" "(" [Export] ")" ;
+AddReplacementsThExpr . TheoryExpr ::= TheoryExpr "." "addReplacements" "(" [Replacement] ")" ;
+AddTermsThExpr . TheoryExpr ::= TheoryExpr "." "addTerms" "(" Grammar ")" ;
+AddEquationsThExpr . TheoryExpr ::= TheoryExpr "." "addEquations" "(" [Equation] ")" ;
+AddRewritesThExpr . TheoryExpr ::= TheoryExpr "." "addRewrites" "(" [RewriteDecl] ")" ;
+UnionThExpr . TheoryExpr ::= TheoryExpr "." "union" "(" TheoryExpr ")" ;
 
 -- Names
 NameWildcard. Name ::= "_" ;
@@ -141,33 +151,16 @@ SendSingle.   Send ::= "!" ;
 SendMultiple. Send ::= "!!" ;
 SendSymm.     Send ::= "!$" ;
 
--- A GSLT is a Grammar, a set of equations, and a list of rewrite rules
-
-Categories . Exports ::= "Exports" "{" [Export] "}" ;
-Generators . Terms ::= "Terms" "{" Grammar "}" ;
-Relations . Equations ::= "Equations" "{" [Equation] "}" ;
-Transitions . Rewrites ::= "Rewrites" "{" [RewriteDecl] "}" ;
-
 -- Exports
+
+BaseExport . Export ::= Ident ;
 
 []  . [Export] ::= ;
 (:) . [Export] ::= Export ";" [Export] ;
 
-SimpleExp . Export ::= Ident ;
-Extends . Export ::= Ident "extends" Import Imports ;
+-- Replacements
 
--- Imports
-SimpleImp . Import ::= Cat Where;
-
-Empty . Where ::= ;
-Block . Where ::= "where" "{" [Replacement] "}" ;
-
-EmptyImp . Imports ::= ;
-AndImp . Imports ::= "and" Import Imports;
-
--- May eventually generalize to
--- Replacement ::= Label "." Cat "=>" Def ;
-SimpleRepl . Replacement ::= Ident "." Ident "=>" Ident "." Ident "::=" [Item] ;
+SimpleRepl . Replacement ::= Label "." Cat "=>" Def ;
 
 []  . [Replacement] ::= ;
 (:) . [Replacement] ::= Replacement ";" [Replacement] ;
@@ -291,7 +284,8 @@ _. Reg3 ::= "(" Reg ")" ;
 
 EquationFresh . Equation ::= "if" Ident "#" Ident "then" Equation ;
 EquationImpl . Equation ::= AST "==" AST ;
-separator Equation ";" ;
+[]  . [Equation] ::= ;
+(:) . [Equation] ::= Equation ";" [Equation] ;
 
 -- Rewrites
 

@@ -1,111 +1,94 @@
 Module Rholang {
   Theory Monoid() {
-    Exports {
-      Proc ;
-    }
-    Terms {
-      One . Proc ::= "1" ;
-      Mult . Proc ::= "(" Proc "*" Proc ")" ;
-    }
-    Equations {
-      (Mult (Mult x y) z) == (Mult x (Mult y z));
-      (Mult x (One)) == x;
-      (Mult (One) x) == x;
-    }
-    Rewrites {}
+    new()
+      .addExports(
+        Proc;
+      )
+      .addTerms(
+        One . Proc ::= "1" ;
+        Mult . Proc ::= "(" Proc "*" Proc ")" ;
+      )
+      .addEquations(
+        (Mult (Mult x y) z) == (Mult x (Mult y z));
+        (Mult x (One)) == x;
+        (Mult (One) x) == x;
+      )
   }
 
-  Theory CommutativeMonoid(m: Monoid) {
-    Exports {
-      Proc extends m.Proc ;
-    }
-    Terms {}
-    Equations {
-      (Mult x y) == (Mult y x);
-    }
-    Rewrites {}
+  Theory CommutativeMonoid(m: u.Monoid) {
+    m
+      .addExports(
+        Proc;
+      )
+      .addEquations(
+        (Mult x y) == (Mult y x);
+      )
   }
   
   Theory ParMonoid(cm: CommutativeMonoid) {
-    Exports {
-      Proc extends cm.Proc where {
+    cm
+      .addReplacements (
         One.Proc => PZero.Proc ::= "0";
         Mult.Proc => PPar.Proc ::= "(" Proc "|" Proc ")";
-      };
-    }
-    Terms {}
-    Equations {}
-    Rewrites {
-      RPar1 : let Src ~> Tgt in
-              ( PPar Src Q ) ~> ( PPar Tgt Q ) ;
-      RPar2 : let Src1 ~> Tgt1 in
-              let Src2 ~> Tgt2 in
-              ( PPar Src1 Src2 ) ~> ( PPar Tgt1 Tgt2 ) ;
-    }
+      )
+      .addRewrites (
+        RPar1 : let Src ~> Tgt in
+                ( PPar Src Q ) ~> ( PPar Tgt Q ) ;
+        RPar2 : let Src1 ~> Tgt1 in
+                let Src2 ~> Tgt2 in
+                ( PPar Src1 Src2 ) ~> ( PPar Tgt1 Tgt2 ) ;
+      )
   }
-  
+
   Theory NewReplCalc(pm: ParMonoid) {
-    Exports {
-      Proc extends pm.Proc ;
-      Name ;
-    }
-    Terms {
-      PRepl . Proc ::= "!" Proc ;
-      PNew  . Proc ::= "new" (Bind Name [1]) "in" Proc ;
-    }
-    Equations {
-      if x # Q then
-        ( PPar ( PNew x P ) Q ) == ( PNew x ( PPar P Q ) ) ;
-      ( PNew x ( PNew x P ) ) == ( PNew x P ) ;
-      ( PNew x ( PNew y P ) ) == ( PNew y ( PNew x P ) ) ;
-      ( PRepl P ) == ( PPar P ( PRepl P ) ) ;
-    }
-    Rewrites {
-      RNew  : let Src ~> Tgt in
-              (PNew x Src) ~> (PNew x Tgt) ;
-    }
+    pm
+      .addExports (
+        Name ;
+      )
+      .addTerms (
+        PRepl . Proc ::= "!" Proc ;
+        PNew  . Proc ::= "new" (Bind Name [1]) "in" Proc ;
+      )
+      .addEquations (
+        if x # Q then
+          ( PPar ( PNew x P ) Q ) == ( PNew x ( PPar P Q ) ) ;
+        ( PNew x ( PNew x P ) ) == ( PNew x P ) ;
+        ( PNew x ( PNew y P ) ) == ( PNew y ( PNew x P ) ) ;
+        ( PRepl P ) == ( PPar P ( PRepl P ) ) ;
+      )
+      .addRewrites (
+        RNew  : let Src ~> Tgt in
+                (PNew x Src) ~> (PNew x Tgt) ;
+      )
   }
-  
+ 
   Theory QuoteDropCalc(pm: ParMonoid) {
-    Exports {
-      Proc extends pm.Proc ;
-      Name ;
-    }
-    Terms {
-      PDrop . Proc ::= "*" Name ;
-      NQuote . Name ::= "@" Proc ;
-    }
-    Equations {
-      ( NQuote ( PDrop N ) ) == N ;
-      ( PDrop ( NQuote P ) ) == P ;
-    }
-    Rewrites {}
+    pm
+      .addExports (
+        Name ;
+      )
+      .addTerms (
+        PDrop . Proc ::= "*" Name ;
+        NQuote . Name ::= "@" Proc ;
+      )
+      .addEquations (
+        ( NQuote ( PDrop N ) ) == N ;
+        ( PDrop ( NQuote P ) ) == P ;
+      )
   }
-  
+
   Theory RhoCalc(qd: QuoteDropCalc) {
-    Exports {
-      Proc extends qd.Proc ;
-      Name extends qd.Name ;
-    }
-    Terms {
-      PSend . Proc ::= Name "!" "(" Proc ")" ;
-      PRecv . Proc ::= "for" "(" (Bind Name [2]) "<-" Name ")" "{" Proc "}" ;
-    }
-    Equations {
-    }
-    Rewrites {
-      RComm : ( PPar ( PRecv y x P) ( PSend x Q ) ) ~> ( Subst P ( NQuote Q ) y ) ;
-    }
+    qd
+      .addTerms (
+        PSend . Proc ::= Name "!" "(" Proc ")" ;
+        PRecv . Proc ::= "for" "(" (Bind Name [2]) "<-" Name ")" "{" Proc "}" ;
+      )
+      .addRewrites (
+        RComm : ( PPar ( PRecv y x P) ( PSend x Q ) ) ~> ( Subst P ( NQuote Q ) y ) ;
+      )
   }
-  
-  Theory Rholang(nr: NewReplCalc, r: RhoCalc, std: Std) {
-    Exports {
-      Proc extends nr.Proc and r.Proc;
-      Name extends nr.Name and r.Name;
-    }
-    Terms {
-    }
-    Equations {}
-    Rewrites {}
+
+  Theory Rholang(nr: NewReplCalc, r: RhoCalc) {
+    nr.union(r)
   }
 }

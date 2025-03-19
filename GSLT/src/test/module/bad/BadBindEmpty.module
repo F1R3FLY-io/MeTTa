@@ -1,0 +1,9 @@
+Module BadBindEmpty {
+  Theory Bad() {
+    new()
+      .addExports ( Proc; Name; )
+      .addTerms (
+        PRecv . Proc ::= "for" "(" (Bind Name []) "<-" Name ")" "{" Proc "}" ;
+      )
+  }
+}

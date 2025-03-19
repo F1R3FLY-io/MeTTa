@@ -1,81 +1,64 @@
 Module UnivAlg {
   Theory Monoid() {
-    Exports {
-      Proc ;
-    }
-    Terms {
-      One . Proc ::= "1" ;
-      Mult . Proc ::= "(" Proc "*" Proc ")" ;
-    }
-    Equations {
-      (Mult (Mult x y) z) == (Mult x (Mult y z));
-      (Mult x (One)) == x;
-      (Mult (One) x) == x;
-    }
-    Rewrites {}
+    new()
+      .addExports(
+        Proc;
+      )
+      .addTerms(
+        One . Proc ::= "1" ;
+        Mult . Proc ::= "(" Proc "*" Proc ")" ;
+      )
+      .addEquations(
+        (Mult (Mult x y) z) == (Mult x (Mult y z));
+        (Mult x (One)) == x;
+        (Mult (One) x) == x;
+      )
   }
-  Theory CommutativeMonoid(m: Monoid) {
-    Exports {
-      Proc extends m.Proc where {
+
+  Theory CommutativeMonoid(m: u.Monoid) {
+    m
+      .addExports(
+        Proc;
+      )
+      .addEquations(
+        (Mult x y) == (Mult y x);
+      )
+  }
+  
+  Theory Rig(add: CommutativeMonoid, mult: Monoid) {
+    add
+      .union(mult)
+      .addEquations (
+        (Mult x (Plus y z)) == (Plus (Mult x y) (Mult x z));
+        (Mult (Plus x y) z) == (Plus (Mult x z) (Mult y z));
+        (Mult x (Zero)) == (Zero);
+        (Mult (Zero) x) == (Zero);
+      )
+  }
+
+  Theory Group(m: Monoid) {
+    m
+      .addTerms (
+        Inv . Proc ::= "inv" "(" Proc ")" ;
+      )
+      .addEquations (
+        (Mult x (Inv x)) == (One);
+        (Inv (Inv x)) == x;
+        (Inv (Mult x y)) == (Mult (Inv y) (Inv x));
+      )
+  }
+
+  Theory AbelianGroup(g: Group, c: CommutativeMonoid) {
+    g
+      .addReplacements (
         One . Proc => Zero . Proc ::= "0" ;
         Mult . Proc => Plus . Proc ::= "(" Proc "+" Proc ")" ;
-      };
-    }
-    Terms {}
-    Equations {
-      (Plus x y) == (Plus y x);
-    }
-    Rewrites {}
+        Inv . Proc => Neg . Proc ::= "(" "-" Proc ")" ;
+      )
+      .union(c)
   }
-  Theory Rig(add: CommutativeMonoid, mult: Monoid) {
-    Exports {
-      Proc extends add.Proc and mult.Proc;
-    }
-    Terms {}
-    Equations {
-      (Mult x (Plus y z)) == (Plus (Mult x y) (Mult x z));
-      (Mult (Plus x y) z) == (Plus (Mult x z) (Mult y z));
-      (Mult x (Zero)) == (Zero);
-      (Mult (Zero) x) == (Zero);
-    }
-    Rewrites {}
-  }
-  Theory Group(m: Monoid) {
-    Exports {
-      Proc extends m.Proc ;
-    }
-    Terms {
-      Inv . Proc ::= "inv" "(" Proc ")" ;
-    }
-    Equations {
-      (Mult x (Inv x)) == (One);
-      (Inv (Inv x)) == x;
-      (Inv (Mult x y)) == (Mult (Inv y) (Inv x));
-    }
-    Rewrites {}
-  }
-  -- Not necessary to use both, but I wanted to check that
-  -- "and" is taking the union
-  Theory AbelianGroup(g: Group, c: CommutativeMonoid) {
-    Exports {
-      Proc
-        extends c.Proc
-        and g.Proc where {
-          One . Proc => Zero . Proc ::= "0" ;
-          Mult . Proc => Plus . Proc ::= "(" Proc "+" Proc ")" ;
-          Inv . Proc => Neg . Proc ::= "(" "-" Proc ")" ;
-        };
-    }
-    Terms {}
-    Equations {}
-    Rewrites {}
-  }
+
   Theory Ring(r: Rig, add: AbelianGroup) {
-    Exports {
-      Proc extends r.Proc and add.Proc;
-    }
-    Terms {}
-    Equations {}
-    Rewrites {}
+    r.union(add)
   }
 }

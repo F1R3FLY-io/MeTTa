@@ -49,14 +49,14 @@ separator Ptrn "," ;
 SpaceDecl   . Decl ::= "Space" Name "(" [VariableDecl] ")" "{" [Fact] [FactComprehension] "}" ;
 GSLTDeclAll . Decl ::= "Theory" Name "(" [VariableDecl] ")" "{" TheoryExpr "}" ;
 
-VarDecl . VariableDecl ::= Ident ":" [DottedPath] ;
+VarDecl . VariableDecl ::= Ident ":" DottedPath ;
 separator VariableDecl "," ;
 
-[]  . [DottedPath] ::= ;
-(:) . [DottedPath] ::= DottedPath "." [DottedPath] ;
 BaseDottedPath . DottedPath ::= Ident ;
+QualifiedDottedPath . DottedPath ::= Ident "." DottedPath ;
 
-BaseThExpr . TheoryExpr ::= Ident ;
+NewThExpr . TheoryExpr ::= "new" "(" ")";
+VarThExpr . TheoryExpr ::= Ident ;
 LetThExpr . TheoryExpr ::= "let" Ident "=" TheoryExpr "in" "{" TheoryExpr "}" ;
 AddExportsThExpr . TheoryExpr ::= TheoryExpr "." "addExports" "(" [Export] ")" ;
 AddReplacementsThExpr . TheoryExpr ::= TheoryExpr "." "addReplacements" "(" [Replacement] ")" ;

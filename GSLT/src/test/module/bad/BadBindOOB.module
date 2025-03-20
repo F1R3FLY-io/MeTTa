@@ -1,9 +1,9 @@
 Module BadBindOOB {
   Theory Bad() {
-    new()
-      .addExports ( Proc; Name; )
-      .addTerms (
+    Nil
+      Exports { Proc; Name; }
+      Terms {
         PRecv . Proc ::= "for" "(" (Bind Name [3]) "<-" Name ")" "{" Proc "}" ;
-      )
+      }
   }
 }

@@ -1,5 +1,6 @@
 -- File: Main.hs
--- Updated to support recursive module resolution and pretty printing
+-- Updated to support recursive module resolution, pretty printing,
+-- and printing the last instance (Inst) from the main module.
 
 module Main where
 
@@ -9,17 +10,16 @@ import System.Exit        ( exitFailure )
 import System.IO          ( stderr, hPutStrLn )
 import System.FilePath    ( takeDirectory, (</>) )
 import System.Directory   ( canonicalizePath )
-import Control.Monad      ( when, forM, forM_ )
+import Control.Monad      ( forM, forM_ )
 import Data.IORef         ( IORef, newIORef, readIORef, modifyIORef )
 import qualified Data.Set as Set
 
-import MettaVenus.Abs   ( Module(..), Import(..) )
+import MettaVenus.Abs
 import MettaVenus.Lex   ( mkPosToken, Token )
 import MettaVenus.Par   ( pModule, myLexer )
 import MettaVenus.Print ( Print, printTree )
 import MettaVenus.Skel  ()
 
--- | Print usage information.
 usage :: IO ()
 usage = do
   putStrLn $ unlines
@@ -29,14 +29,14 @@ usage = do
     , "       or the current directory if read from standard input."
     ]
 
--- | Recursively loads a module from a file.
--- Uses an IORef to track visited canonical paths so that each module is loaded only once.
+-- Recursively load a module from a file.
+-- Tracks visited canonical file paths to avoid reloading the same module.
 loadModuleFile :: FilePath -> IORef (Set.Set FilePath) -> IO [Module]
 loadModuleFile path visitedRef = do
   canonical <- canonicalizePath path
   visited <- readIORef visitedRef
   if Set.member canonical visited
-    then return []  -- already loaded; skip
+    then return []  -- Already loaded; skip.
     else do
       modifyIORef visitedRef (Set.insert canonical)
       content <- readFile canonical
@@ -45,11 +45,11 @@ loadModuleFile path visitedRef = do
           hPutStrLn stderr $ "Parse error in " ++ canonical ++ ": " ++ err
           exitFailure
         Right mod ->
-          -- Load all imported modules recursively using the current module's directory as base.
+          -- Resolve all imports relative to the current module's directory.
           loadImports (takeDirectory canonical) mod visitedRef >>= \imports ->
             return (mod : imports)
 
--- | For a given module and its base directory, recursively load all modules imported by it.
+-- For a given module and its base directory, recursively load all imported modules.
 loadImports :: FilePath -> Module -> IORef (Set.Set FilePath) -> IO [Module]
 loadImports baseDir mod visitedRef = do
   let imports = case mod of
@@ -63,8 +63,8 @@ loadImports baseDir mod visitedRef = do
       loadModuleFile fullPath visitedRef
   return (concat importedModulesLists)
 
--- | Loads a module from standard input.
--- The current directory is used as the base for resolving imports.
+-- Loads a module from standard input.
+-- Uses the current directory as the base for resolving imports.
 loadModuleFromStdin :: IORef (Set.Set FilePath) -> IO [Module]
 loadModuleFromStdin visitedRef = do
   content <- getContents
@@ -76,7 +76,15 @@ loadModuleFromStdin visitedRef = do
       loadImports "." mod visitedRef >>= \imports ->
          return (mod : imports)
 
--- | Main entry point.
+-- Find the last Inst in the main module.  It searches through the module's Progs,
+-- selecting those of the form ProgInst, and returns the last one, or InstEmpty if none.
+findLastInst :: Module -> Inst
+findLastInst (ModuleImpl _ _ progs) =
+  case [inst | ProgInst inst <- progs] of
+    [] -> InstEmpty
+    xs -> last xs
+
+-- Main entry point.
 main :: IO ()
 main = do
   args <- getArgs
@@ -87,7 +95,14 @@ main = do
     fs         -> do
                    modsLists <- forM fs $ \f -> loadModuleFile f visitedRef
                    return (concat modsLists)
-  -- Print all loaded modules using the same pretty printer as in the original Main.hs.
+  -- Print all loaded modules using the pretty printer.
   putStrLn "\nLoaded Modules:\n"
   forM_ modules $ \mod -> do
       putStrLn (printTree mod)
+  -- Extract and print the last Inst from the main module (first loaded module).
+  case modules of
+    [] -> return ()
+    (mainModule:_) -> do
+         let lastInst = findLastInst mainModule
+         putStrLn "\nLast Instance in Main Module:\n"
+         putStrLn (printTree lastInst)

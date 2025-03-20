@@ -1,15 +1,15 @@
 Module BadFreeVar {
   Theory Bad() {
-    new()
-      .addExports(
+    Nil
+      Exports {
         Term;
-      )
-      .addTerms (
+      }
+      Terms {
         Foo . Term ::= "Foo" "Charlie";
         Bar . Term ::= "Bar" "Foxtrot";
-      )
-      .addRewrites (
+      }
+      Rewrites {
         Baz: (Foo x) ~> (Bar y);
-      )
+      }
   }
 }

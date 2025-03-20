@@ -29,11 +29,11 @@ _. Inst5  ::= Inst6 ;
 _. Inst6  ::= Inst7 ;
 _. Inst7 ::= "{" Inst "}" ;
 
-InstAddExports . Inst7 ::= Inst7 "." "addExports" "(" [Export] ")" ;
-InstAddReplacements . Inst7 ::= Inst7 "." "addReplacements" "(" [Replacement] ")" ;
-InstAddTerms . Inst7 ::= Inst7 "." "addTerms" "(" Grammar ")" ;
-InstAddEquations . Inst7 ::= Inst7 "." "addEquations" "(" [Equation] ")" ;
-InstAddRewrites . Inst7 ::= Inst7 "." "addRewrites" "(" [RewriteDecl] ")" ;
+InstAddExports . Inst7 ::= Inst7 "Exports" "{" [Export] "}" ;
+InstAddReplacements . Inst7 ::= Inst7 "Replacements" "{" [Replacement] "}" ;
+InstAddTerms . Inst7 ::= Inst7 "Terms" "{" Grammar "}" ;
+InstAddEquations . Inst7 ::= Inst7 "Equations" "{" [Equation] "}" ;
+InstAddRewrites . Inst7 ::= Inst7 "Rewrites" "{" [RewriteDecl] "}" ;
 InstEmpty . Inst7 ::= "Nil" ;
 InstCtor . Inst7 ::= Name "(" [Inst] ")" ;
 InstCtorK . Inst7 ::= Name "(" [Inst] ")" "=>" "{" [Prog] "}" ;

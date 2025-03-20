@@ -1,6 +1,6 @@
 Module UnivAlg {
   Theory Monoid() {
-    new()
+    Nil
       .addExports(
         Proc;
       )
@@ -26,8 +26,7 @@ Module UnivAlg {
   }
   
   Theory Rig(add: CommutativeMonoid, mult: Monoid) {
-    add
-      .union(mult)
+    {add \/ mult}
       .addEquations (
         (Mult x (Plus y z)) == (Plus (Mult x y) (Mult x z));
         (Mult (Plus x y) z) == (Plus (Mult x z) (Mult y z));
@@ -49,16 +48,14 @@ Module UnivAlg {
   }
 
   Theory AbelianGroup(g: Group, c: CommutativeMonoid) {
-    g
-      .addReplacements (
-        One . Proc => Zero . Proc ::= "0" ;
-        Mult . Proc => Plus . Proc ::= "(" Proc "+" Proc ")" ;
-        Inv . Proc => Neg . Proc ::= "(" "-" Proc ")" ;
-      )
-      .union(c)
+   g.addReplacements (
+      One . Proc => Zero . Proc ::= "0" ;
+      Mult . Proc => Plus . Proc ::= "(" Proc "+" Proc ")" ;
+      Inv . Proc => Neg . Proc ::= "(" "-" Proc ")" ;
+    ) \/ c
   }
 
   Theory Ring(r: Rig, add: AbelianGroup) {
-    r.union(add)
+    r \/ add
   }
 }

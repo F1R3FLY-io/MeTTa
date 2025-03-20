@@ -53,9 +53,9 @@ InstGCD . Inst1 ::= Inst1 "**" Inst2 ;
 InstPar . Inst ::= Inst "|" Inst1 ;
 separator nonempty Inst "," ;
 
-PtrnSeq . Ptrn ::= "(" [Ptrn] ")" ;
+-- PtrnSeq . Ptrn ::= "(" [Ptrn] ")" ;
 PtrnInst . Ptrn ::= Inst1 ;
-separator Ptrn "," ;
+-- separator Ptrn "," ;
 
 SpaceDecl   . Decl ::= "Space" Name "(" [VariableDecl] ")" "{" [Fact] [FactComprehension] "}" ;
 GSLTDeclAll . Decl ::= "Theory" Name "(" [VariableDecl] ")" "{" Inst "}" ;
@@ -154,7 +154,7 @@ SendSymm.     Send ::= "!$" ;
 
 -- Exports
 
-BaseExport . Export ::= Ident ;
+BaseExport . Export ::= Cat ;
 
 []  . [Export] ::= ;
 (:) . [Export] ::= Export ";" [Export] ;

@@ -1,36 +1,85 @@
 #!/bin/sh
+set -euo pipefail
 
-# Create the target and build_files directories (if they don't already exist)
-mkdir -p target
-mkdir -p build_files
+#------------------------------------------------------------------------------
+# Configuration and Directory Definitions
+#------------------------------------------------------------------------------
+TARGET_DIR="target"
+BUILD_DIR="build_files"
+SOURCE_CF="../GSLT/src/main/bnfc/metta_venus.cf"
+CLASS_DIR="bin"
+MANIFEST_DIR="META-INF"
+MANIFEST_FILE="${MANIFEST_DIR}/MANIFEST.MF"
+JAR_FILE="project.jar"
+MAIN_CLASS="metta_venus.Test"  # Update if the main class changes
 
-# Change into build_files
-cd build_files
+#------------------------------------------------------------------------------
+# Create Necessary Directories
+#------------------------------------------------------------------------------
+mkdir -p "$TARGET_DIR" "$BUILD_DIR"
 
-# Run BNFC: use the .cf file in the source tree.
-bnfc -m -d ../GSLT/src/main/bnfc/metta_venus.cf
+#------------------------------------------------------------------------------
+# Switch to the Build Directory
+#------------------------------------------------------------------------------
+cd "$BUILD_DIR"
 
-# Run alex on the generated Lex.x file.
-alex MettaVenus/Lex.x
+#------------------------------------------------------------------------------
+# Generate Parser/Lexer using BNFC
+#------------------------------------------------------------------------------
+bnfc --antlr --java -m "$SOURCE_CF"
 
-# Run happy on the generated parser file.
-happy -iMettaVenus/Par.info MettaVenus/Par.y
+#------------------------------------------------------------------------------
+# Prepare Build Directories for Compilation and Manifest
+#------------------------------------------------------------------------------
+mkdir -p "$CLASS_DIR" "$MANIFEST_DIR" "${CLASS_DIR}/lib"
 
-# Build BNFC-generated files using make.
+#------------------------------------------------------------------------------
+# Update Makefile for Compiling Classes to the Specified Directory
+# Note: The sed -i '' syntax is for BSD/MacOS. Adjust if needed for Linux.
+#------------------------------------------------------------------------------
+sed -i '' 's|JAVAC_FLAGS=-sourcepath .|JAVAC_FLAGS=-d bin -sourcepath .|' Makefile
+sed -i '' 's|\t\${JAVAC} \${JAVAC_FLAGS} \$\^|\t\${JAVAC} \${JAVAC_FLAGS} -d bin \$\^|' Makefile
+
+#------------------------------------------------------------------------------
+# Create the Manifest File with the Main-Class Entry
+#------------------------------------------------------------------------------
+echo "Main-Class: $MAIN_CLASS" > "$MANIFEST_FILE"
+
+#------------------------------------------------------------------------------
+# Append the JAR Creation Rule to the Makefile if Not Already Present
+#------------------------------------------------------------------------------
+if ! grep -q '^jar:' Makefile; then
+    cat <<EOF >> Makefile
+
+# Rule to create JAR file with manifest and dependency classes
+jar:
+	jar cfm $JAR_FILE $MANIFEST_FILE -C $CLASS_DIR . -C $CLASS_DIR/lib .
+EOF
+fi
+
+#------------------------------------------------------------------------------
+# Extract Dependency JARs from the Project's lib Directory (Project Root)
+#------------------------------------------------------------------------------
+for jarfile in ../lib/*.jar; do
+    echo "Extracting $jarfile..."
+    unzip -o "$jarfile" -d "${CLASS_DIR}/lib"
+done
+
+#------------------------------------------------------------------------------
+# Build the Project and Create the JAR
+#------------------------------------------------------------------------------
 make
+make jar
 
-# Remove backup files created by BNFC (if any)
-rm MettaVenus/*.bak 2> /dev/null
-
-# Copy the Haskell source (your manually written modules) into build_files.
-# This assumes your modules are located in GSLT/src/main/haskell/Module2CF/
-cp -r ../GSLT/src/main/haskell/Module2CF/* .
-
-# Compile the complete program using GHC.
-ghc --make Main.hs
-
-# Move the resulting executable (Main) to the target directory.
-mv Main ../target/
-
-# Change back to the project root.
+#------------------------------------------------------------------------------
+# Return to Project Root and Move the JAR to the Target Directory
+#------------------------------------------------------------------------------
 cd ..
+mv build_files/"$JAR_FILE" "$TARGET_DIR"
+
+#------------------------------------------------------------------------------
+# Completion Message with Example Usage
+#------------------------------------------------------------------------------
+echo "Build complete."
+echo "Example:"
+echo "java -jar target/$JAR_FILE GSLT/src/test/module/Rholang.module"

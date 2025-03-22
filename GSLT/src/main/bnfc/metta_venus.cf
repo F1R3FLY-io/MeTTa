@@ -161,7 +161,7 @@ BaseExport . Export ::= Cat ;
 
 -- Replacements
 
-SimpleRepl . Replacement ::= Label "." Cat "=>" Def ;
+SimpleRepl . Replacement ::= IntList Label "." Cat "=>" Def;
 
 []  . [Replacement] ::= ;
 (:) . [Replacement] ::= Replacement ";" [Replacement] ;

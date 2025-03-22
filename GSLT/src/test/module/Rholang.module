@@ -4,8 +4,8 @@ Module Rholang {
   Theory ParMonoid(cm: u.CommutativeMonoid) {
     cm
       Replacements {
-        One.Proc => PZero.Proc ::= "0";
-        Mult.Proc => PPar.Proc ::= "(" Proc "|" Proc ")";
+        [] One.Proc => PZero.Proc ::= "0";
+        [0, 1] Mult.Proc => PPar.Proc ::= "(" Proc "|" Proc ")";
       }
       Rewrites {
         RPar1 : let Src ~> Tgt in

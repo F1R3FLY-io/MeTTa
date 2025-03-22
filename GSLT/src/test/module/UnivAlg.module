@@ -48,12 +48,12 @@ Module UnivAlg {
   }
 
   Theory AbelianGroup(g: Group, c: CommutativeMonoid) {
-   g
-    Replacements {
-      One . Proc => Zero . Proc ::= "0" ;
-      Mult . Proc => Plus . Proc ::= "(" Proc "+" Proc ")" ;
-      Inv . Proc => Neg . Proc ::= "(" "-" Proc ")" ;
-    } \/ c
+    g
+      Replacements {
+        [] One . Proc => Zero . Proc ::= "0" ;
+        [0, 1] Mult . Proc => Plus . Proc ::= "(" Proc "+" Proc ")" ;
+        [0] Inv . Proc => Neg . Proc ::= "(" "-" Proc ")" ;
+      } \/ c
   }
 
   Theory Ring(r: Rig, add: AbelianGroup) {

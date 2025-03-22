@@ -1,0 +1,62 @@
+Module UnivAlg {
+  Theory Monoid() {
+    Nil
+      Exports {
+        Proc;
+      }
+      Terms {
+        One . Proc ::= "1" ;
+        Mult . Proc ::= "(" Proc "*" Proc ")" ;
+      }
+      Equations {
+        (Mult (Mult x y) z) == (Mult x (Mult y z));
+        (Mult x (One)) == x;
+        (Mult (One) x) == x;
+      }
+  }
+
+  Theory CommutativeMonoid(m: u.Monoid) {
+    m
+      Exports {
+        Proc;
+      }
+      Equations {
+        (Mult x y) == (Mult y x);
+      }
+  }
+  
+  Theory Rig(add: CommutativeMonoid, mult: Monoid) {
+    {add \/ mult}
+      Equations {
+        (Mult x (Plus y z)) == (Plus (Mult x y) (Mult x z));
+        (Mult (Plus x y) z) == (Plus (Mult x z) (Mult y z));
+        (Mult x (Zero)) == (Zero);
+        (Mult (Zero) x) == (Zero);
+      }
+  }
+
+  Theory Group(m: Monoid) {
+    m
+      Terms {
+        Inv . Proc ::= "inv" "(" Proc ")" ;
+      }
+      Equations {
+        (Mult x (Inv x)) == (One);
+        (Inv (Inv x)) == x;
+        (Inv (Mult x y)) == (Mult (Inv y) (Inv x));
+      }
+  }
+
+  Theory AbelianGroup(g: Group, c: CommutativeMonoid) {
+    g
+      Replacements {
+        [] One . Proc => Zero . Proc ::= "0" ;
+        [0, 1] Mult . Proc => Plus . Proc ::= "(" Proc "+" Proc ")" ;
+        [0] Inv . Proc => Neg . Proc ::= "(" "-" Proc ")" ;
+      } \/ c
+  }
+
+  Theory Ring(r: Rig, add: AbelianGroup) {
+    r \/ add
+  }
+}

@@ -1,0 +1,85 @@
+import "UnivAlg.module" as u
+
+Module Rholang {
+  Theory ParMonoid(cm: u.CommutativeMonoid) {
+    cm
+      Replacements {
+        [] One.Proc => PZero.Proc ::= "0";
+        [0, 1] Mult.Proc => PPar.Proc ::= "(" Proc "|" Proc ")";
+      }
+      Rewrites {
+        RPar1 : let Src ~> Tgt in
+                ( PPar Src Q ) ~> ( PPar Tgt Q ) ;
+        RPar2 : let Src1 ~> Tgt1 in
+                let Src2 ~> Tgt2 in
+                ( PPar Src1 Src2 ) ~> ( PPar Tgt1 Tgt2 ) ;
+      }
+  }
+
+  Theory NewReplCalc(pm: ParMonoid) {
+    pm
+      Exports {
+        Name ;
+      }
+      Terms {
+        PRepl . Proc ::= "!" Proc ;
+        PNew  . Proc ::= "new" (Bind Name [1]) "in" Proc ;
+      }
+      Equations {
+        if x # Q then
+          ( PPar ( PNew x P ) Q ) == ( PNew x ( PPar P Q ) ) ;
+        ( PNew x ( PNew x P ) ) == ( PNew x P ) ;
+        ( PNew x ( PNew y P ) ) == ( PNew y ( PNew x P ) ) ;
+        ( PRepl P ) == ( PPar P ( PRepl P ) ) ;
+      }
+      Rewrites {
+        RNew  : let Src ~> Tgt in
+                (PNew x Src) ~> (PNew x Tgt) ;
+      }
+  }
+ 
+  Theory QuoteDropCalc(pm: ParMonoid) {
+    pm
+      Exports {
+        Name ;
+      }
+      Terms {
+        PDrop . Proc ::= "*" Name ;
+        NQuote . Name ::= "@" Proc ;
+      }
+      Equations {
+        ( NQuote ( PDrop N ) ) == N ;
+        ( PDrop ( NQuote P ) ) == P ;
+      }
+  }
+
+  Theory RhoCalc(qd: QuoteDropCalc) {
+    qd
+      Terms {
+        PSend . Proc ::= Name "!" "(" Proc ")" ;
+        PRecv . Proc ::= "for" "(" (Bind Name [2]) "<-" Name ")" "{" Proc "}" ;
+      }
+      Rewrites {
+        RComm : ( PPar ( PRecv y x P) ( PSend x Q ) ) ~> ( Subst P ( NQuote Q ) y ) ;
+      }
+  }
+
+  Theory Rholang(nr: NewReplCalc, r: RhoCalc) {
+    nr \/ r
+  }
+  
+  Theory FreeRholang() {
+    let m = Monoid(Nil) in (
+    let cm = CommutativeMonoid(m) in (
+    let pm = ParMonoid(cm) in (
+    let qd = QuoteDropCalc(pm) in (
+    let nr = NewReplCalc(pm) in (
+    let rc = Rhocalc(qd) in (
+    let rl = Rholang(nr, rc) in (
+    r1
+    )))))))
+  }
+  
+  free(FreeRholang)
+  -- free(Rholang)
+}

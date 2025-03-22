@@ -5,7 +5,13 @@
 -- A module is a collection of decls and instances
 -- and communications between instances.
 
-ModuleImpl . Module ::= "Module" Name "{" [Prog] "}" ;
+ModuleImpl . Module ::= [Import] "Module" Name "{" [Prog] "}" ;
+
+ImportModuleAs . Import ::= "import" String "as" Ident ;
+ImportModule . Import ::= "import" String ;
+ImportFromModule . Import ::= "import" Ident "from" String ;
+[] . [Import] ::= ;
+(:) . [Import] ::= Import [Import] ;
 
 ProgDecl . Prog ::= Decl ;
 ProgInst . Prog ::= Inst ;
@@ -23,14 +29,19 @@ _. Inst5  ::= Inst6 ;
 _. Inst6  ::= Inst7 ;
 _. Inst7 ::= "{" Inst "}" ;
 
+InstAddExports . Inst7 ::= Inst7 "Exports" "{" [Export] "}" ;
+InstAddReplacements . Inst7 ::= Inst7 "Replacements" "{" [Replacement] "}" ;
+InstAddTerms . Inst7 ::= Inst7 "Terms" "{" Grammar "}" ;
+InstAddEquations . Inst7 ::= Inst7 "Equations" "{" [Equation] "}" ;
+InstAddRewrites . Inst7 ::= Inst7 "Rewrites" "{" [RewriteDecl] "}" ;
 InstEmpty . Inst7 ::= "Nil" ;
 InstCtor . Inst7 ::= Name "(" [Inst] ")" ;
 InstCtorK . Inst7 ::= Name "(" [Inst] ")" "=>" "{" [Prog] "}" ;
 InstRef . Inst7 ::= Ident ;
-InstRec . Inst7 ::= "let" Ptrn "=" Inst7 "in" Inst7 ;
-InstTail . Inst7 ::= "tail" Inst7 ;
-InstSup . Inst7 ::= "sup" Inst7 ;
-InstInf . Inst7 ::= "inf" Inst7 ;
+InstRec . Inst7 ::= "let" Ptrn "=" Inst7 "in" "(" Inst7 ")";
+InstTail . Inst7 ::= "tail" "(" Inst7 ")" ;
+InstSup . Inst7 ::= "sup" "(" Inst7 ")" ;
+InstInf . Inst7 ::= "inf" "(" Inst7 ")";
 InstFree . Inst7 ::= "free" "(" Name ")" ;
 InstFreeL . Inst7 ::= "free" "(" Name ")" "=>" "{" [Prog] "}" ;
 InstComp . Inst6 ::= Inst6 "::" Inst7 ;
@@ -42,12 +53,18 @@ InstGCD . Inst1 ::= Inst1 "**" Inst2 ;
 InstPar . Inst ::= Inst "|" Inst1 ;
 separator nonempty Inst "," ;
 
-PtrnSeq . Ptrn ::= "(" [Ptrn] ")" ;
+-- PtrnSeq . Ptrn ::= "(" [Ptrn] ")" ;
 PtrnInst . Ptrn ::= Inst1 ;
-separator Ptrn "," ;
+-- separator Ptrn "," ;
 
-SpaceDecl   . Decl ::= "Space" Name "(" [VariableDecl] ")" "=" "{" [Fact] [FactComprehension] "}" ;
-GSLTDeclAll . Decl ::= "Theory" Name "(" [VariableDecl] ")" "=" "{" Exports FreeTheory Equations Rewrites "}" ;
+SpaceDecl   . Decl ::= "Space" Name "(" [VariableDecl] ")" "{" [Fact] [FactComprehension] "}" ;
+GSLTDeclAll . Decl ::= "Theory" Name "(" [VariableDecl] ")" "{" Inst "}" ;
+
+VarDecl . VariableDecl ::= Ident ":" DottedPath ;
+separator VariableDecl "," ;
+
+BaseDottedPath . DottedPath ::= Ident ;
+QualifiedDottedPath . DottedPath ::= Ident "." DottedPath ;
 
 -- Names
 NameWildcard. Name ::= "_" ;
@@ -57,9 +74,6 @@ separator Name "," ;
 
 NameRemainderVar.   NameRemainder ::= "..." "@" Ident ;
 NameRemainderEmpty. NameRemainder ::= "" ;
-
-VarDecl . VariableDecl ::= Ident ":" Name ;
-separator VariableDecl "," ;
 
 FactImpl . Fact ::= Item ;
 separator nonempty Fact ";" ;
@@ -138,33 +152,16 @@ SendSingle.   Send ::= "!" ;
 SendMultiple. Send ::= "!!" ;
 SendSymm.     Send ::= "!$" ;
 
--- A GSLT is a Grammar, a set of equations, and a list of rewrite rules
-
-Categories . Exports ::= "Exports" "{" [Export] "}" ;
-Generators . FreeTheory ::= "Terms" "{" Grammar "}" ;
-Relations . Equations ::= "Equations" "{" [Equation] "}" ;
-Transitions . Rewrites ::= "Rewrites" "{" [RewriteDecl] "}" ;
-
 -- Exports
+
+BaseExport . Export ::= Cat ;
 
 []  . [Export] ::= ;
 (:) . [Export] ::= Export ";" [Export] ;
 
-SimpleExp . Export ::= Ident ;
-Extends . Export ::= Ident "extends" Import Imports ;
+-- Replacements
 
--- Imports
-SimpleImp . Import ::= Cat Where;
-
-Empty . Where ::= ;
-Block . Where ::= "where" "{" [Replacement] "}" ;
-
-EmptyImp . Imports ::= ;
-AndImp . Imports ::= "and" Import Imports;
-
--- May eventually generalize to
--- Replacement ::= Label "." Cat "=>" Def ;
-SimpleRepl . Replacement ::= Ident "." Ident "=>" Ident "." Ident "::=" [Item] ;
+SimpleRepl . Replacement ::= IntList Label "." Cat "=>" Def;
 
 []  . [Replacement] ::= ;
 (:) . [Replacement] ::= Replacement ";" [Replacement] ;
@@ -288,7 +285,8 @@ _. Reg3 ::= "(" Reg ")" ;
 
 EquationFresh . Equation ::= "if" Ident "#" Ident "then" Equation ;
 EquationImpl . Equation ::= AST "==" AST ;
-separator Equation ";" ;
+[]  . [Equation] ::= ;
+(:) . [Equation] ::= Equation ";" [Equation] ;
 
 -- Rewrites
 

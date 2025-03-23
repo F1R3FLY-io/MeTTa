@@ -80,6 +80,7 @@ Module Rholang {
     )))))))
   }
   
-  free(FreeRholang)
+  -- free(FreeRholang)
   -- free(Rholang)
+  let x = Nil Exports { Foo; } in (x Exports { Bar; })
 }

@@ -75,7 +75,7 @@ object Main {
         println("\n[Interpretation of Final Inst]\n")
         val interpreter = new InstInterpreter()
         val interpretation = interpreter.interpret(asts.toList, List.empty, inst)
-        println(interpretation)
+        println(interpretation.fold(err => s"Error: $err", pres => Presentation.pretty(pres)))
       }
 
     } catch {

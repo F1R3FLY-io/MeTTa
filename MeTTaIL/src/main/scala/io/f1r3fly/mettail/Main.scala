@@ -2,10 +2,11 @@ package io.f1r3fly.mettail
 
 import java.io.{File, FileReader, InputStreamReader, Reader}
 import metta_venus.{MettaVenusLexer, MettaVenusParser, PrettyPrinter}
-import metta_venus.Absyn.{Module, Import, ImportModule, ImportModuleAs, ImportFromModule}
+import metta_venus.Absyn._
 import org.antlr.v4.runtime.{ANTLRInputStream, CommonTokenStream, ANTLRErrorListener, RecognitionException, Recognizer, Parser}
-import java.util.{BitSet, HashSet}
+import java.util.BitSet
 import scala.collection.mutable
+import scala.jdk.CollectionConverters._
 
 class TestError(msg: String, val line: Int, val column: Int) extends RuntimeException(msg)
 
@@ -47,6 +48,7 @@ class BNFCErrorListener extends ANTLRErrorListener {
 object Main {
   private val loadedModules = mutable.Set[String]()
   private val asts = mutable.ListBuffer[Module]()
+  private var mainModuleInstOpt: Option[Inst] = None
 
   def main(args: Array[String]): Unit = {
     try {
@@ -58,7 +60,7 @@ object Main {
 
       val entryDir = entryFileOpt.map(_.getParentFile.getCanonicalFile).getOrElse(new File(".").getCanonicalFile)
       val entryPath = entryFileOpt.map(_.getCanonicalPath).getOrElse("<stdin>")
-      parseModule(input, entryPath, entryDir)
+      parseModule(input, entryPath, entryDir, isMainModule = true)
 
       println("\nParse Successful!\n")
       println("[Abstract Syntax Trees]\n")
@@ -66,6 +68,15 @@ object Main {
 
       println("\n[Linearized Trees]\n")
       asts.foreach(ast => println(PrettyPrinter.print(ast)))
+
+      mainModuleInstOpt.foreach { inst =>
+        println("\n[Final Inst from Main Module]\n")
+        println(PrettyPrinter.print(inst))
+        println("\n[Interpretation of Final Inst]\n")
+        val interpreter = new InstInterpreter()
+        val interpretation = interpreter.interpret(asts.toList, List.empty, inst)
+        println(interpretation)
+      }
 
     } catch {
       case e: TestError =>
@@ -78,7 +89,7 @@ object Main {
     }
   }
 
-  def parseModule(input: Reader, path: String, currentDir: File): Unit = {
+  def parseModule(input: Reader, path: String, currentDir: File, isMainModule: Boolean = false): Unit = {
     if (loadedModules.contains(path)) return
     loadedModules += path
 
@@ -93,28 +104,30 @@ object Main {
     val ast = pc.result.asInstanceOf[Module]
     asts += ast
 
-    import scala.jdk.CollectionConverters._
-    val imports = ast match {
-      case m: metta_venus.Absyn.ModuleImpl => m.listimport_.asScala.toList
-      case _ => Nil
-    }
-
-    imports.foreach { imp =>
-      val importPath: String = imp match {
-        case i: ImportModule => i.string_
-        case i: ImportModuleAs => i.string_
-        case i: ImportFromModule => i.string_
-      }
-
-      val resolvedFile = {
-        val f = new File(importPath)
-        if (f.isAbsolute) f else new File(currentDir, importPath)
-      }
-
-      val canonicalPath = resolvedFile.getCanonicalPath
-      val reader = new FileReader(resolvedFile)
-      val nextDir = resolvedFile.getParentFile.getCanonicalFile
-      parseModule(reader, canonicalPath, nextDir)
+    ast match {
+      case m: ModuleImpl =>
+        if (isMainModule) {
+          // Extract the last Inst from the listprog, if it exists.
+          mainModuleInstOpt = m.listprog_.iterator.asScala.toList.reverse.collectFirst {
+            case progInst: ProgInst => progInst.inst_
+          }
+        }
+        m.listimport_.iterator.asScala.toList.foreach { imp =>
+          val importPath: String = imp match {
+            case i: ImportModule     => i.string_
+            case i: ImportModuleAs   => i.string_
+            case i: ImportFromModule => i.string_
+          }
+          val resolvedFile = {
+            val f = new File(importPath)
+            if (f.isAbsolute) f else new File(currentDir, importPath)
+          }
+          val canonicalPath = resolvedFile.getCanonicalPath
+          val reader = new FileReader(resolvedFile)
+          val nextDir = resolvedFile.getParentFile.getCanonicalFile
+          parseModule(reader, canonicalPath, nextDir)
+        }
+      case _ => // No action needed for other kinds of Module.
     }
   }
 }

@@ -10,7 +10,7 @@ SOURCE_CF="../GSLT/src/main/bnfc/metta_venus.cf"
 CLASS_DIR="bin"
 MANIFEST_DIR="META-INF"
 MANIFEST_FILE="${MANIFEST_DIR}/MANIFEST.MF"
-JAR_FILE="project.jar"
+JAR_FILE="mettailparser.jar"
 MAIN_CLASS="metta_venus.Test"  # Update if the main class changes
 
 #------------------------------------------------------------------------------
@@ -78,8 +78,15 @@ cd ..
 mv build_files/"$JAR_FILE" "$TARGET_DIR"
 
 #------------------------------------------------------------------------------
+# Build the scala code
+#------------------------------------------------------------------------------
+cd MeTTaIL
+sbt assembly
+cd ..
+
+#------------------------------------------------------------------------------
 # Completion Message with Example Usage
 #------------------------------------------------------------------------------
 echo "Build complete."
 echo "Example:"
-echo "java -jar target/$JAR_FILE GSLT/src/test/module/Rholang.module"
+echo "java -jar MeTTaIL/target/scala-3.4.1/mettail_assembly.jar GSLT/src/test/module/Rholang.module"

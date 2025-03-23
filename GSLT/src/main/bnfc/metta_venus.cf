@@ -38,7 +38,7 @@ InstEmpty . Inst7 ::= "Nil" ;
 InstCtor . Inst7 ::= Name "(" [Inst] ")" ;
 InstCtorK . Inst7 ::= Name "(" [Inst] ")" "=>" "{" [Prog] "}" ;
 InstRef . Inst7 ::= Ident ;
-InstRec . Inst7 ::= "let" Ptrn "=" Inst7 "in" "(" Inst7 ")";
+InstRec . Inst7 ::= "let" Ident "=" Inst7 "in" "(" Inst7 ")";
 InstTail . Inst7 ::= "tail" "(" Inst7 ")" ;
 InstSup . Inst7 ::= "sup" "(" Inst7 ")" ;
 InstInf . Inst7 ::= "inf" "(" Inst7 ")";
@@ -52,10 +52,6 @@ InstRest . Inst2 ::= Inst2 "<|" Inst3 ;
 InstGCD . Inst1 ::= Inst1 "**" Inst2 ;
 InstPar . Inst ::= Inst "|" Inst1 ;
 separator nonempty Inst "," ;
-
--- PtrnSeq . Ptrn ::= "(" [Ptrn] ")" ;
-PtrnInst . Ptrn ::= Inst1 ;
--- separator Ptrn "," ;
 
 SpaceDecl   . Decl ::= "Space" Name "(" [VariableDecl] ")" "{" [Fact] [FactComprehension] "}" ;
 GSLTDeclAll . Decl ::= "Theory" Name "(" [VariableDecl] ")" "{" Inst "}" ;

@@ -57,7 +57,6 @@ object Main {
         case Some(file) => new FileReader(file)
         case None       => new InputStreamReader(System.in)
       }
-
       val entryDir = entryFileOpt.map(_.getParentFile.getCanonicalFile).getOrElse(new File(".").getCanonicalFile)
       val entryPath = entryFileOpt.map(_.getCanonicalPath).getOrElse("<stdin>")
       parseModule(input, entryPath, entryDir, isMainModule = true)
@@ -65,16 +64,21 @@ object Main {
       println("\nParse Successful!\n")
       println("[Abstract Syntax Trees]\n")
       asts.foreach(ast => println(PrettyPrinter.show(ast)))
-
       println("\n[Linearized Trees]\n")
       asts.foreach(ast => println(PrettyPrinter.print(ast)))
 
       mainModuleInstOpt.foreach { inst =>
         println("\n[Final Inst from Main Module]\n")
         println(PrettyPrinter.print(inst))
+        println("\n[Module Environment]\n")
+        // Combine environments from all parsed modules.
+        val modEnv: ModEnv = asts.toList.foldLeft(ModEnv(Map.empty)) { (acc, m) =>
+          ModEnv.merge(acc, ModEnv.build(m))
+        }
+        println(ModEnv.prettyPrint(modEnv))
         println("\n[Interpretation of Final Inst]\n")
         val interpreter = new InstInterpreter()
-        val interpretation = interpreter.interpret(asts.toList, List.empty, inst)
+        val interpretation = interpreter.interpret(modEnv, List.empty, inst)
         println(interpretation.fold(err => s"Error: $err", pres => Presentation.pretty(pres)))
       }
 
@@ -95,11 +99,9 @@ object Main {
 
     val lexer = new MettaVenusLexer(new ANTLRInputStream(input))
     lexer.addErrorListener(new BNFCErrorListener)
-
     val tokens = new CommonTokenStream(lexer)
     val parser = new MettaVenusParser(tokens)
     parser.addErrorListener(new BNFCErrorListener)
-
     val pc = parser.start_Module()
     val ast = pc.result.asInstanceOf[Module]
     asts += ast
@@ -107,7 +109,6 @@ object Main {
     ast match {
       case m: ModuleImpl =>
         if (isMainModule) {
-          // Extract the last Inst from the listprog, if it exists.
           mainModuleInstOpt = m.listprog_.iterator.asScala.toList.reverse.collectFirst {
             case progInst: ProgInst => progInst.inst_
           }
@@ -127,7 +128,7 @@ object Main {
           val nextDir = resolvedFile.getParentFile.getCanonicalFile
           parseModule(reader, canonicalPath, nextDir)
         }
-      case _ => // No action needed for other kinds of Module.
+      case _ =>
     }
   }
 }

@@ -27,7 +27,7 @@ object Presentation {
 }
 
 class InstInterpreter {
-  def interpret(modEnv: List[Module], env: List[(String, Presentation)], inst: Inst): Either[String, Presentation] = inst match {
+  def interpret(modEnv: ModEnv, env: List[(String, Presentation)], inst: Inst): Either[String, Presentation] = inst match {
     case _: InstPar                => Right(Presentation.empty)
     case _: InstGCD                => Right(Presentation.empty)
     case _: InstRest               => Right(Presentation.empty)
@@ -76,7 +76,7 @@ class InstInterpreter {
     case _: InstEmpty              => Right(Presentation.empty)
     case _: InstCtor               => Right(Presentation.empty)
     case _: InstCtorK              => Right(Presentation.empty)
-
+    
     case instRef: InstRef =>
       env.reverse.find { case (id, _) => id == instRef.ident_ } match {
         case Some((_, pres)) => Right(pres)
@@ -85,7 +85,6 @@ class InstInterpreter {
     
     case instRec: InstRec =>
       interpret(modEnv, env, instRec.inst_1).flatMap { pres1 =>
-        // Append (ident_, pres1) to the current environment and interpret inst_2
         val envUpdated = env :+ (instRec.ident_, pres1)
         interpret(modEnv, envUpdated, instRec.inst_2)
       }

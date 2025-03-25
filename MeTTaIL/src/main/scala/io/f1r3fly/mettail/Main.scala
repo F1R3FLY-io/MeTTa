@@ -72,13 +72,13 @@ object Main {
         println(PrettyPrinter.print(inst))
         println("\n[Module Environment]\n")
         // Combine environments from all parsed modules.
-        val modEnv: ModEnv = asts.toList.foldLeft(ModEnv(Map.empty)) { (acc, m) =>
-          ModEnv.merge(acc, ModEnv.build(m))
+        val thEnv: TheoryEnv = asts.toList.foldLeft(TheoryEnv(Map.empty)) { (acc, m) =>
+          TheoryEnv.merge(acc, TheoryEnv.build(m))
         }
-        println(ModEnv.prettyPrint(modEnv))
+        println(TheoryEnv.prettyPrint(thEnv))
         println("\n[Interpretation of Final Inst]\n")
         val interpreter = new InstInterpreter()
-        val interpretation = interpreter.interpret(modEnv, List.empty, inst)
+        val interpretation = interpreter.interpret(thEnv, List.empty, inst)
         println(interpretation.fold(err => s"Error: $err", pres => Presentation.pretty(pres)))
       }
 
@@ -115,7 +115,6 @@ object Main {
         }
         m.listimport_.iterator.asScala.toList.foreach { imp =>
           val importPath: String = imp match {
-            case i: ImportModule     => i.string_
             case i: ImportModuleAs   => i.string_
             case i: ImportFromModule => i.string_
           }

@@ -27,14 +27,14 @@ object Presentation {
 }
 
 class InstInterpreter {
-  def interpret(modEnv: ModEnv, env: List[(String, Presentation)], thInst: TheoryInst): Either[String, Presentation] = thInst match {
+  def interpret(thEnv: TheoryEnv, env: List[(String, Presentation)], thInst: TheoryInst): Either[String, Presentation] = thInst match {
     case _: TheoryInstRest               => Right(Presentation.empty)
     case _: TheoryInstSub                => Right(Presentation.empty)
     case _: TheoryInstDisj               => Right(Presentation.empty)
     case _: TheoryInstConj               => Right(Presentation.empty)
     
     case thInstAddExports: TheoryInstAddExports =>
-      interpret(modEnv, env, thInstAddExports.theoryinst_).map { basePres =>
+      interpret(thEnv, env, thInstAddExports.theoryinst_).map { basePres =>
         val newCats = thInstAddExports.listexport_.toArray.toList.collect {
           case base: BaseExport => base.cat_
         }
@@ -44,7 +44,7 @@ class InstInterpreter {
     case _: TheoryInstAddReplacements    => Right(Presentation.empty)
     
     case thInstAddTerms: TheoryInstAddTerms =>
-      interpret(modEnv, env, thInstAddTerms.theoryinst_).map { basePres =>
+      interpret(thEnv, env, thInstAddTerms.theoryinst_).map { basePres =>
         val newTerms = thInstAddTerms.grammar_ match {
           case g: MkGrammar =>
             import scala.jdk.CollectionConverters.IteratorHasAsScala
@@ -55,7 +55,7 @@ class InstInterpreter {
       }
       
     case thInstAddEquations: TheoryInstAddEquations =>
-      interpret(modEnv, env, thInstAddEquations.theoryinst_).map { basePres =>
+      interpret(thEnv, env, thInstAddEquations.theoryinst_).map { basePres =>
         val newEquations = thInstAddEquations.listequation_.toArray.toList.collect {
           case eq: Equation => eq
         }
@@ -63,7 +63,7 @@ class InstInterpreter {
       }
       
     case thInstAddRewrites: TheoryInstAddRewrites =>
-      interpret(modEnv, env, thInstAddRewrites.theoryinst_).map { basePres =>
+      interpret(thEnv, env, thInstAddRewrites.theoryinst_).map { basePres =>
         val newRewrites = thInstAddRewrites.listrewritedecl_.toArray.toList.collect {
           case rd: RewriteDecl => rd
         }
@@ -73,12 +73,12 @@ class InstInterpreter {
     case _: TheoryInstEmpty              => Right(Presentation.empty)
 
     case thInstCtor: TheoryInstCtor        => 
-      modEnv match {
-        case ModEnv(map) => map.get(thInstCtor.dottedpath_) match {
+      thEnv match {
+        case TheoryEnv(map) => map.get(thInstCtor.dottedpath_) match {
           case Some((gslt, newmap)) => Right(Presentation.empty)
-          case None => Left(s"Identifier ${ModEnv.dottedPathToString(thInstCtor.dottedpath_)} is free")
+          case None => Left(s"Identifier ${TheoryEnv.dottedPathToString(thInstCtor.dottedpath_)} is free")
         }
-        case null => Left("modEnv is null!")
+        case null => Left("thEnv is null!")
       }
     
     case thInstRef: TheoryInstRef =>
@@ -88,9 +88,9 @@ class InstInterpreter {
       }
     
     case thInstRec: TheoryInstRec =>
-      interpret(modEnv, env, thInstRec.theoryinst_1).flatMap { pres1 =>
+      interpret(thEnv, env, thInstRec.theoryinst_1).flatMap { pres1 =>
         val envUpdated = env :+ (thInstRec.ident_, pres1)
-        interpret(modEnv, envUpdated, thInstRec.theoryinst_2)
+        interpret(thEnv, envUpdated, thInstRec.theoryinst_2)
       }
       
     case _: TheoryInstFree               => Right(Presentation.empty)

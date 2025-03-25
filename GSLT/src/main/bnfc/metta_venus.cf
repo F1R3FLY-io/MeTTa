@@ -8,7 +8,6 @@
 ModuleImpl . Module ::= [Import] "Module" Name "{" [Prog] "}" ;
 
 ImportModuleAs . Import ::= "import" String "as" Ident ;
-ImportModule . Import ::= "import" String ;
 ImportFromModule . Import ::= "import" Ident "from" String ;
 [] . [Import] ::= ;
 (:) . [Import] ::= Import [Import] ;

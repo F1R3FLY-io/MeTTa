@@ -6,65 +6,55 @@ import java.io.{File, FileReader}
 import scala.jdk.CollectionConverters._
 import metta_venus.{MettaVenusLexer, MettaVenusParser, PrettyPrinter}
 
-/** 
-  * A module environment is represented as a case class wrapping a map.
-  * Each key (a DottedPath) maps to a pair: (the corresponding TheoryDecl, and the inner ModEnv).
-  */
-final case class ModEnv(map: Map[DottedPath, (TheoryDecl, ModEnv)])
+final case class TheoryEnv(map: Map[DottedPath, (TheoryDecl, TheoryEnv)])
 
-object ModEnv {
-  /** Merge two module environments.
+object TheoryEnv {
+  /** Merge two thoery environments.
     * In case of conflicts, entries from env2 take precedence.
     */
-  def merge(env1: ModEnv, env2: ModEnv): ModEnv =
-    ModEnv(env1.map ++ env2.map)
+  def merge(env1: TheoryEnv, env2: TheoryEnv): TheoryEnv =
+    TheoryEnv(env1.map ++ env2.map)
 
-  /** Build a module environment from a Module AST.
+  /** Build a theory environment from a Module AST.
     * For each theory declaration (TheoryDecl) in a ProgDecl, we extract its qualified name.
     * Then we process each import to merge in the imported module’s environment.
     */
-  def build(module: Module): ModEnv = module match {
+  def build(module: Module): TheoryEnv = module match {
     case m: ModuleImpl =>
       // Build the "self" environment from theory declarations declared in this module.
-      val selfMap: Map[DottedPath, (TheoryDecl, ModEnv)] =
+      val selfMap: Map[DottedPath, (TheoryDecl, TheoryEnv)] =
         m.listprog_.iterator.asScala.toList.collect {
           case ptd: ProgTheoryDecl =>
             ptd.theorydecl_ match {
               case thDecl: TheoryDecl =>
                 val key: DottedPath = extractDottedPath(thDecl)
-                key -> (thDecl, ModEnv(Map.empty))
+                key -> (thDecl, TheoryEnv(Map.empty))
             }
         }.filter(_ != null).toMap
 
       // Process imports and merge in the imported module environments.
-      val importMap: Map[DottedPath, (TheoryDecl, ModEnv)] =
+      val importMap: Map[DottedPath, (TheoryDecl, TheoryEnv)] =
         m.listimport_.iterator.asScala.toList.flatMap { imp =>
           imp match {
-            case i: ImportModule =>
-              loadModuleEnv(i.string_).map.toList
             case i: ImportModuleAs =>
               // Qualify every entry from the imported environment using the alias
-              loadModuleEnv(i.string_).map.map { case (dp: DottedPath, pair: (TheoryDecl, ModEnv)) =>
+              loadTheoryEnv(i.string_).map.map { case (dp: DottedPath, pair: (TheoryDecl, TheoryEnv)) =>
                 (qualifyDottedPath(i.ident_, dp), pair)
               }.toList
             case i: ImportFromModule =>
               // For "import from", pick the entry whose last identifier matches the provided name.
-              loadModuleEnv(i.string_).map.find { case (dp, _) =>
+              loadTheoryEnv(i.string_).map.find { case (dp, _) =>
                 getLastIdentifier(dp) == i.ident_
               }.toList
             case _ => Nil
           }
         }.toMap
 
-      ModEnv(selfMap ++ importMap)
-    case _ => ModEnv(Map.empty)
+      TheoryEnv(selfMap ++ importMap)
+    case _ => TheoryEnv(Map.empty)
   }
   
-  /** Load a module environment from a file path.
-    * Reads, parses, and then builds the module environment.
-    * In case of error, returns an empty environment.
-    */
-  def loadModuleEnv(path: String): ModEnv = {
+  def loadTheoryEnv(path: String): TheoryEnv = {
     try {
       val file = new File(path)
       val reader = new FileReader(file)
@@ -76,7 +66,7 @@ object ModEnv {
       build(mod)
     } catch {
       case e: Exception =>
-        ModEnv(Map.empty)
+        TheoryEnv(Map.empty)
     }
   }
   
@@ -123,7 +113,7 @@ object ModEnv {
   /** Pretty-print the module environment.
     * Each mapping is printed as: "qualified name -> declaration"
     */
-  def prettyPrint(modEnv: ModEnv): String = {
+  def prettyPrint(modEnv: TheoryEnv): String = {
     modEnv.map.map { case (dp, (decl, _)) =>
       s"${dottedPathToString(dp)} -> ${PrettyPrinter.print(decl)}"
     }.mkString("\n")

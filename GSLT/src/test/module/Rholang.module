@@ -80,8 +80,8 @@ Module Rholang {
     )))))))
   }
   
-  -- free(FreeRholang)
-  -- free(Rholang)
-  -- let x = Nil Exports { Foo; } in (x Exports { Bar; })
-  { u.Monoid() }
+  -- theory free(FreeRholang)
+  -- theory free(Rholang)
+  -- theory let x = Nil Exports { Foo; } in (x Exports { Bar; })
+  theory u.Monoid()
 }

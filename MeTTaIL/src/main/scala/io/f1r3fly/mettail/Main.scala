@@ -48,7 +48,7 @@ class BNFCErrorListener extends ANTLRErrorListener {
 object Main {
   private val loadedModules = mutable.Set[String]()
   private val asts = mutable.ListBuffer[Module]()
-  private var mainModuleInstOpt: Option[Inst] = None
+  private var mainModuleInstOpt: Option[TheoryInst] = None
 
   def main(args: Array[String]): Unit = {
     try {
@@ -110,7 +110,7 @@ object Main {
       case m: ModuleImpl =>
         if (isMainModule) {
           mainModuleInstOpt = m.listprog_.iterator.asScala.toList.reverse.collectFirst {
-            case progInst: ProgInst => progInst.inst_
+            case prgThInst: ProgTheoryInst => prgThInst.theoryinst_
           }
         }
         m.listimport_.iterator.asScala.toList.foreach { imp =>

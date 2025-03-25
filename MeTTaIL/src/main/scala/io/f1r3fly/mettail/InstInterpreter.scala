@@ -27,28 +27,25 @@ object Presentation {
 }
 
 class InstInterpreter {
-  def interpret(modEnv: ModEnv, env: List[(String, Presentation)], inst: Inst): Either[String, Presentation] = inst match {
-    case _: InstPar                => Right(Presentation.empty)
-    case _: InstGCD                => Right(Presentation.empty)
-    case _: InstRest               => Right(Presentation.empty)
-    case _: InstSub                => Right(Presentation.empty)
-    case _: InstDisj               => Right(Presentation.empty)
-    case _: InstConj               => Right(Presentation.empty)
-    case _: InstComp               => Right(Presentation.empty)
+  def interpret(modEnv: ModEnv, env: List[(String, Presentation)], thInst: TheoryInst): Either[String, Presentation] = thInst match {
+    case _: TheoryInstRest               => Right(Presentation.empty)
+    case _: TheoryInstSub                => Right(Presentation.empty)
+    case _: TheoryInstDisj               => Right(Presentation.empty)
+    case _: TheoryInstConj               => Right(Presentation.empty)
     
-    case instAddExports: InstAddExports =>
-      interpret(modEnv, env, instAddExports.inst_).map { basePres =>
-        val newCats = instAddExports.listexport_.toArray.toList.collect {
+    case thInstAddExports: TheoryInstAddExports =>
+      interpret(modEnv, env, thInstAddExports.theoryinst_).map { basePres =>
+        val newCats = thInstAddExports.listexport_.toArray.toList.collect {
           case base: BaseExport => base.cat_
         }
         basePres.copy(exports = basePres.exports ++ newCats)
       }
       
-    case _: InstAddReplacements    => Right(Presentation.empty)
+    case _: TheoryInstAddReplacements    => Right(Presentation.empty)
     
-    case instAddTerms: InstAddTerms =>
-      interpret(modEnv, env, instAddTerms.inst_).map { basePres =>
-        val newTerms = instAddTerms.grammar_ match {
+    case thInstAddTerms: TheoryInstAddTerms =>
+      interpret(modEnv, env, thInstAddTerms.theoryinst_).map { basePres =>
+        val newTerms = thInstAddTerms.grammar_ match {
           case g: MkGrammar =>
             import scala.jdk.CollectionConverters.IteratorHasAsScala
             g.listdef_.iterator.asScala.toList
@@ -57,42 +54,45 @@ class InstInterpreter {
         basePres.copy(terms = basePres.terms ++ newTerms)
       }
       
-    case instAddEquations: InstAddEquations =>
-      interpret(modEnv, env, instAddEquations.inst_).map { basePres =>
-        val newEquations = instAddEquations.listequation_.toArray.toList.collect {
+    case thInstAddEquations: TheoryInstAddEquations =>
+      interpret(modEnv, env, thInstAddEquations.theoryinst_).map { basePres =>
+        val newEquations = thInstAddEquations.listequation_.toArray.toList.collect {
           case eq: Equation => eq
         }
         basePres.copy(equations = basePres.equations ++ newEquations)
       }
       
-    case instAddRewrites: InstAddRewrites =>
-      interpret(modEnv, env, instAddRewrites.inst_).map { basePres =>
-        val newRewrites = instAddRewrites.listrewritedecl_.toArray.toList.collect {
+    case thInstAddRewrites: TheoryInstAddRewrites =>
+      interpret(modEnv, env, thInstAddRewrites.theoryinst_).map { basePres =>
+        val newRewrites = thInstAddRewrites.listrewritedecl_.toArray.toList.collect {
           case rd: RewriteDecl => rd
         }
         basePres.copy(rewrites = basePres.rewrites ++ newRewrites)
       }
       
-    case _: InstEmpty              => Right(Presentation.empty)
-    case _: InstCtor               => Right(Presentation.empty)
-    case _: InstCtorK              => Right(Presentation.empty)
-    
-    case instRef: InstRef =>
-      env.reverse.find { case (id, _) => id == instRef.ident_ } match {
-        case Some((_, pres)) => Right(pres)
-        case None => Left(s"Identifier ${instRef.ident_} is free")
+    case _: TheoryInstEmpty              => Right(Presentation.empty)
+
+    case thInstCtor: TheoryInstCtor        => 
+      modEnv match {
+        case ModEnv(map) => map.get(thInstCtor.dottedpath_) match {
+          case Some((gslt, newmap)) => Right(Presentation.empty)
+          case None => Left(s"Identifier ${ModEnv.dottedPathToString(thInstCtor.dottedpath_)} is free")
+        }
+        case null => Left("modEnv is null!")
       }
     
-    case instRec: InstRec =>
-      interpret(modEnv, env, instRec.inst_1).flatMap { pres1 =>
-        val envUpdated = env :+ (instRec.ident_, pres1)
-        interpret(modEnv, envUpdated, instRec.inst_2)
+    case thInstRef: TheoryInstRef =>
+      env.reverse.find { case (id, _) => id == thInstRef.ident_ } match {
+        case Some((_, pres)) => Right(pres)
+        case None => Left(s"Identifier ${thInstRef.ident_} is free")
+      }
+    
+    case thInstRec: TheoryInstRec =>
+      interpret(modEnv, env, thInstRec.theoryinst_1).flatMap { pres1 =>
+        val envUpdated = env :+ (thInstRec.ident_, pres1)
+        interpret(modEnv, envUpdated, thInstRec.theoryinst_2)
       }
       
-    case _: InstTail               => Right(Presentation.empty)
-    case _: InstSup                => Right(Presentation.empty)
-    case _: InstInf                => Right(Presentation.empty)
-    case _: InstFree               => Right(Presentation.empty)
-    case _: InstFreeL              => Right(Presentation.empty)
+    case _: TheoryInstFree               => Right(Presentation.empty)
   }
 }

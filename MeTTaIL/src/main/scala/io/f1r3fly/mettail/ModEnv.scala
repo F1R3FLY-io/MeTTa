@@ -8,9 +8,9 @@ import metta_venus.{MettaVenusLexer, MettaVenusParser, PrettyPrinter}
 
 /** 
   * A module environment is represented as a case class wrapping a map.
-  * Each key (a DottedPath) maps to a pair: (the corresponding GSLTDeclAll, and the inner ModEnv).
+  * Each key (a DottedPath) maps to a pair: (the corresponding TheoryDecl, and the inner ModEnv).
   */
-final case class ModEnv(map: Map[DottedPath, (GSLTDeclAll, ModEnv)])
+final case class ModEnv(map: Map[DottedPath, (TheoryDecl, ModEnv)])
 
 object ModEnv {
   /** Merge two module environments.
@@ -20,32 +20,31 @@ object ModEnv {
     ModEnv(env1.map ++ env2.map)
 
   /** Build a module environment from a Module AST.
-    * For each theory declaration (GSLTDeclAll) in a ProgDecl, we extract its qualified name.
+    * For each theory declaration (TheoryDecl) in a ProgDecl, we extract its qualified name.
     * Then we process each import to merge in the imported module’s environment.
     */
   def build(module: Module): ModEnv = module match {
     case m: ModuleImpl =>
       // Build the "self" environment from theory declarations declared in this module.
-      val selfMap: Map[DottedPath, (GSLTDeclAll, ModEnv)] =
+      val selfMap: Map[DottedPath, (TheoryDecl, ModEnv)] =
         m.listprog_.iterator.asScala.toList.collect {
-          case pd: ProgDecl =>
-            pd.decl_ match {
-              case gslt: GSLTDeclAll =>
-                val key: DottedPath = extractDottedPath(gslt)
-                key -> (gslt, ModEnv(Map.empty))
-              case _ => null
+          case ptd: ProgTheoryDecl =>
+            ptd.theorydecl_ match {
+              case thDecl: TheoryDecl =>
+                val key: DottedPath = extractDottedPath(thDecl)
+                key -> (thDecl, ModEnv(Map.empty))
             }
         }.filter(_ != null).toMap
 
       // Process imports and merge in the imported module environments.
-      val importMap: Map[DottedPath, (GSLTDeclAll, ModEnv)] =
+      val importMap: Map[DottedPath, (TheoryDecl, ModEnv)] =
         m.listimport_.iterator.asScala.toList.flatMap { imp =>
           imp match {
             case i: ImportModule =>
               loadModuleEnv(i.string_).map.toList
             case i: ImportModuleAs =>
               // Qualify every entry from the imported environment using the alias
-              loadModuleEnv(i.string_).map.map { case (dp: DottedPath, pair: (GSLTDeclAll, ModEnv)) =>
+              loadModuleEnv(i.string_).map.map { case (dp: DottedPath, pair: (TheoryDecl, ModEnv)) =>
                 (qualifyDottedPath(i.ident_, dp), pair)
               }.toList
             case i: ImportFromModule =>
@@ -81,13 +80,18 @@ object ModEnv {
     }
   }
   
-  /** Extract a DottedPath from a GSLTDeclAll.
-    * Since GSLTDeclAll no longer has a field named `dottedpath_`,
-    * we assume it has a field `name_` (of type String) that we use as its unqualified name.
+  /** Extract a DottedPath from a TheoryDecl.
     */
-  def extractDottedPath(gslt: GSLTDeclAll): DottedPath = {
+  def extractDottedPath(thDecl: TheoryDecl): DottedPath = {
     // Return a BaseDottedPath built from the theory’s name.
-    new BaseDottedPath(gslt.name_.toString)
+    new BaseDottedPath(
+      thDecl match {
+        case btd: BaseTheoryDecl => btd.name_ match {
+          case _: NameWildcard => "_"
+          case nameVar: NameVar => nameVar.ident_
+        }
+      }
+    )
   }
   
   /** Qualify a DottedPath by prepending an alias (a String) to the existing path.
@@ -110,12 +114,18 @@ object ModEnv {
     case _ => ""
   }
   
+  def dottedPathToString(dp: DottedPath): String = dp match {
+    case b: BaseDottedPath => b.ident_
+    case q: QualifiedDottedPath => s"${q.ident_}.${dottedPathToString(q.dottedpath_)}"
+    case _ => ""
+  }
+  
   /** Pretty-print the module environment.
     * Each mapping is printed as: "qualified name -> declaration"
     */
   def prettyPrint(modEnv: ModEnv): String = {
     modEnv.map.map { case (dp, (decl, _)) =>
-      s"${dp.toString} -> ${PrettyPrinter.print(decl)}"
+      s"${dottedPathToString(dp)} -> ${PrettyPrinter.print(decl)}"
     }.mkString("\n")
   }
 }

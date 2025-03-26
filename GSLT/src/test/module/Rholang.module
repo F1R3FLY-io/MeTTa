@@ -1,11 +1,11 @@
-import "UnivAlg.module" as u
+import Monoid from "UnivAlg.module"
 
 Module Rholang {
   Theory ParMonoid(cm: u.CommutativeMonoid) {
     cm
       Replacements {
-        [] One.Proc => PZero.Proc ::= "0";
-        [0, 1] Mult.Proc => PPar.Proc ::= "(" Proc "|" Proc ")";
+        [] Zero.Proc => PZero.Proc ::= "0";
+        [0, 1] Plus.Proc => PPar.Proc ::= "(" Proc "|" Proc ")";
       }
       Rewrites {
         RPar1 : let Src ~> Tgt in
@@ -69,7 +69,7 @@ Module Rholang {
   }
   
   Theory FreeRholang() {
-    let m = Monoid(Nil) in (
+    let m = Monoid() in (
     let cm = CommutativeMonoid(m) in (
     let pm = ParMonoid(cm) in (
     let qd = QuoteDropCalc(pm) in (
@@ -79,9 +79,9 @@ Module Rholang {
     r1
     )))))))
   }
-  
-  -- theory free(FreeRholang)
+
+  -- theory free(Monoid)
   -- theory free(Rholang)
-  -- theory let x = Nil Exports { Foo; } in (x Exports { Bar; })
-  theory u.Monoid()
+  -- theory let x = Empty Exports { Foo; } in (x Exports { Bar; })
+  theory Monoid()
 }

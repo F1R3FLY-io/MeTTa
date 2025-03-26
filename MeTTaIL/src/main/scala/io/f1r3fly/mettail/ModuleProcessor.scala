@@ -66,24 +66,19 @@ object ModuleProcessor {
     * in a module (assumed to be a ModuleImpl).
     */
   def findTheoryDeclInModule(m: ModuleImpl, theoryName: String): Option[TheoryDecl] = {
-    m.listprog_.asScala.collectFirst {
-      case pt: ProgTheoryDecl => {
+    m.listprog_.asScala.flatMap {
+      case pt: ProgTheoryDecl =>
         pt.theorydecl_ match {
-          case bt: BaseTheoryDecl => bt.name_ match {
-            case nv: NameVar if nv.ident_ == theoryName => pt.theorydecl_
-            case nw: NameWildcard if "_" == theoryName => pt.theorydecl_
-            case _ => null
-          }
-          case _ => null
+          case bt: BaseTheoryDecl =>
+            bt.name_ match {
+              case nv: NameVar if nv.ident_ == theoryName => Some(pt.theorydecl_)
+              case nw: NameWildcard if "_" == theoryName   => Some(pt.theorydecl_)
+              case _ => None
+            }
+          case _ => None
         }
-      }
-      case x => {
-        null
-      }
-    } match {
-      case Some(td: TheoryDecl) if td != null => Some(td)
       case _ => None
-    }
+    }.headOption
   }
 
   /** Resolve a dotted path to a theory declaration.

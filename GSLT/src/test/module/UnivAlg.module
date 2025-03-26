@@ -1,4 +1,14 @@
 Module UnivAlg {
+  Theory Point() {
+    Empty
+      Exports {
+        Proc;
+      }
+      Terms {
+        One . Proc ::= "1" ;
+      }
+  }
+
   Theory Monoid() {
     Empty
       Exports {
@@ -60,4 +70,6 @@ Module UnivAlg {
   Theory Ring(r: Rig, add: AbelianGroup) {
     r \/ add
   }
+  
+  theory Point() /\ Monoid()
 }

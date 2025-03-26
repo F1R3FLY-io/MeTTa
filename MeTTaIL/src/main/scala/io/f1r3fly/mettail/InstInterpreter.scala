@@ -42,7 +42,61 @@ class InstInterpreter(resolvedModules: Map[String, Module], currentModulePath: S
     case _: TheoryInstRest    => Right(Presentation.empty)
     case _: TheoryInstSub     => Right(Presentation.empty)
     case _: TheoryInstDisj    => Right(Presentation.empty)
-    case _: TheoryInstConj    => Right(Presentation.empty)
+
+    case thInstConj: TheoryInstConj =>
+      for {
+        presA <- interpret(env, thInstConj.theoryinst_1)
+        presB <- interpret(env, thInstConj.theoryinst_2)
+      } yield {
+        // 1. Intersection of exports.
+        val commonExports: Set[Cat] = presA.exports.toSet intersect presB.exports.toSet
+
+        // 2. Intersection of terms (Defs) filtered by allowed categories.
+        val commonTerms: Set[Def] = presA.terms.toSet intersect presB.terms.toSet
+        val filteredTerms: Set[Def] = commonTerms.filter {
+          case rule: Rule =>
+            // Gather categories mentioned by the rule:
+            val fromRule: Set[Cat] = Set(rule.cat_)
+            val fromItems: Set[Cat] = rule.listitem_.asScala.collect {
+              case nt: NTerminal => nt.cat_
+            }.toSet
+            val mentionedCats = fromRule ++ fromItems
+            // Keep the rule only if all mentioned categories are in commonExports.
+            mentionedCats.subsetOf(commonExports)
+          case _ => true
+        }
+
+        // 3. Allowed labels: collect labels from the filtered rules.
+        val allowedLabels: Set[String] = filteredTerms.collect {
+          case rule: Rule => rule.label_.toString
+        }.toSet
+
+        // 4. Intersection of equations filtered by allowed labels.
+        val commonEquations: Set[Equation] = presA.equations.toSet intersect presB.equations.toSet
+        val filteredEquations: Set[Equation] = commonEquations.filter { eq =>
+          val mentionedLabels: Set[String] = eq match {
+            case ef: EquationFresh => labelsInEquation(ef.equation_)
+            case ei: EquationImpl  => labelsInAST(ei.ast_1) ++ labelsInAST(ei.ast_2)
+          }
+          mentionedLabels.subsetOf(allowedLabels)
+        }
+
+        // 5. Intersection of rewrites filtered by allowed labels.
+        val commonRewrites: Set[RewriteDecl] = presA.rewrites.toSet intersect presB.rewrites.toSet
+        val filteredRewrites: Set[RewriteDecl] = commonRewrites.filter {
+          case rdecl: RDecl =>
+            val mentionedLabels: Set[String] = labelsInRewrite(rdecl.rewrite_)
+            mentionedLabels.subsetOf(allowedLabels)
+          case _ => true
+        }
+
+        Presentation(
+          exports   = commonExports.toList,
+          terms     = filteredTerms.toList,
+          equations = filteredEquations.toList,
+          rewrites  = filteredRewrites.toList
+        )
+      }
 
     case thInstAddExports: TheoryInstAddExports =>
       interpret(env, thInstAddExports.theoryinst_).map { basePres =>
@@ -105,7 +159,6 @@ class InstInterpreter(resolvedModules: Map[String, Module], currentModulePath: S
                   sequence(formalEithers).flatMap { formals =>
                     // Bind each formal to its corresponding evaluated actual.
                     val newBindings: List[(String, Presentation)] = formals.zip(actualPresentations)
-                    // **CRUCIAL CHANGE:**
                     // Use a new InstInterpreter with the current module updated to the one in which the theory is defined.
                     new InstInterpreter(resolvedModules, modulePath).interpret(env ++ newBindings, baseDecl.theoryinst_)
                   }
@@ -131,5 +184,22 @@ class InstInterpreter(resolvedModules: Map[String, Module], currentModulePath: S
       }
 
     case _: TheoryInstFree => Right(Presentation.empty)
+  }
+
+  private def labelsInAST(ast: AST): Set[String] = ast match {
+    case astSExp: ASTSExp => Set(astSExp.ident_)
+    case _               => Set.empty[String]
+  }
+
+  private def labelsInEquation(eq: Equation): Set[String] = eq match {
+    case ef: EquationFresh => labelsInEquation(ef.equation_)
+    case ei: EquationImpl  => labelsInAST(ei.ast_1) ++ labelsInAST(ei.ast_2)
+    case _                 => Set.empty[String]
+  }
+
+  private def labelsInRewrite(rw: Rewrite): Set[String] = rw match {
+    case rb: RewriteBase   => labelsInAST(rb.ast_1) ++ labelsInAST(rb.ast_2)
+    case rc: RewriteContext => labelsInRewrite(rc.rewrite_)
+    case _                 => Set.empty[String]
   }
 }

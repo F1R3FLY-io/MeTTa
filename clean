@@ -1,0 +1,5 @@
+#!/bin/sh
+rm -rf build_files
+rm -rf target
+rm -rf MeTTaIL/project/target
+rm -rf MeTTaIL/target

@@ -41,7 +41,19 @@ class InstInterpreter(resolvedModules: Map[String, Module], currentModulePath: S
   def interpret(env: List[(String, Presentation)], thInst: TheoryInst): Either[String, Presentation] = thInst match {
     case _: TheoryInstRest    => Right(Presentation.empty)
     case _: TheoryInstSub     => Right(Presentation.empty)
-    case _: TheoryInstDisj    => Right(Presentation.empty)
+
+    case thInstDisj: TheoryInstDisj =>
+      for {
+        presA <- interpret(env, thInstDisj.theoryinst_1)
+        presB <- interpret(env, thInstDisj.theoryinst_2)
+      } yield {
+        Presentation(
+          exports   = (presA.exports ++ presB.exports).distinct,
+          terms     = (presA.terms ++ presB.terms).distinct,
+          equations = (presA.equations ++ presB.equations).distinct,
+          rewrites  = (presA.rewrites ++ presB.rewrites).distinct
+        )
+      }
 
     case thInstConj: TheoryInstConj =>
       for {

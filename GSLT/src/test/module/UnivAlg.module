@@ -1,11 +1,12 @@
 Module UnivAlg {
-  Theory Point() {
+  Theory TwoPoint() {
     Empty
       Exports {
         Proc;
       }
       Terms {
         One . Proc ::= "1" ;
+        Two . Proc ::= "2" ;
       }
   }
 
@@ -71,5 +72,5 @@ Module UnivAlg {
     r \/ add
   }
   
-  theory Point() /\ Monoid()
+  theory TwoPoint() \/ Monoid()
 }

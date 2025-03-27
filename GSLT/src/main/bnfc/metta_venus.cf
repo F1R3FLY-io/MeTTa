@@ -72,6 +72,8 @@ TheoryInstSub . TheoryInst2 ::= TheoryInst2 "\\" TheoryInst3 ;
 TheoryInstRest . TheoryInst1 ::= TheoryInst1 "<|" TheoryInst2 ;
 separator TheoryInst "," ;
 
+BasePres . Pres ::= "Presentation" "Equations" "{" [Cat] "}" "Terms" "{" [Def] "}" "Equations" "{" [Equation] "}" "Rewrites" "{" [RewriteDecl] "}" ;
+
 BaseSpaceDecl . SpaceDecl ::= "Space" Name "(" [VariableDecl] ")" "{" [Fact] [FactComprehension] "}" ;
 BaseTheoryDecl . TheoryDecl ::= "Theory" Name "(" [VariableDecl] ")" "{" TheoryInst "}" ;
 
@@ -215,9 +217,12 @@ BindTerminal . Item ::= "(" "Bind" Ident IntList ")" ;
 
 
 -- Categories
-ListCat     . Cat ::= "[" Cat "]" ;
+ListOfCat     . Cat ::= "[" Cat "]" ;
 IdCat       . Cat ::= Ident ;
 ImportedCat . Cat ::= Ident "." Cat;
+
+[] . [Cat] ::= ;
+(:) . [Cat] ::= Cat ";" [Cat] ;
 
 -- labels with or without profiles
 LabNoP   . Label ::= LabelId ;

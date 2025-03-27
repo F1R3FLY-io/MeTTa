@@ -14,39 +14,81 @@ object InstInterpreterCases {
     def sequence[E, A](eithers: List[Either[E, A]]): Either[E, List[A]]
   }
 
-  def handleRest(): Either[String, Presentation] =
-    Right(Presentation.empty)
+  object BasePresOps {
+    import scala.jdk.CollectionConverters._
 
-  def handleSub(): Either[String, Presentation] =
-    Right(Presentation.empty)
+    // Create an empty instance by calling the no-argument constructors.
+    def empty: BasePres = {
+      val listCat = new metta_venus.Absyn.ListCat()
+      val listDef = new metta_venus.Absyn.ListDef()
+      val listEquation = new metta_venus.Absyn.ListEquation()
+      val listRewriteDecl = new metta_venus.Absyn.ListRewriteDecl()
+      new BasePres(listCat, listDef, listEquation, listRewriteDecl)
+    }
 
-  def handleEmpty(): Either[String, Presentation] =
-    Right(Presentation.empty)
+    // copyPres creates new list instances and adds the updated elements.
+    def copyPres(
+      pres: BasePres,
+      listcat: Option[List[Cat]] = None,
+      listdef: Option[List[Def]] = None,
+      listequation: Option[List[Equation]] = None,
+      listrewritedecl: Option[List[RewriteDecl]] = None
+    ): BasePres = {
+      val newListCat = new metta_venus.Absyn.ListCat()
+      val newListDef = new metta_venus.Absyn.ListDef()
+      val newListEquation = new metta_venus.Absyn.ListEquation()
+      val newListRewriteDecl = new metta_venus.Absyn.ListRewriteDecl()
 
-  def handleFree(): Either[String, Presentation] =
-    Right(Presentation.empty)
+      val cats = listcat.getOrElse(pres.listcat_.asScala.toList)
+      newListCat.addAll(cats.asJava)
+      val defs = listdef.getOrElse(pres.listdef_.asScala.toList)
+      newListDef.addAll(defs.asJava)
+      val equations = listequation.getOrElse(pres.listequation_.asScala.toList)
+      newListEquation.addAll(equations.asJava)
+      val rewrites = listrewritedecl.getOrElse(pres.listrewritedecl_.asScala.toList)
+      newListRewriteDecl.addAll(rewrites.asJava)
 
-  def handleDisj(interpreter: InstInterpreter, env: List[(String, Presentation)], disj: TheoryInstDisj): Either[String, Presentation] =
+      new BasePres(newListCat, newListDef, newListEquation, newListRewriteDecl)
+    }
+  }
+
+  import BasePresOps._
+
+  def handleRest(): Either[String, BasePres] =
+    Right(empty)
+
+  def handleSub(): Either[String, BasePres] =
+    Right(empty)
+
+  def handleEmpty(): Either[String, BasePres] =
+    Right(empty)
+
+  def handleFree(): Either[String, BasePres] =
+    Right(empty)
+
+  def handleDisj(interpreter: InstInterpreter, env: List[(String, BasePres)], disj: TheoryInstDisj): Either[String, BasePres] =
     for {
       presA <- interpreter.interpret(env, disj.theoryinst_1)
       presB <- interpreter.interpret(env, disj.theoryinst_2)
-    } yield Presentation(
-      exports   = (presA.exports ++ presB.exports).distinct,
-      terms     = (presA.terms ++ presB.terms).distinct,
-      equations = (presA.equations ++ presB.equations).distinct,
-      rewrites  = (presA.rewrites ++ presB.rewrites).distinct
-    )
+      exports   = (presA.listcat_.asScala.toList ++ presB.listcat_.asScala.toList).distinct
+      terms     = (presA.listdef_.asScala.toList ++ presB.listdef_.asScala.toList).distinct
+      equations = (presA.listequation_.asScala.toList ++ presB.listequation_.asScala.toList).distinct
+      rewrites  = (presA.listrewritedecl_.asScala.toList ++ presB.listrewritedecl_.asScala.toList).distinct
+    } yield copyPres(empty,
+                     listcat = Some(exports),
+                     listdef = Some(terms),
+                     listequation = Some(equations),
+                     listrewritedecl = Some(rewrites))
 
-  def handleConj(interpreter: InstInterpreter, env: List[(String, Presentation)], conj: TheoryInstConj): Either[String, Presentation] = {
+  def handleConj(interpreter: InstInterpreter, env: List[(String, BasePres)], conj: TheoryInstConj): Either[String, BasePres] = {
     val h = interpreter.helpers
     for {
       presA <- interpreter.interpret(env, conj.theoryinst_1)
       presB <- interpreter.interpret(env, conj.theoryinst_2)
-    } yield {
-      val commonExports = presA.exports.toSet intersect presB.exports.toSet
-      val commonTerms   = presA.terms.toSet intersect presB.terms.toSet
+      commonExports = presA.listcat_.asScala.toSet intersect presB.listcat_.asScala.toSet
+      commonTerms   = presA.listdef_.asScala.toSet intersect presB.listdef_.asScala.toSet
 
-      val filteredTerms = commonTerms.filter {
+      filteredTerms = commonTerms.filter {
         case rule: Rule =>
           val fromRule  = Set(rule.cat_)
           val fromItems = rule.listitem_.asScala.collect {
@@ -57,69 +99,66 @@ object InstInterpreterCases {
         case _ => true
       }
 
-      val allowedLabels = filteredTerms.collect {
+      allowedLabels = filteredTerms.collect {
         case rule: Rule => rule.label_.toString
       }
 
-      val commonEquations = presA.equations.toSet intersect presB.equations.toSet
-      val filteredEquations = commonEquations.filter { eq =>
+      commonEquations = presA.listequation_.asScala.toSet intersect presB.listequation_.asScala.toSet
+      filteredEquations = commonEquations.filter { eq =>
         h.labelsInEquation(eq).subsetOf(allowedLabels)
       }
 
-      val commonRewrites = presA.rewrites.toSet intersect presB.rewrites.toSet
-      val filteredRewrites = commonRewrites.filter {
+      commonRewrites = presA.listrewritedecl_.asScala.toSet intersect presB.listrewritedecl_.asScala.toSet
+      filteredRewrites = commonRewrites.filter {
         case rdecl: RDecl => h.labelsInRewrite(rdecl.rewrite_).subsetOf(allowedLabels)
         case _ => true
       }
-
-      Presentation(
-        exports   = commonExports.toList,
-        terms     = filteredTerms.toList,
-        equations = filteredEquations.toList,
-        rewrites  = filteredRewrites.toList
-      )
-    }
+    } yield copyPres(empty,
+                     listcat = Some(commonExports.toList),
+                     listdef = Some(filteredTerms.toList),
+                     listequation = Some(filteredEquations.toList),
+                     listrewritedecl = Some(filteredRewrites.toList))
   }
 
-  def handleAddExports(interpreter: InstInterpreter, env: List[(String, Presentation)], inst: TheoryInstAddExports): Either[String, Presentation] =
+  def handleAddExports(interpreter: InstInterpreter, env: List[(String, BasePres)], inst: TheoryInstAddExports): Either[String, BasePres] =
     interpreter.interpret(env, inst.theoryinst_).map { basePres =>
       val newCats = inst.listexport_.toArray.toList.collect {
         case base: BaseExport => base.cat_
       }
-      basePres.copy(exports = basePres.exports ++ newCats)
+      copyPres(basePres, listcat = Some(basePres.listcat_.asScala.toList ++ newCats))
     }
 
-  def handleAddReplacements(): Either[String, Presentation] =
-    Right(Presentation.empty)
+  def handleAddReplacements(): Either[String, BasePres] =
+    Right(empty)
 
-  def handleAddTerms(interpreter: InstInterpreter, env: List[(String, Presentation)], inst: TheoryInstAddTerms): Either[String, Presentation] =
+  def handleAddTerms(interpreter: InstInterpreter, env: List[(String, BasePres)], inst: TheoryInstAddTerms): Either[String, BasePres] =
     interpreter.interpret(env, inst.theoryinst_).map { basePres =>
       val newTerms = inst.grammar_ match {
         case g: MkGrammar => g.listdef_.iterator.asScala.toList
         case _ => Nil
       }
-      basePres.copy(terms = basePres.terms ++ newTerms)
+      copyPres(basePres, listdef = Some(basePres.listdef_.asScala.toList ++ newTerms))
     }
 
-  def handleAddEquations(interpreter: InstInterpreter, env: List[(String, Presentation)], inst: TheoryInstAddEquations): Either[String, Presentation] =
+  def handleAddEquations(interpreter: InstInterpreter, env: List[(String, BasePres)], inst: TheoryInstAddEquations): Either[String, BasePres] =
     interpreter.interpret(env, inst.theoryinst_).map { basePres =>
       val newEquations = inst.listequation_.toArray.toList.collect {
         case eq: Equation => eq
       }
-      basePres.copy(equations = basePres.equations ++ newEquations)
+      copyPres(basePres, listequation = Some(basePres.listequation_.asScala.toList ++ newEquations))
     }
 
-  def handleAddRewrites(interpreter: InstInterpreter, env: List[(String, Presentation)], inst: TheoryInstAddRewrites): Either[String, Presentation] =
+  def handleAddRewrites(interpreter: InstInterpreter, env: List[(String, BasePres)], inst: TheoryInstAddRewrites): Either[String, BasePres] =
     interpreter.interpret(env, inst.theoryinst_).map { basePres =>
       val newRewrites = inst.listrewritedecl_.toArray.toList.collect {
         case rd: RewriteDecl => rd
       }
-      basePres.copy(rewrites = basePres.rewrites ++ newRewrites)
+      copyPres(basePres, listrewritedecl = Some(basePres.listrewritedecl_.asScala.toList ++ newRewrites))
     }
 
-  def handleCtor(interpreter: InstInterpreter, env: List[(String, Presentation)],
+  def handleCtor(interpreter: InstInterpreter, env: List[(String, BasePres)],
                  resolvedModules: Map[String, Module], currentModulePath: String,
-                 ctor: TheoryInstCtor): Either[String, Presentation] = {
+                 ctor: TheoryInstCtor): Either[String, BasePres] = {
     ModuleProcessor.resolveDottedPath(resolvedModules, currentModulePath, ctor.dottedpath_) match {
       case Left(error) => Left(error)
       case Right((modulePath, theoryDecl)) => theoryDecl match {
@@ -144,13 +183,13 @@ object InstInterpreterCases {
     }
   }
 
-  def handleRef(env: List[(String, Presentation)], ref: TheoryInstRef): Either[String, Presentation] =
+  def handleRef(env: List[(String, BasePres)], ref: TheoryInstRef): Either[String, BasePres] =
     env.reverse.find(_._1 == ref.ident_) match {
       case Some((_, pres)) => Right(pres)
       case None            => Left(s"Identifier ${ref.ident_} is free")
     }
 
-  def handleRec(interpreter: InstInterpreter, env: List[(String, Presentation)], rec: TheoryInstRec): Either[String, Presentation] =
+  def handleRec(interpreter: InstInterpreter, env: List[(String, BasePres)], rec: TheoryInstRec): Either[String, BasePres] =
     interpreter.interpret(env, rec.theoryinst_1).flatMap { pres1 =>
       val envUpdated = env :+ (rec.ident_, pres1)
       interpreter.interpret(envUpdated, rec.theoryinst_2)

@@ -44,9 +44,9 @@ object Main {
             // Interpret the final theory instance.
             val interpreter = new InstInterpreter(resolvedModules, entryPath)
             interpreter.interpret(List.empty, inst) match {
-              case Right(presentation) =>
+              case Right(basePres) =>
                 println("\n[Interpreted Presentation]\n")
-                println(Presentation.pretty(presentation))
+                println(PrettyPrinter.print(basePres))
               case Left(error) =>
                 println(s"\nError during interpretation: $error")
             }

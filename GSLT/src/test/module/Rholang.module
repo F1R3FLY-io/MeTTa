@@ -1,4 +1,4 @@
-import Monoid from "UnivAlg.module"
+import "UnivAlg.module" as u
 
 Module Rholang {
   Theory ParMonoid(cm: u.CommutativeMonoid) {
@@ -69,19 +69,16 @@ Module Rholang {
   }
   
   Theory FreeRholang() {
-    let m = Monoid() in (
-    let cm = CommutativeMonoid(m) in (
+    let m = u.Monoid() in (
+    let cm = u.CommutativeMonoid(m) in (
     let pm = ParMonoid(cm) in (
     let qd = QuoteDropCalc(pm) in (
     let nr = NewReplCalc(pm) in (
-    let rc = Rhocalc(qd) in (
+    let rc = RhoCalc(qd) in (
     let rl = Rholang(nr, rc) in (
-    r1
+    rl
     )))))))
   }
 
-  -- theory free(Monoid)
-  -- theory free(Rholang)
-  -- theory let x = Empty Exports { Foo; } in (x Exports { Bar; })
-  theory Monoid()
+  theory FreeRholang()
 }

@@ -4,34 +4,11 @@ import metta_venus.Absyn._
 import metta_venus.PrettyPrinter
 import scala.jdk.CollectionConverters._
 
-case class Presentation(
-  exports: List[Cat],
-  terms: List[Def],
-  equations: List[Equation],
-  rewrites: List[RewriteDecl]
-)
-
-object Presentation {
-  val empty: Presentation = Presentation(Nil, Nil, Nil, Nil)
-
-  def pretty(p: Presentation): String =
-    s"""Presentation:
-       |  Exports:
-       |    ${p.exports.map(PrettyPrinter.print).mkString("\n    ")}
-       |  Terms:
-       |    ${p.terms.map(PrettyPrinter.print).mkString("\n    ")}
-       |  Equations:
-       |    ${p.equations.map(PrettyPrinter.print).mkString("\n    ")}
-       |  Rewrites:
-       |    ${p.rewrites.map(PrettyPrinter.print).mkString("\n    ")}
-       |""".stripMargin
-}
-
 class InstInterpreter(resolvedModules: Map[String, Module], currentModulePath: String) {
 
   import InstInterpreterCases._
-
-  def interpret(env: List[(String, Presentation)], thInst: TheoryInst): Either[String, Presentation] = thInst match {
+  // BasePresOps is defined in InstInterpreterCases below and imported here
+  def interpret(env: List[(String, BasePres)], thInst: TheoryInst): Either[String, BasePres] = thInst match {
     case rest: TheoryInstRest           => handleRest()
     case sub: TheoryInstSub             => handleSub()
     case disj: TheoryInstDisj           => handleDisj(this, env, disj)

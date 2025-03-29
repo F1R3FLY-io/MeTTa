@@ -195,12 +195,11 @@ object InstInterpreterCases {
       // Extract the new rewrite declarations from the instruction.
       val newRewrites = inst.listrewritedecl_.asScala.toList
 
-      // Compute allowed labels from the definitions in basePres, reusing logic from handleConj.
+      // First, perform the label check (as in handleConj).
       val allowedLabels: Set[String] = basePres.listdef_.asScala.collect {
         case rule: Rule => rule.label_.toString
       }.toSet
 
-      // Check each new rewrite declaration: if it mentions any label not in allowedLabels, report an error.
       newRewrites.find { rw =>
         !interpreter.helpers.labelsInRewrite(rw).subsetOf(allowedLabels)
       } match {
@@ -208,9 +207,49 @@ object InstInterpreterCases {
           val unknownLabels = interpreter.helpers.labelsInRewrite(rw) diff allowedLabels
           Left(s"Error: RewriteDecl mentions unknown labels: $unknownLabels")
         case None =>
-          // If all new rewrite declarations pass the check, add them to the current presentation.
-          Right(copyPres(basePres,
-                         listrewritedecl = Some(basePres.listrewritedecl_.asScala.toList ++ newRewrites)))
+          // Now perform the variable check:
+          // Helper function: extract variable identifiers from an AST.
+          def varsInAST(ast: AST): Set[String] = ast match {
+            case as: ASTSubst =>
+              // Variables appear in as.ast_1, as.ast_2, and as.ident_
+              varsInAST(as.ast_1) ++ varsInAST(as.ast_2) + as.ident_
+            case av: ASTVar =>
+              Set(av.ident_)
+            case ase: ASTSExp =>
+              ase.listast_.asScala.toSet.flatMap(varsInAST)
+            case _ => Set.empty[String]
+          }
+
+          // For a Rewrite, the left-hand side is determined by:
+          def leftVars(rew: Rewrite): Set[String] = rew match {
+            case rb: RewriteBase    => varsInAST(rb.ast_1)
+            case rc: RewriteContext => leftVars(rc.rewrite_)
+            case _                  => Set.empty[String]
+          }
+
+          // Similarly, extract the right-hand side variables:
+          def rightVars(rew: Rewrite): Set[String] = rew match {
+            case rb: RewriteBase    => varsInAST(rb.ast_2)
+            case rc: RewriteContext => rightVars(rc.rewrite_)
+            case _                  => Set.empty[String]
+          }
+
+          // Check each rewrite declaration (all are RDecls) to ensure that
+          // every variable on the right appears on the left.
+          newRewrites.find { case rdecl: RDecl =>
+            val lVars = leftVars(rdecl.rewrite_)
+            val rVars = rightVars(rdecl.rewrite_)
+            !rVars.subsetOf(lVars)
+          } match {
+            case Some(rdecl: RDecl) =>
+              val lVars = leftVars(rdecl.rewrite_)
+              val rVars = rightVars(rdecl.rewrite_)
+              val missingVars = rVars diff lVars
+              Left(s"Error: In RewriteDecl, variables on the right-hand side not found on the left-hand side: $missingVars")
+            case None =>
+              Right(copyPres(basePres,
+                             listrewritedecl = Some(basePres.listrewritedecl_.asScala.toList ++ newRewrites)))
+          }
       }
     }
 

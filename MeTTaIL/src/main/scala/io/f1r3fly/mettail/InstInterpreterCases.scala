@@ -200,13 +200,14 @@ object InstInterpreterCases {
         case rule: Rule => rule.label_.toString
       }.toSet
 
-      newRewrites.find { rw =>
-        !interpreter.helpers.labelsInRewrite(rw).subsetOf(allowedLabels)
+      newRewrites.find {
+        case rd: RDecl => !interpreter.helpers.labelsInRewrite(rd.rewrite_).subsetOf(allowedLabels)
+        case _ => false
       } match {
-        case Some(rw) =>
-          val unknownLabels = interpreter.helpers.labelsInRewrite(rw) diff allowedLabels
+        case Some(rd: RDecl) =>
+          val unknownLabels = interpreter.helpers.labelsInRewrite(rd.rewrite_) diff allowedLabels
           Left(s"Error: RewriteDecl mentions unknown labels: $unknownLabels")
-        case None =>
+        case _ =>
           // Now perform the variable check:
           // Helper function: extract variable identifiers from an AST.
           def varsInAST(ast: AST): Set[String] = ast match {
@@ -236,16 +237,20 @@ object InstInterpreterCases {
 
           // Check each rewrite declaration (all are RDecls) to ensure that
           // every variable on the right appears on the left.
-          newRewrites.find { case rdecl: RDecl =>
-            val lVars = leftVars(rdecl.rewrite_)
-            val rVars = rightVars(rdecl.rewrite_)
-            !rVars.subsetOf(lVars)
+          newRewrites.find {
+            case rdecl: RDecl =>
+              val lVars = leftVars(rdecl.rewrite_)
+              val rVars = rightVars(rdecl.rewrite_)
+              !rVars.subsetOf(lVars)
+            case _ => false
           } match {
             case Some(rdecl: RDecl) =>
               val lVars = leftVars(rdecl.rewrite_)
               val rVars = rightVars(rdecl.rewrite_)
               val missingVars = rVars diff lVars
               Left(s"Error: In RewriteDecl, variables on the right-hand side not found on the left-hand side: $missingVars")
+            case Some(other) =>
+              sys.error(s"Unexpected RewriteDecl encountered: $other")
             case None =>
               Right(copyPres(basePres,
                              listrewritedecl = Some(basePres.listrewritedecl_.asScala.toList ++ newRewrites)))

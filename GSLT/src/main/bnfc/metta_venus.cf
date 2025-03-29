@@ -199,22 +199,8 @@ Rule . Def ::= Label "." Cat "::=" [Item] ;
 -- Items
 Terminal         . Item ::= String ;
 NTerminal        . Item ::= Cat ;
-
--- BindTerminal Item
-BindTerminal . Item ::= "(" "Bind" Ident IntList ")" ;
--- Ident defines the category C of the variable; a new rule
---   IdC . C ::= Ident
--- Error if Ident is already the RHS of a rule for C.
--- IntList specifies where in the term the variable is bound.
---    Lam. T ::= "λ" (Bind T [1]) "." T                             -- bound in body
---    For. P ::= "for" "(" (Bind Name [2]) "<-" Ident ")" "{" P "}" -- not bound in channel name
--- Can bind the variable in subterms appearing before the binder.
---    Foo. P ::= "foo" P "bar" (Bind P [0, 3]) "baz" P ":" P        -- not bound in slot 2
--- Error if the list is empty, contains its own slot, or contains
---    a number greater than or equal to the number of slots.
--- Effectively adds Ident as RHS of new rule.
--- Parser generated from GSLT accepts Ident in this position.
-
+AbsNTerminal     . Item ::= "(" Ident ")" Cat;
+BindNTerminal    . Item ::= "(" "Bind" Ident Ident ")" ;
 
 -- Categories
 ListOfCat     . Cat ::= "[" Cat "]" ;

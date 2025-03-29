@@ -132,28 +132,86 @@ object InstInterpreterCases {
     Right(empty)
 
   def handleAddTerms(interpreter: InstInterpreter, env: List[(String, BasePres)], inst: TheoryInstAddTerms): Either[String, BasePres] =
-    interpreter.interpret(env, inst.theoryinst_).map { basePres =>
+    interpreter.interpret(env, inst.theoryinst_).flatMap { basePres =>
       val newTerms = inst.grammar_ match {
         case g: MkGrammar => g.listdef_.iterator.asScala.toList
         case _ => Nil
       }
-      copyPres(basePres, listdef = Some(basePres.listdef_.asScala.toList ++ newTerms))
+      // Get the set of allowed categories from the existing presentation
+      val allowedCats = basePres.listcat_.asScala.toSet
+      // Check each new term: if it is a Rule, ensure that its category and all categories
+      // from its list of items are present in allowedCats.
+      newTerms.find {
+        case rule: Rule =>
+          val fromRule  = Set(rule.cat_)
+          val fromItems = rule.listitem_.asScala.collect { case nt: NTerminal => nt.cat_ }.toSet
+          val mentionedCats = fromRule ++ fromItems
+          !mentionedCats.subsetOf(allowedCats)
+        case _ => false
+      } match {
+        case Some(rule: Rule) =>
+          val fromRule  = Set(rule.cat_)
+          val fromItems = rule.listitem_.asScala.collect { case nt: NTerminal => nt.cat_ }.toSet
+          val unknownCats = (fromRule ++ fromItems) diff allowedCats
+          Left(s"Error: Def in addTerms mentions unknown categories: $unknownCats")
+        case _ =>
+          // If all new terms pass the check, update the BasePres by adding the new terms.
+          Right(copyPres(basePres, listdef = Some(basePres.listdef_.asScala.toList ++ newTerms)))
+      }
     }
 
-  def handleAddEquations(interpreter: InstInterpreter, env: List[(String, BasePres)], inst: TheoryInstAddEquations): Either[String, BasePres] =
-    interpreter.interpret(env, inst.theoryinst_).map { basePres =>
-      val newEquations = inst.listequation_.toArray.toList.collect {
-        case eq: Equation => eq
+  def handleAddEquations(interpreter: InstInterpreter,
+                          env: List[(String, BasePres)],
+                          inst: TheoryInstAddEquations): Either[String, BasePres] =
+    interpreter.interpret(env, inst.theoryinst_).flatMap { basePres =>
+      // Extract new equations from the instruction.
+      // (Adjust extraction as needed based on your grammar structure.)
+      val newEquations = inst.listequation_.asScala.toList
+
+      // Compute the set of allowed labels from the definitions in basePres.
+      // Reusing logic similar to that in handleConj.
+      val allowedLabels: Set[String] = basePres.listdef_.asScala.collect {
+        case rule: Rule => rule.label_.toString
+      }.toSet
+
+      // Check each new equation to ensure that every label it mentions is among the allowed labels.
+      newEquations.find { eq =>
+        !interpreter.helpers.labelsInEquation(eq).subsetOf(allowedLabels)
+      } match {
+        case Some(eq) =>
+          val unknownLabels = interpreter.helpers.labelsInEquation(eq) diff allowedLabels
+          Left(s"Error: Equation mentions unknown labels: $unknownLabels")
+        case None =>
+          // If all equations are valid, add them to the current presentation.
+          Right(copyPres(basePres,
+                         listequation = Some(basePres.listequation_.asScala.toList ++ newEquations)))
       }
-      copyPres(basePres, listequation = Some(basePres.listequation_.asScala.toList ++ newEquations))
     }
 
-  def handleAddRewrites(interpreter: InstInterpreter, env: List[(String, BasePres)], inst: TheoryInstAddRewrites): Either[String, BasePres] =
-    interpreter.interpret(env, inst.theoryinst_).map { basePres =>
-      val newRewrites = inst.listrewritedecl_.toArray.toList.collect {
-        case rd: RewriteDecl => rd
+  def handleAddRewrites(interpreter: InstInterpreter,
+                        env: List[(String, BasePres)],
+                        inst: TheoryInstAddRewrites): Either[String, BasePres] =
+    interpreter.interpret(env, inst.theoryinst_).flatMap { basePres =>
+      // Extract the new rewrite declarations from the instruction.
+      val newRewrites = inst.listrewritedecl_.asScala.toList
+
+      // Compute allowed labels from the definitions in basePres, reusing logic from handleConj.
+      val allowedLabels: Set[String] = basePres.listdef_.asScala.collect {
+        case rule: Rule => rule.label_.toString
+      }.toSet
+
+      // Check each new rewrite declaration: if it mentions any label not in allowedLabels, report an error.
+      newRewrites.find { rw =>
+        !interpreter.helpers.labelsInRewrite(rw).subsetOf(allowedLabels)
+      } match {
+        case Some(rw) =>
+          val unknownLabels = interpreter.helpers.labelsInRewrite(rw) diff allowedLabels
+          Left(s"Error: RewriteDecl mentions unknown labels: $unknownLabels")
+        case None =>
+          // If all new rewrite declarations pass the check, add them to the current presentation.
+          Right(copyPres(basePres,
+                         listrewritedecl = Some(basePres.listrewritedecl_.asScala.toList ++ newRewrites)))
       }
-      copyPres(basePres, listrewritedecl = Some(basePres.listrewritedecl_.asScala.toList ++ newRewrites))
     }
 
   def handleCtor(interpreter: InstInterpreter, env: List[(String, BasePres)],

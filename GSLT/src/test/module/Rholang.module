@@ -23,7 +23,7 @@ Module Rholang {
       }
       Terms {
         PRepl . Proc ::= "!" Proc ;
-        PNew  . Proc ::= "new" (Bind Name x) "in" [x]Proc ;
+        PNew  . Proc ::= "new" (Bind Name x) "in" (x)Proc ;
       }
       Equations {
         if x # Q then
@@ -57,7 +57,7 @@ Module Rholang {
     qd
       Terms {
         PSend . Proc ::= Name "!" "(" Proc ")" ;
-        PRecv . Proc ::= "for" "(" (Bind Name x) "<-" Name ")" "{" [x]Proc "}" ;
+        PRecv . Proc ::= "for" "(" (Bind Name x) "<-" Name ")" "{" (x)Proc "}" ;
       }
       Rewrites {
         RComm : ( PPar ( PRecv y x P) ( PSend x Q ) ) ~> ( Subst P ( NQuote Q ) y ) ;

@@ -14,7 +14,7 @@ class InstInterpreter(resolvedModules: Map[String, Module], currentModulePath: S
     case disj: TheoryInstDisj           => handleDisj(this, env, disj)
     case conj: TheoryInstConj           => handleConj(this, env, conj)
     case addExports: TheoryInstAddExports => handleAddExports(this, env, addExports)
-    case addReplacements: TheoryInstAddReplacements => handleAddReplacements()
+    case addReplacements: TheoryInstAddReplacements => handleAddReplacements(this, env, addReplacements)
     case addTerms: TheoryInstAddTerms   => handleAddTerms(this, env, addTerms)
     case addEquations: TheoryInstAddEquations => handleAddEquations(this, env, addEquations)
     case addRewrites: TheoryInstAddRewrites => handleAddRewrites(this, env, addRewrites)
@@ -27,7 +27,7 @@ class InstInterpreter(resolvedModules: Map[String, Module], currentModulePath: S
 
   // Used in conj, rewrites, and equations
   private def labelsInAST(ast: AST): Set[String] = ast match {
-    case astSExp: ASTSExp => Set(astSExp.ident_)
+    case astSExp: ASTSExp => Set(labelToString(astSExp.label_))
     case _                => Set.empty[String]
   }
 

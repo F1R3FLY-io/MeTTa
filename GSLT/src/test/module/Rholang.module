@@ -67,6 +67,10 @@ Module Rholang {
   Theory Rholang(nr: NewReplCalc, r: RhoCalc) {
     nr \/ r
   }
+
+  Theory FreeMonoid() {
+    let m = u.Monoid() in (m)
+  }
   
   Theory FreeRholang() {
     let m = u.Monoid() in (
@@ -80,5 +84,7 @@ Module Rholang {
     )))))))
   }
 
-  theory FreeRholang()
+  theory let m = u.Monoid() in (
+    let cm = u.CommutativeMonoid(m) in (
+    let pm = ParMonoid(cm) in (pm)))
 }

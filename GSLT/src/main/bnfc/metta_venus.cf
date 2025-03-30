@@ -210,18 +210,12 @@ ImportedCat . Cat ::= Ident "." Cat;
 [] . [Cat] ::= ;
 (:) . [Cat] ::= Cat ";" [Cat] ;
 
--- labels with or without profiles
-LabNoP   . Label ::= LabelId ;
-LabP     . Label ::= LabelId [ProfItem] ;
-LabPF    . Label ::= LabelId LabelId [ProfItem] ;
-LabF     . Label ::= LabelId LabelId ;
-
 -- functional labels
-Id       . LabelId ::= Ident ;
-Wild     . LabelId ::= "_" ;
-ListE    . LabelId ::= "[" "]" ;
-ListCons . LabelId ::= "(" ":" ")" ;
-ListOne  . LabelId ::= "(" ":" "[" "]" ")" ;
+Id       . Label ::= Ident ;
+Wild     . Label ::= "_" ;
+ListE    . Label ::= "[" "]" ;
+ListCons . Label ::= "(" ":" ")" ;
+ListOne  . Label ::= "(" ":" "[" "]" ")" ;
 
 -- profiles (= permutation and binding patterns)
 ProfIt   . ProfItem ::= "(" "[" [IntList] "]" "," "[" [Integer] "]" ")" ;
@@ -304,7 +298,7 @@ RewriteContext . Rewrite ::= "let" Hypothesis "in" Rewrite ;
 
 ASTSubst . AST ::= "(" "Subst" AST AST Ident ")";
 ASTVar   . AST ::= Ident ;
-ASTSExp  . AST ::= "(" Ident [AST] ")" ;
+ASTSExp  . AST ::= "(" Label [AST] ")" ;
 
 []  . [AST] ::= ;
 (:) . [AST] ::= AST [AST] ;

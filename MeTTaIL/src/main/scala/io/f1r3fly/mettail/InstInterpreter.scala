@@ -9,8 +9,6 @@ class InstInterpreter(resolvedModules: Map[String, Module], currentModulePath: S
   import InstInterpreterCases._
   // BasePresOps is defined in InstInterpreterCases below and imported here
   def interpret(env: List[(String, BasePres)], thInst: TheoryInst): Either[String, BasePres] = thInst match {
-    case rest: TheoryInstRest           => handleRest()
-    case sub: TheoryInstSub             => handleSub()
     case disj: TheoryInstDisj           => handleDisj(this, env, disj)
     case conj: TheoryInstConj           => handleConj(this, env, conj)
     case addExports: TheoryInstAddExports => handleAddExports(this, env, addExports)

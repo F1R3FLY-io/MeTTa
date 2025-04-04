@@ -3,6 +3,9 @@ import "UnivAlg.module" as u
 Module Rholang {
   Theory ParMonoid(cm: u.CommutativeMonoid) {
     cm
+      Exports {
+        Elem => Proc;
+      }
       Replacements {
         [] Zero.Proc => PZero.Proc ::= "0";
         [0, 1] Plus.Proc => PPar.Proc ::= "(" Proc "|" Proc ")";
@@ -84,7 +87,5 @@ Module Rholang {
     )))))))
   }
 
-  theory let m = u.Monoid() in (
-    let cm = u.CommutativeMonoid(m) in (
-    let pm = ParMonoid(cm) in (pm)))
+  theory ParMonoid(u.CommutativeMonoid(u.Monoid(u.EmptySet())))
 }

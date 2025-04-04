@@ -62,12 +62,6 @@ object InstInterpreterCases {
 
   import BasePresOps._
 
-  def handleRest(): Either[String, BasePres] =
-    Right(empty)
-
-  def handleSub(): Either[String, BasePres] =
-    Right(empty)
-
   def handleEmpty(): Either[String, BasePres] =
     Right(empty)
 
@@ -128,12 +122,65 @@ object InstInterpreterCases {
                      listrewritedecl = Some(filteredRewrites.toList))
   }
 
+  // Helper: If the given Cat equals oldCat, replace it with newCat.
+  def updateCat(cat: Cat, oldCat: Cat, newCat: Cat): Cat =
+    if (cat.equals(oldCat)) newCat else cat
+
+  // Helper: Update an NTerminal by replacing its contained Cat if needed.
+  def updateNTerminal(nt: NTerminal, oldCat: Cat, newCat: Cat): NTerminal = {
+    val updatedCat = updateCat(nt.cat_, oldCat, newCat)
+    // Assumes that NTerminal has a constructor taking a Cat.
+    new NTerminal(updatedCat)
+  }
+
+  // Helper: Update a Rule definition by replacing occurrences of oldCat with newCat
+  def updateRule(rule: Rule, oldCat: Cat, newCat: Cat): Rule = {
+    // Update the main category of the rule.
+    val updatedCat = updateCat(rule.cat_, oldCat, newCat)
+    // Update each item in the rule’s list of items.
+    val updatedItems = rule.listitem_.asScala.toList.map {
+      case nt: NTerminal => updateNTerminal(nt, oldCat, newCat)
+      case other         => other
+    }
+    // Create a new ListItem and add the updated items.
+    val newListItem = new metta_venus.Absyn.ListItem()
+    newListItem.addAll(updatedItems.asJava)
+    // Construct and return a new Rule with the updated category and items, preserving the label.
+    new Rule(rule.label_, updatedCat, newListItem)
+  }
+
+  // Helper: Update a definition (Def). For Rule definitions, apply updateRule.
+  def updateDef(d: Def, oldCat: Cat, newCat: Cat): Def = d match {
+    case r: Rule => updateRule(r, oldCat, newCat)
+    case other   => other
+  }
+
+  // Updated handleAddExports to handle both BaseExport and RenameExport.
   def handleAddExports(interpreter: InstInterpreter, env: List[(String, BasePres)], inst: TheoryInstAddExports): Either[String, BasePres] =
-    interpreter.interpret(env, inst.theoryinst_).map { basePres =>
-      val newCats = inst.listexport_.toArray.toList.collect {
-        case base: BaseExport => base.cat_
+    interpreter.interpret(env, inst.theoryinst_).flatMap { basePres =>
+      // Process each export instruction sequentially.
+      inst.listexport_.toArray.toList.foldLeft[Either[String, BasePres]](Right(basePres)) { (accEither, expInst) =>
+        accEither.flatMap { currentPres =>
+          expInst match {
+            // For a BaseExport, simply add its Cat to the exports list.
+            case base: BaseExport =>
+              val updatedCats = currentPres.listcat_.asScala.toList :+ base.cat_
+              Right(BasePresOps.copyPres(currentPres, listcat = Some(updatedCats)))
+            // For a RenameExport, check that the old Cat is present, then update all occurrences.
+            case re: RenameExport =>
+              val currentCats = currentPres.listcat_.asScala.toList
+              if (!currentCats.exists(cat => cat.equals(re.cat_1))) {
+                Left(s"Error: Cannot rename export. Export ${PrettyPrinter.print(re.cat_1)} not found among current exports.")
+              } else {
+                val updatedCats = currentCats.map(cat => updateCat(cat, re.cat_1, re.cat_2))
+                val updatedDefs = currentPres.listdef_.asScala.toList.map(d => updateDef(d, re.cat_1, re.cat_2))
+                Right(BasePresOps.copyPres(currentPres, listcat = Some(updatedCats), listdef = Some(updatedDefs)))
+              }
+            case _ =>
+              Left("Error: Unknown export type encountered in addExports.")
+          }
+        }
       }
-      copyPres(basePres, listcat = Some(basePres.listcat_.asScala.toList ++ newCats))
     }
 
   def handleAddReplacements(interpreter: InstInterpreter,
@@ -164,11 +211,11 @@ object InstInterpreterCases {
 
           ruleOpt match {
             case None =>
-              Left(s"Error: No definition found with label ${s.label_} in theory.")
+              Left(s"Error: No definition found with label ${PrettyPrinter.print(s.label_)} in theory.")
             case Some(rule) =>
               // Check that the category in the rule matches the replacement's category.
               if (!rule.cat_.equals(s.cat_))
-                Left(s"Error: Category mismatch for definition with label ${s.label_}.")
+                Left(s"Error: Category mismatch for definition with label ${PrettyPrinter.print(s.label_)}.")
               else {
                 // Extract the non-terminal items from the original rule (ignoring Terminals).
                 val origNonTerminals = rule.listitem_.asScala.filter(item => !item.isInstanceOf[Terminal])
@@ -183,7 +230,7 @@ object InstInterpreterCases {
                       val n = origNonTerminals.size
                       val perm: List[Int] = convertIntList(s.intlist_)
                       if (perm.sorted != (0 until n).toList)
-                        Left(s"Error: intlist in replacement for label ${s.label_} " +
+                        Left(s"Error: intlist in replacement for label ${PrettyPrinter.print(s.label_)} " +
                              s"is not a permutation of 0 to ${n - 1}.")
                       else {
                         // For each index j, verify that the category of the jth non-terminal in the original rule
@@ -194,7 +241,7 @@ object InstInterpreterCases {
                           origCat.equals(replCat)
                         }
                         if (!check)
-                          Left(s"Error: Category mismatch among non-terminal items in replacement for label ${s.label_}.")
+                          Left(s"Error: Category mismatch among non-terminal items in replacement for label ${PrettyPrinter.print(s.label_)}.")
                         else {
                           // All checks pass; update the presentation by replacing the matching Rule.
                           val newDefs: List[Def] = currentPres.listdef_.asScala.toList.map {
@@ -207,7 +254,7 @@ object InstInterpreterCases {
                       }
                     }
                   case _ =>
-                    Left(s"Error: Replacement definition for label ${s.label_} is not a Rule.")
+                    Left(s"Error: Replacement definition for label ${PrettyPrinter.print(s.label_)} is not a Rule.")
                 }
               }
           }

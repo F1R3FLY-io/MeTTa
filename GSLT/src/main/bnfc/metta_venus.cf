@@ -68,6 +68,7 @@ TheoryInstRec . TheoryInst5 ::= "let" Ident "=" TheoryInst5 "in" "(" TheoryInst5
 TheoryInstFree . TheoryInst5 ::= "free" "(" DottedPath ")" ;
 TheoryInstConj . TheoryInst4 ::= TheoryInst4 "/\\" TheoryInst5 ;
 TheoryInstDisj . TheoryInst3 ::= TheoryInst3 "\\/" TheoryInst4 ;
+TheoryInstSubtract . TheoryInst2 ::= TheoryInst2 "\\" TheoryInst3 ;
 separator TheoryInst "," ;
 
 BasePres . Pres ::= "Presentation" "Equations" "{" [Cat] "}" "Terms" "{" [Def] "}" "Equations" "{" [Equation] "}" "Rewrites" "{" [RewriteDecl] "}" ;

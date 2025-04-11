@@ -51,12 +51,12 @@ object Main {
                 println(s"\nError during interpretation: $error")
             }
           case None =>
-            println("No TheoryInst found in the main module of ${entryPath}}.")
+            println(s"No TheoryInst found in the main module of ${entryPath}.")
         }
       case Some(_) =>
-        println("Main module ${entryPath}} is not a ModuleImpl.")
+        println(s"Main module ${entryPath} is not a ModuleImpl.")
       case None =>
-        println("Main module ${entryPath}} not found in resolved modules.")
+        println(s"Main module ${entryPath} not found in resolved modules.")
     }
   }
 }

@@ -19,7 +19,7 @@ Module UnivAlg {
       }
   }
 
-  Theory CommutativeMonoid(m: u.Monoid) {
+  Theory CommutativeMonoid(m: Monoid) {
     m
       Replacements {
         [] One . Elem => Zero . Elem ::= "0" ;

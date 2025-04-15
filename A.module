@@ -1,0 +1,23 @@
+Module A {
+  Theory ATh() {
+    Empty
+      Exports {
+        T; U;
+      }
+      Terms {
+        P . T ::= "P";
+        Q . T ::= "Q";
+        Par . T ::= "(" T "|" T ")";
+        Foo . U ::= "Foo";
+        -- Bad . V ::= "Bad";
+      }
+      Equations {
+        (Par x y) == (Par y x);
+        z == (Par x y);
+        z == (Par z z);
+        -- (Par x y) == (Foo);
+      }
+  }
+  
+  theory ATh()
+}

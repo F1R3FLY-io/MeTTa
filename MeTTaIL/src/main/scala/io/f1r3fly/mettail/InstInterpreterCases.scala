@@ -410,9 +410,9 @@ object InstInterpreterCases {
             // match category of rule with context
             context match {
               case Some(ctxCat) if rule.cat_ != ctxCat => 
-                COIIAError(s"""Label ${PrettyPrinter.print(astSExp.label_)}'s 
-                              |category ${PrettyPrinter.print(rule.cat_)} doesn't 
-                              |match context ${PrettyPrinter.print(ctxCat)}""")
+                COIIAError(s"Label ${PrettyPrinter.print(astSExp.label_)}'s"
+                           + s" category ${PrettyPrinter.print(rule.cat_)} doesn't"
+                           + s" match context ${PrettyPrinter.print(ctxCat)}")
               case _ => {
                 // fold over children
                 val childCats = children.zipWithIndex.map {
@@ -433,9 +433,9 @@ object InstInterpreterCases {
                   case (COIIAConcrete(x), COIIAConcrete(y)) => if (x == y) {
                     COIIAConcrete(x)
                   } else {
-                    COIIAError(s"""Identifier $ident has mismatched categories 
-                                  |${PrettyPrinter.print(x)} and ${PrettyPrinter.print(y)} 
-                                  |in ${PrettyPrinter.print(astSExp)}""")
+                    COIIAError(s"Identifier $ident has mismatched categories"
+                               + s" ${PrettyPrinter.print(x)} and ${PrettyPrinter.print(y)}"
+                               + s" in ${PrettyPrinter.print(astSExp)}")
                   }
                   case pair => COIIAError(s"Unexpected pairing in fold: $pair")
                 }
@@ -528,8 +528,8 @@ object InstInterpreterCases {
                   case Var(leftVarName) => rightCat match {
                     case LabelNotFound(label) => Left(s"Label $label not found in equation ${PrettyPrinter.print(eqn)}")
                     case Var(rightVarName) =>
-                      Left(s"""Cannot determine categories of variables $leftVarName and $rightVarName 
-                              |in equation ${PrettyPrinter.print(eqn)}""")
+                      Left(s"Cannot determine categories of variables $leftVarName and $rightVarName"
+                           + s" in equation ${PrettyPrinter.print(eqn)}")
                     case Concrete(rightConcreteCat) => Right(rightConcreteCat)
                   }
                   case Concrete(leftConcreteCat) => rightCat match {
@@ -538,8 +538,8 @@ object InstInterpreterCases {
                     case Concrete(rightConcreteCat) => if (leftConcreteCat == rightConcreteCat) {
                       Right(leftConcreteCat)
                     } else {
-                      Left(s"""Categories of the sides differ (${PrettyPrinter.print(leftConcreteCat)} 
-                              |!= ${PrettyPrinter.print(rightConcreteCat)}) in equation ${PrettyPrinter.print(eqn)}""")
+                      Left(s"Categories of the sides differ (${PrettyPrinter.print(leftConcreteCat)}"
+                           + s" |!= ${PrettyPrinter.print(rightConcreteCat)}) in equation ${PrettyPrinter.print(eqn)}")
                     }
                   }
                 }
@@ -560,8 +560,8 @@ object InstInterpreterCases {
                             case COIIAConcrete(cat) => Right(m + (ident -> cat))
                             case COIIAVar(v) => Right(m)
                             case COIIANotInAST => {
-                              Left(s"""Somehow ${ident} is free (so it appears), but has no category (so it doesn't) in 
-                                      |${PrettyPrinter.print(eqn.ast_1)}?""")
+                              Left(s"Somehow ${ident} is free (so it appears), but has no category"
+                                   + s" (so it doesn't) in ${PrettyPrinter.print(eqn.ast_1)}?")
                             }
                           }
                         }
@@ -580,19 +580,15 @@ object InstInterpreterCases {
                               case None => Right(())
                               case Some(cat2) if cat == cat2 => Right(())
                               case Some(cat2) => {
-                                Left(s"""Variable ${ident} has category ${PrettyPrinter.print(cat)} on the left-
-                                        |hand side and category ${PrettyPrinter.print(cat2)} on the right-hand 
-                                        |side of ${PrettyPrinter.print(eqn)}""")
+                                Left(s"Variable ${ident} has category ${PrettyPrinter.print(cat)} on the left-"
+                                     + s"hand side and category ${PrettyPrinter.print(cat2)} on the right-hand"
+                                     + s" side of ${PrettyPrinter.print(eqn)}")
                               }
                             }
-                            case COIIAVar(v) => freeVars.get(ident) match {
-                              case None => Left(s"""Variable $ident can't be assigned a category in 
-                                                   |equation ${PrettyPrinter.print(eqn)}""")
-                              case Some(cat2) => Right(())
-                            }
+                            case COIIAVar(v) => Right(())
                             case COIIANotInAST => {
-                              Left(s"""Somehow ${ident} is free (so it appears), but has no category (so it doesn't) in 
-                                      |${PrettyPrinter.print(eqn.ast_1)}?!""")
+                              Left(s"Somehow ${ident} is free (so it appears), but has no category"
+                                   + s" (so it doesn't) in ${PrettyPrinter.print(eqn.ast_1)}?!")
                             }
                           }
                           result
@@ -711,8 +707,8 @@ object InstInterpreterCases {
             interpreter.helpers.sequence(actuals.map(interpreter.interpret(env, _))).flatMap { actualPresentations =>
               val formalsEither = baseDecl.listvariabledecl_.asScala.toList.map {
                 case varDecl: VarDecl => Right(varDecl.ident_.toString)
-                case _ => Left(s"""Non-var declaration in formal parameter list 
-                                  |for theory ${PrettyPrinter.print(baseDecl.name_)}""")
+                case _ => Left(s"Non-var declaration in formal parameter list"
+                               + s" for theory ${PrettyPrinter.print(baseDecl.name_)}")
               }
               interpreter.helpers.sequence(formalsEither).flatMap { formals =>
                 val newBindings = formals.zip(actualPresentations)

@@ -76,7 +76,8 @@ Module Rholang {
   }
   
   Theory FreeRholang() {
-    let m = u.Monoid() in (
+    let s = u.EmptySet() in (
+    let m = u.Monoid(s) in (
     let cm = u.CommutativeMonoid(m) in (
     let pm = ParMonoid(cm) in (
     let qd = QuoteDropCalc(pm) in (
@@ -84,6 +85,8 @@ Module Rholang {
     let rc = RhoCalc(qd) in (
     let rl = Rholang(nr, rc) in (
     rl
-    )))))))
+    ))))))))
   }
+  
+  theory FreeRholang()
 }

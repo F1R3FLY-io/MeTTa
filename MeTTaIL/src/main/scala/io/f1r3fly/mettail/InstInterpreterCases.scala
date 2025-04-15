@@ -328,6 +328,14 @@ object InstInterpreterCases {
     case class Var(varName: String) extends CatOfASTResult
     case class Concrete(cat: Cat) extends CatOfASTResult
 
+    def printCatOfASTResult(c: CatOfASTResult) = {
+      c match {
+        case LabelNotFound(l) => s"LabelNotFound(${PrettyPrinter.print(l)})"
+        case Var(v) => s"Var($v)"
+        case Concrete(c) => s"Concrete(${PrettyPrinter.print(c)})"
+      }
+    }
+
     def catOfAST(ast: AST, defs: Map[Label, Rule]): CatOfASTResult = {
       ast match {
         case astVar: ASTVar => Var(astVar.ident_)
@@ -358,17 +366,24 @@ object InstInterpreterCases {
       }.toMap
     }
 
+    sealed trait CatOfIdentInASTResult
+
+    case class COIIAError(err: String) extends CatOfIdentInASTResult
+    case object COIIANotInAST extends CatOfIdentInASTResult
+    case class COIIAVar(varName: String) extends CatOfIdentInASTResult
+    case class COIIAConcrete(cat: Cat) extends CatOfIdentInASTResult
+
     def catOfIdentInAST(
       ident: String,
       defs: Map[Label, Rule],
       context: Option[Cat],
       ast: AST
-    ): Either[String, Option[Cat]] = {
+    ): CatOfIdentInASTResult = {
       ast match {
         case astSubst: ASTSubst => handleASTSubst(ident, defs, context, astSubst)
         case astVar: ASTVar     => handleASTVar(ident, defs, context, astVar)
         case astSExp: ASTSExp   => handleASTSExp(ident, defs, context, astSExp)
-        case _                  => Left(s"Unknown AST type: ${PrettyPrinter.print(ast)}")
+        case _                  => COIIAError(s"Unknown AST type: ${PrettyPrinter.print(ast)}")
       }
     }
 
@@ -381,39 +396,50 @@ object InstInterpreterCases {
       }
     }
 
-    def handleASTSExp(ident: String, defs: Map[Label, Rule], context: Option[Cat], astSExp: ASTSExp): Either[String, Option[Cat]] = {
+    def handleASTSExp(ident: String, defs: Map[Label, Rule], context: Option[Cat], astSExp: ASTSExp): CatOfIdentInASTResult = {
       // match length with rule
       val optRule = defs.get(astSExp.label_)
       optRule match {
-        case None => Left(s"No rule with label ${PrettyPrinter.print(astSExp.label_)}")
+        case None => COIIAError(s"No rule with label ${PrettyPrinter.print(astSExp.label_)}")
         case Some(rule) => {
-          val filtered = rule.listitem_.asScala.filter {
-            case _: Terminal => false
-            case _           => true
-          }
+          val filtered = nonTerminals(rule.listitem_)
           val children = astSExp.listast_.asScala
           if (filtered.length != children.length) {
-            Left(s"Length mismatch with label ${PrettyPrinter.print(astSExp.label_)}")
+            COIIAError(s"Length mismatch with label ${PrettyPrinter.print(astSExp.label_)}")
           } else {
             // match category of rule with context
             context match {
-              case Some(ctxCat) if rule.cat_ != ctxCat => Left(s"Label ${PrettyPrinter.print(astSExp.label_)}'s category ${PrettyPrinter.print(rule.cat_)} doesn't match context ${PrettyPrinter.print(ctxCat)}")
+              case Some(ctxCat) if rule.cat_ != ctxCat => 
+                COIIAError(s"""Label ${PrettyPrinter.print(astSExp.label_)}'s 
+                              |category ${PrettyPrinter.print(rule.cat_)} doesn't 
+                              |match context ${PrettyPrinter.print(ctxCat)}""")
               case _ => {
                 // fold over children
                 val childCats = children.zipWithIndex.map {
-                  case (child, idx) => catOfIdentInAST(ident, defs, optCatFromItem(filtered(idx)), child)
-                }.toSeq
-                childCats.foldLeft[Either[String, Option[Cat]]](Right(None)) {
-                  case (Left(err), _) => Left(err)
-                  case (_, Left(err)) => Left(err)
-                  case (Right(None), other) => other
-                  case (other, Right(None)) => other
-                  case (Right(Some(x)), Right(Some(y))) => if (x == y) {
-                    Right(Some(x))
-                  } else {
-                    Left(s"Identifier $ident has mismatched categories ${PrettyPrinter.print(x)} and ${PrettyPrinter.print(y)} in ${PrettyPrinter.print(astSExp)}")
+                  case (child, idx) => {
+                    val ctx = optCatFromItem(filtered(idx))
+                    catOfIdentInAST(ident, defs, ctx, child)
                   }
+                }.toSeq
+                val result = childCats.foldLeft[CatOfIdentInASTResult](
+                  COIIANotInAST
+                ) {
+                  // An error in any subtree propagates up.
+                  case (COIIAError(err), _) => COIIAError(err)
+                  case (_, COIIAError(err)) => COIIAError(err)
+                  // If it's not found in one subtree, defer to any other result.
+                  case (COIIANotInAST, other) => other
+                  case (other, COIIANotInAST) => other
+                  case (COIIAConcrete(x), COIIAConcrete(y)) => if (x == y) {
+                    COIIAConcrete(x)
+                  } else {
+                    COIIAError(s"""Identifier $ident has mismatched categories 
+                                  |${PrettyPrinter.print(x)} and ${PrettyPrinter.print(y)} 
+                                  |in ${PrettyPrinter.print(astSExp)}""")
+                  }
+                  case pair => COIIAError(s"Unexpected pairing in fold: $pair")
                 }
+                result
               }
             }
           }
@@ -421,18 +447,18 @@ object InstInterpreterCases {
       }
     }
 
-    def handleASTVar(ident: String, defs: Map[Label, Rule], context: Option[Cat], astVar: ASTVar): Either[String, Option[Cat]] = {
+    def handleASTVar(ident: String, defs: Map[Label, Rule], context: Option[Cat], astVar: ASTVar): CatOfIdentInASTResult = {
       if (ident == astVar.ident_) {
         context match {
-          case None => Left(s"No context for identifier $ident")
-          case _ => Right(context)
+          case None => COIIAVar(ident)
+          case Some(ctx) => COIIAConcrete(ctx)
         }
       } else {
-        Right(None)
+        COIIANotInAST
       }
     }
 
-    def handleASTSubst(ident: String, defs: Map[Label, Rule], context: Option[Cat], astSubst: ASTSubst): Either[String, Option[Cat]] = {
+    def handleASTSubst(ident: String, defs: Map[Label, Rule], context: Option[Cat], astSubst: ASTSubst): CatOfIdentInASTResult = {
       catOfIdentInAST(ident, defs, context, findAndReplace(astSubst.ast_2, astSubst.ident_, defs)(astSubst.ast_1))
     }
 
@@ -493,7 +519,8 @@ object InstInterpreterCases {
             eqAbs match {
               case eqn: EquationImpl => {
                 // Check validity of equations as follows
-                // 1. The two sides of the equation have the same category.
+                // 1. The two sides of the equation have the same category
+                //    OR one has a category and the other is a top-level variable.
                 val leftCat = catOfAST(eqn.ast_1, defs)
                 val rightCat = catOfAST(eqn.ast_2, defs)
                 val sameCategory: Either[String, Cat] = leftCat match {
@@ -516,7 +543,7 @@ object InstInterpreterCases {
                     }
                   }
                 }
-      
+
                 sameCategory match {
                   case Left(err) => Left(err)
                   case Right(concreteCat) => {
@@ -529,9 +556,10 @@ object InstInterpreterCases {
                         case Left(err) => Left(err)
                         case Right(m) => {
                           catOfIdentInAST(ident, defs, None, eqn.ast_1) match {
-                            case Left(err) => Left(err)
-                            case Right(Some(cat)) => Right(m + (ident -> cat))
-                            case Right(None) => {
+                            case COIIAError(err) => Left(err)
+                            case COIIAConcrete(cat) => Right(m + (ident -> cat))
+                            case COIIAVar(v) => Right(m)
+                            case COIIANotInAST => {
                               Left(s"""Somehow ${ident} is free (so it appears), but has no category (so it doesn't) in 
                                       |${PrettyPrinter.print(eqn.ast_1)}?""")
                             }
@@ -546,9 +574,9 @@ object InstInterpreterCases {
                         freeVarsInAST(eqn.ast_2).foldLeft[Either[String, Unit]](
                           Right(())
                         ) { (acc, ident) =>
-                          catOfIdentInAST(ident, defs, None, eqn.ast_2) match {
-                            case Left(err) => Left(err)
-                            case Right(Some(cat)) => freeVars.get(ident) match {
+                          val result = catOfIdentInAST(ident, defs, None, eqn.ast_2) match {
+                            case COIIAError(err) => Left(err)
+                            case COIIAConcrete(cat) => freeVars.get(ident) match {
                               case None => Right(())
                               case Some(cat2) if cat == cat2 => Right(())
                               case Some(cat2) => {
@@ -557,15 +585,21 @@ object InstInterpreterCases {
                                         |side of ${PrettyPrinter.print(eqn)}""")
                               }
                             }
-                            case Right(None) => {
+                            case COIIAVar(v) => freeVars.get(ident) match {
+                              case None => Left(s"""Variable $ident can't be assigned a category in 
+                                                   |equation ${PrettyPrinter.print(eqn)}""")
+                              case Some(cat2) => Right(())
+                            }
+                            case COIIANotInAST => {
                               Left(s"""Somehow ${ident} is free (so it appears), but has no category (so it doesn't) in 
                                       |${PrettyPrinter.print(eqn.ast_1)}?!""")
                             }
                           }
+                          result
                         }
                       }
                     }
-                    
+
                   }
                 }
               }
@@ -671,13 +705,14 @@ object InstInterpreterCases {
       case Right((modulePath, theoryDecl)) => theoryDecl match {
         case baseDecl: BaseTheoryDecl =>
           if (baseDecl.listvariabledecl_.size != ctor.listtheoryinst_.size)
-            Left(s"Mismatch in number of arguments for theory ${baseDecl.name_}")
+            Left(s"Mismatch in number of arguments for theory ${PrettyPrinter.print(baseDecl.name_)}")
           else {
             val actuals = ctor.listtheoryinst_.asScala.toList
             interpreter.helpers.sequence(actuals.map(interpreter.interpret(env, _))).flatMap { actualPresentations =>
               val formalsEither = baseDecl.listvariabledecl_.asScala.toList.map {
                 case varDecl: VarDecl => Right(varDecl.ident_.toString)
-                case _ => Left(s"Non-var declaration in formal parameter list for theory ${baseDecl.name_}")
+                case _ => Left(s"""Non-var declaration in formal parameter list 
+                                  |for theory ${PrettyPrinter.print(baseDecl.name_)}""")
               }
               interpreter.helpers.sequence(formalsEither).flatMap { formals =>
                 val newBindings = formals.zip(actualPresentations)

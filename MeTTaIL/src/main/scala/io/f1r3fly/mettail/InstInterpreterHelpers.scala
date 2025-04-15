@@ -22,6 +22,40 @@ object InstInterpreterHelpers {
     case _: ListOne => "(:[])"
   }
 
+  // Used in conj, rewrites, and equations
+  private def labelsInAST(ast: AST): Set[String] = ast match {
+    case astSExp: ASTSExp => Set(labelToString(astSExp.label_))
+    case _                => Set.empty[String]
+  }
+
+  private def labelsInEquation(eq: Equation): Set[String] = eq match {
+    case ef: EquationFresh => labelsInEquation(ef.equation_)
+    case ei: EquationImpl  => labelsInAST(ei.ast_1) ++ labelsInAST(ei.ast_2)
+    case _                 => Set.empty[String]
+  }
+
+  private def labelsInRewrite(rw: Rewrite): Set[String] = rw match {
+    case rb: RewriteBase    => labelsInAST(rb.ast_1) ++ labelsInAST(rb.ast_2)
+    case rc: RewriteContext => labelsInRewrite(rc.rewrite_)
+    case _                  => Set.empty[String]
+  }
+
+  private def sequence[E, A](eithers: List[Either[E, A]]): Either[E, List[A]] =
+    eithers.foldRight(Right(Nil): Either[E, List[A]]) { (e, acc) =>
+      for {
+        x  <- e
+        xs <- acc
+      } yield x :: xs
+    }
+
+  def createLabelHelpers: LabelHelpers = new LabelHelpers {
+    def labelsInAST(ast: AST): Set[String] = InstInterpreterHelpers.labelsInAST(ast)
+    def labelsInEquation(eq: Equation): Set[String] = InstInterpreterHelpers.labelsInEquation(eq)
+    def labelsInRewrite(rw: Rewrite): Set[String] = InstInterpreterHelpers.labelsInRewrite(rw)
+    def sequence[E, A](eithers: List[Either[E, A]]): Either[E, List[A]] =
+      InstInterpreterHelpers.sequence(eithers)
+  }
+
   def replaceCats(oldCat: Cat, newCat: Cat, listItem: ListItem): ListItem = {
     val javaList = listItem.asScala.map {
       case t: Terminal => t

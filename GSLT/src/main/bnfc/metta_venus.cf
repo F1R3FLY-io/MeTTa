@@ -200,7 +200,7 @@ Rule . Def ::= Label "." Cat "::=" [Item] ;
 Terminal         . Item ::= String ;
 NTerminal        . Item ::= Cat ;
 AbsNTerminal     . Item ::= "(" Ident ")" Cat;
-BindNTerminal    . Item ::= "(" "Bind" Ident Ident ")" ;
+BindNTerminal    . Item ::= "(" "Bind" Ident Cat ")" ;
 
 -- Categories
 ListOfCat     . Cat ::= "[" Cat "]" ;

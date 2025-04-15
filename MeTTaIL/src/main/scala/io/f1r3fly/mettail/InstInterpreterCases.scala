@@ -22,7 +22,7 @@ object InstInterpreterCases {
     case _: ListOne => "(:[])"
   }
 
-  object BasePresOps {
+  private object BasePresOps {
     import scala.jdk.CollectionConverters._
 
     // Create an empty instance by calling the no-argument constructors.
@@ -165,36 +165,21 @@ object InstInterpreterCases {
                      listrewritedecl = Some(diffRewrites.toList))
   }
 
-  // Helper: If the given Cat equals oldCat, replace it with newCat.
-  def updateCat(cat: Cat, oldCat: Cat, newCat: Cat): Cat =
-    if (cat.equals(oldCat)) newCat else cat
-
-  // Helper: Update an NTerminal by replacing its contained Cat if needed.
-  def updateNTerminal(nt: NTerminal, oldCat: Cat, newCat: Cat): NTerminal = {
-    val updatedCat = updateCat(nt.cat_, oldCat, newCat)
-    // Assumes that NTerminal has a constructor taking a Cat.
-    new NTerminal(updatedCat)
-  }
-
-  // Helper: Update a Rule definition by replacing occurrences of oldCat with newCat
-  def updateRule(rule: Rule, oldCat: Cat, newCat: Cat): Rule = {
-    // Update the main category of the rule.
-    val updatedCat = updateCat(rule.cat_, oldCat, newCat)
-    // Update each item in the rule’s list of items.
-    val updatedItems = rule.listitem_.asScala.toList.map {
-      case nt: NTerminal => updateNTerminal(nt, oldCat, newCat)
-      case other         => other
-    }
-    // Create a new ListItem and add the updated items.
-    val newListItem = new metta_venus.Absyn.ListItem()
-    newListItem.addAll(updatedItems.asJava)
-    // Construct and return a new Rule with the updated category and items, preserving the label.
-    new Rule(rule.label_, updatedCat, newListItem)
+  private def replaceCats(oldCat: Cat, newCat: Cat, listItem: ListItem): ListItem = {
+    val javaList = listItem.asScala.map {
+      case t: Terminal => t
+      case nt: NTerminal => if (nt.cat_ == oldCat) new NTerminal(newCat) else nt
+      case ant: AbsNTerminal => if (ant.cat_ == oldCat) new AbsNTerminal(ant.ident_, newCat) else ant
+      case bnt: BindNTerminal => if (bnt.cat_ == oldCat) new BindNTerminal(bnt.ident_, newCat) else bnt
+    }.toSeq.asJava
+    val newListItem = new ListItem()
+    newListItem.addAll(javaList)
+    newListItem
   }
 
   // Helper: Update a definition (Def). For Rule definitions, apply updateRule.
-  def updateDef(d: Def, oldCat: Cat, newCat: Cat): Def = d match {
-    case r: Rule => updateRule(r, oldCat, newCat)
+  private def updateDef(d: Def, oldCat: Cat, newCat: Cat): Def = d match {
+    case rule: Rule => new Rule(rule.label_, newCat, replaceCats(oldCat, newCat, rule.listitem_))
     case other   => other
   }
 
@@ -214,7 +199,7 @@ object InstInterpreterCases {
               if (!currentCats.exists(cat => cat.equals(re.cat_1))) {
                 Left(s"Error: Cannot rename export. Export ${PrettyPrinter.print(re.cat_1)} not found among current exports.")
               } else {
-                val updatedCats = currentCats.map(cat => updateCat(cat, re.cat_1, re.cat_2))
+                val updatedCats = currentCats.map(cat => if (cat == re.cat_1) re.cat_2 else re.cat_1)
                 val updatedDefs = currentPres.listdef_.asScala.toList.map(d => updateDef(d, re.cat_1, re.cat_2))
                 Right(BasePresOps.copyPres(currentPres, listcat = Some(updatedCats), listdef = Some(updatedDefs)))
               }
@@ -231,7 +216,7 @@ object InstInterpreterCases {
 
   def handleAddReplacements(interpreter: InstInterpreter,
                             env: List[(String, BasePres)],
-                            inst: TheoryInstAddReplacements): Either[String, BasePres] =
+                            inst: TheoryInstAddReplacements): Either[String, BasePres] = {
     interpreter.interpret(env, inst.theoryinst_).flatMap { basePres =>
       import scala.jdk.CollectionConverters._
       // Convert the Java list of replacements to a Scala list.
@@ -264,11 +249,11 @@ object InstInterpreterCases {
                 Left(s"Error: Category mismatch for definition with label ${PrettyPrinter.print(s.label_)}.")
               else {
                 // Extract the non-terminal items from the original rule (ignoring Terminals).
-                val origNonTerminals = rule.listitem_.asScala.filter(item => !item.isInstanceOf[Terminal])
+                val origNonTerminals = nonTerminals(rule.listitem_)
                 // s.def_ must be a Rule as well.
                 s.def_ match {
                   case replRule: Rule =>
-                    val replNonTerminals = replRule.listitem_.asScala.filter(item => !item.isInstanceOf[Terminal])
+                    val replNonTerminals = nonTerminals(replRule.listitem_)
                     if (origNonTerminals.size != replNonTerminals.size)
                       Left(s"Error: Arity mismatch for definition with label ${s.label_}. " +
                            s"Expected ${origNonTerminals.size} non-terminal items but got ${replNonTerminals.size}.")
@@ -279,12 +264,10 @@ object InstInterpreterCases {
                         Left(s"Error: intlist in replacement for label ${PrettyPrinter.print(s.label_)} " +
                              s"is not a permutation of 0 to ${n - 1}.")
                       else {
-                        // For each index j, verify that the category of the jth non-terminal in the original rule
-                        // matches the category of the non-terminal at position perm(j) in the replacement rule.
+                        // For each index j, verify that the item of the jth non-terminal in the original rule
+                        // matches the item of the non-terminal at position perm(j) in the replacement rule.
                         val check = (0 until n).forall { j =>
-                          val origCat = origNonTerminals(j).asInstanceOf[NTerminal].cat_
-                          val replCat = replNonTerminals(perm(j)).asInstanceOf[NTerminal].cat_
-                          origCat.equals(replCat)
+                          origNonTerminals(j) == replNonTerminals(perm(j))
                         }
                         if (!check)
                           Left(s"Error: Category mismatch among non-terminal items in replacement for label ${PrettyPrinter.print(s.label_)}.")
@@ -307,6 +290,7 @@ object InstInterpreterCases {
         }
       }
     }
+  }
 
   def handleAddTerms(interpreter: InstInterpreter, env: List[(String, BasePres)], inst: TheoryInstAddTerms): Either[String, BasePres] =
     interpreter.interpret(env, inst.theoryinst_).flatMap { basePres =>
@@ -337,33 +321,273 @@ object InstInterpreterCases {
       }
     }
 
-  def handleAddEquations(interpreter: InstInterpreter,
-                          env: List[(String, BasePres)],
-                          inst: TheoryInstAddEquations): Either[String, BasePres] =
-    interpreter.interpret(env, inst.theoryinst_).flatMap { basePres =>
-      // Extract new equations from the instruction.
-      // (Adjust extraction as needed based on your grammar structure.)
-      val newEquations = inst.listequation_.asScala.toList
+  private object addEquationsHelpers {
+    sealed trait CatOfASTResult
 
-      // Compute the set of allowed labels from the definitions in basePres.
-      // Reusing logic similar to that in handleConj.
-      val allowedLabels: Set[String] = basePres.listdef_.asScala.collect {
-        case rule: Rule => labelToString(rule.label_)
-      }.toSet
+    case class LabelNotFound(label: Label) extends CatOfASTResult
+    case class Var(varName: String) extends CatOfASTResult
+    case class Concrete(cat: Cat) extends CatOfASTResult
 
-      // Check each new equation to ensure that every label it mentions is among the allowed labels.
-      newEquations.find { eq =>
-        !interpreter.helpers.labelsInEquation(eq).subsetOf(allowedLabels)
-      } match {
-        case Some(eq) =>
-          val unknownLabels = interpreter.helpers.labelsInEquation(eq) diff allowedLabels
-          Left(s"Error: Equation mentions unknown labels: $unknownLabels in theory ${PrettyPrinter.print(inst)}. Presentation: ${PrettyPrinter.print(basePres)}")
-        case None =>
-          // If all equations are valid, add them to the current presentation.
-          Right(copyPres(basePres,
-                         listequation = Some(basePres.listequation_.asScala.toList ++ newEquations)))
+    def catOfAST(ast: AST, defs: Map[Label, Rule]): CatOfASTResult = {
+      ast match {
+        case astVar: ASTVar => Var(astVar.ident_)
+        case astSExp: ASTSExp => defs.get(astSExp.label_) match {
+          case None => LabelNotFound(astSExp.label_)
+          case Some(rule) => Concrete(rule.cat_)
+        }
+        case astSubst: ASTSubst => catOfAST(astSubst.ast_1, defs) match {
+          case lnf: LabelNotFound => lnf
+          case Var(v) if astSubst.ident_ == v => catOfAST(astSubst.ast_2, defs)
+          case other => other
+        }
       }
     }
+
+    def freeVarsInAST(ast: AST): Set[String] = {
+      ast match {
+        case astVar: ASTVar => Set(astVar.ident_)
+        case astSExp: ASTSExp => astSExp.listast_.asScala.flatMap(freeVarsInAST).toSet
+        case astSubst: ASTSubst => 
+          freeVarsInAST(astSubst.ast_1).filterNot(_ == astSubst.ident_) ++ freeVarsInAST(astSubst.ast_2)
+      }
+    }
+
+    def listDefToMap(listDef: ListDef): Map[Label, Rule] = {
+      listDef.asScala.collect {
+        case rule: Rule => rule.label_ -> rule
+      }.toMap
+    }
+
+    def catOfIdentInAST(
+      ident: String,
+      defs: Map[Label, Rule],
+      context: Option[Cat],
+      ast: AST
+    ): Either[String, Option[Cat]] = {
+      ast match {
+        case astSubst: ASTSubst => handleASTSubst(ident, defs, context, astSubst)
+        case astVar: ASTVar     => handleASTVar(ident, defs, context, astVar)
+        case astSExp: ASTSExp   => handleASTSExp(ident, defs, context, astSExp)
+        case _                  => Left(s"Unknown AST type: ${PrettyPrinter.print(ast)}")
+      }
+    }
+
+    def optCatFromItem(item: Item): Option[Cat] = {
+      item match {
+        case nt: NTerminal => Some(nt.cat_)
+        case ant: AbsNTerminal => Some(ant.cat_)
+        case bnt: BindNTerminal => Some(new IdCat(bnt.ident_))
+        case _: Terminal => None
+      }
+    }
+
+    def handleASTSExp(ident: String, defs: Map[Label, Rule], context: Option[Cat], astSExp: ASTSExp): Either[String, Option[Cat]] = {
+      // match length with rule
+      val optRule = defs.get(astSExp.label_)
+      optRule match {
+        case None => Left(s"No rule with label ${PrettyPrinter.print(astSExp.label_)}")
+        case Some(rule) => {
+          val filtered = rule.listitem_.asScala.filter {
+            case _: Terminal => false
+            case _           => true
+          }
+          val children = astSExp.listast_.asScala
+          if (filtered.length != children.length) {
+            Left(s"Length mismatch with label ${PrettyPrinter.print(astSExp.label_)}")
+          } else {
+            // match category of rule with context
+            context match {
+              case Some(ctxCat) if rule.cat_ != ctxCat => Left(s"Label ${PrettyPrinter.print(astSExp.label_)}'s category ${PrettyPrinter.print(rule.cat_)} doesn't match context ${PrettyPrinter.print(ctxCat)}")
+              case _ => {
+                // fold over children
+                val childCats = children.zipWithIndex.map {
+                  case (child, idx) => catOfIdentInAST(ident, defs, optCatFromItem(filtered(idx)), child)
+                }.toSeq
+                childCats.foldLeft[Either[String, Option[Cat]]](Right(None)) {
+                  case (Left(err), _) => Left(err)
+                  case (_, Left(err)) => Left(err)
+                  case (Right(None), other) => other
+                  case (other, Right(None)) => other
+                  case (Right(Some(x)), Right(Some(y))) => if (x == y) {
+                    Right(Some(x))
+                  } else {
+                    Left(s"Identifier $ident has mismatched categories ${PrettyPrinter.print(x)} and ${PrettyPrinter.print(y)} in ${PrettyPrinter.print(astSExp)}")
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    def handleASTVar(ident: String, defs: Map[Label, Rule], context: Option[Cat], astVar: ASTVar): Either[String, Option[Cat]] = {
+      if (ident == astVar.ident_) {
+        context match {
+          case None => Left(s"No context for identifier $ident")
+          case _ => Right(context)
+        }
+      } else {
+        Right(None)
+      }
+    }
+
+    def handleASTSubst(ident: String, defs: Map[Label, Rule], context: Option[Cat], astSubst: ASTSubst): Either[String, Option[Cat]] = {
+      catOfIdentInAST(ident, defs, context, findAndReplace(astSubst.ast_2, astSubst.ident_, defs)(astSubst.ast_1))
+    }
+
+    // Precondition: any label in the AST has to appear in defs.
+    def findAndReplace(replacement: AST, ident: String, defs: Map[Label, Rule])(ast: AST): AST = {
+      ast match {
+        case astVar: ASTVar => if (astVar.ident_ == ident) replacement else astVar
+        case astSExp: ASTSExp => {
+          val optRule = defs.get(astSExp.label_)
+          optRule match {
+            case Some(rule) => {
+              val filtered = nonTerminals(rule.listitem_)
+              val javaList = filtered.zip(astSExp.listast_.asScala).map {
+                case (item, ast) => item match {
+                  // In the usual case, we recursively replace
+                  case nt: NTerminal => findAndReplace(replacement, ident, defs)(ast)
+
+                  // If the bound variable shadows the one being replaced, don't recurse; otherwise, do
+                  case ant: AbsNTerminal =>
+                    if (ant.ident_ == ident) ast else findAndReplace(replacement, ident, defs)(ast)
+
+                  // Never replace in a BindNTerminal
+                  case bnt: BindNTerminal => ast
+                }
+              }.toSeq.asJava
+              val newListAST = new ListAST()
+              newListAST.addAll(javaList)
+              new ASTSExp(astSExp.label_, newListAST)
+            }
+          }
+        }
+        case astSubst: ASTSubst => {
+          findAndReplace(replacement, ident, defs)(
+            findAndReplace(astSubst.ast_2, astSubst.ident_, defs)(astSubst.ast_1)
+          )
+        }
+      }
+    }
+  }
+
+  import addEquationsHelpers._
+
+  def handleAddEquations(interpreter: InstInterpreter,
+                          env: List[(String, BasePres)],
+                          inst: TheoryInstAddEquations): Either[String, BasePres] = {
+    interpreter.interpret(env, inst.theoryinst_).flatMap { basePres =>
+      val defs: Map[Label, Rule] = listDefToMap(basePres.listdef_)
+      val checkEqns = inst.listequation_.asScala.toList.foldLeft[Either[String, Unit]](
+        Right(())
+      ) { (acc, e) =>
+        acc match {
+          case Left(err) => Left(err)
+          case Right(()) => {
+            var eqAbs = e
+            while (eqAbs.isInstanceOf[EquationFresh]) eqAbs match {
+              case ef: EquationFresh => eqAbs = ef.equation_
+            }
+            eqAbs match {
+              case eqn: EquationImpl => {
+                // Check validity of equations as follows
+                // 1. The two sides of the equation have the same category.
+                val leftCat = catOfAST(eqn.ast_1, defs)
+                val rightCat = catOfAST(eqn.ast_2, defs)
+                val sameCategory: Either[String, Cat] = leftCat match {
+                  case LabelNotFound(label) => Left(s"Label $label not found in equation ${PrettyPrinter.print(eqn)}")
+                  case Var(leftVarName) => rightCat match {
+                    case LabelNotFound(label) => Left(s"Label $label not found in equation ${PrettyPrinter.print(eqn)}")
+                    case Var(rightVarName) =>
+                      Left(s"""Cannot determine categories of variables $leftVarName and $rightVarName 
+                              |in equation ${PrettyPrinter.print(eqn)}""")
+                    case Concrete(rightConcreteCat) => Right(rightConcreteCat)
+                  }
+                  case Concrete(leftConcreteCat) => rightCat match {
+                    case LabelNotFound(label) => Left(s"Label $label not found in equation ${PrettyPrinter.print(eqn)}")
+                    case Var(rightVarName) => Right(leftConcreteCat)
+                    case Concrete(rightConcreteCat) => if (leftConcreteCat == rightConcreteCat) {
+                      Right(leftConcreteCat)
+                    } else {
+                      Left(s"""Categories of the sides differ (${PrettyPrinter.print(leftConcreteCat)} 
+                              |!= ${PrettyPrinter.print(rightConcreteCat)}) in equation ${PrettyPrinter.print(eqn)}""")
+                    }
+                  }
+                }
+      
+                sameCategory match {
+                  case Left(err) => Left(err)
+                  case Right(concreteCat) => {
+                    // 2. Check that each variable has a consistent category
+
+                    val freeInAST1 = freeVarsInAST(eqn.ast_1).foldLeft[Either[String, Map[String, Cat]]](
+                      Right(Map.empty[String, Cat])
+                    ) { (acc, ident) =>
+                      acc match {
+                        case Left(err) => Left(err)
+                        case Right(m) => {
+                          catOfIdentInAST(ident, defs, None, eqn.ast_1) match {
+                            case Left(err) => Left(err)
+                            case Right(Some(cat)) => Right(m + (ident -> cat))
+                            case Right(None) => {
+                              Left(s"""Somehow ${ident} is free (so it appears), but has no category (so it doesn't) in 
+                                      |${PrettyPrinter.print(eqn.ast_1)}?""")
+                            }
+                          }
+                        }
+                      }
+                    }
+
+                    freeInAST1 match {
+                      case Left(err) => Left(err)
+                      case Right(freeVars) => {
+                        freeVarsInAST(eqn.ast_2).foldLeft[Either[String, Unit]](
+                          Right(())
+                        ) { (acc, ident) =>
+                          catOfIdentInAST(ident, defs, None, eqn.ast_2) match {
+                            case Left(err) => Left(err)
+                            case Right(Some(cat)) => freeVars.get(ident) match {
+                              case None => Right(())
+                              case Some(cat2) if cat == cat2 => Right(())
+                              case Some(cat2) => {
+                                Left(s"""Variable ${ident} has category ${PrettyPrinter.print(cat)} on the left-
+                                        |hand side and category ${PrettyPrinter.print(cat2)} on the right-hand 
+                                        |side of ${PrettyPrinter.print(eqn)}""")
+                              }
+                            }
+                            case Right(None) => {
+                              Left(s"""Somehow ${ident} is free (so it appears), but has no category (so it doesn't) in 
+                                      |${PrettyPrinter.print(eqn.ast_1)}?!""")
+                            }
+                          }
+                        }
+                      }
+                    }
+                    
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+      checkEqns match {
+        case Left(err) => Left(err)
+        case Right(()) =>
+          // If all equations are valid, add them to the current presentation.
+          Right(
+            copyPres(
+              basePres,
+              listequation = Some(
+                basePres.listequation_.asScala.toList ++ inst.listequation_.asScala.toList
+              )
+            )
+          )
+      }
+    }
+  }
 
   def handleAddRewrites(interpreter: InstInterpreter,
                         env: List[(String, BasePres)],
@@ -477,140 +701,4 @@ object InstInterpreterCases {
       val envUpdated = env :+ (rec.ident_, pres1)
       interpreter.interpret(envUpdated, rec.theoryinst_2)
     }
-
-  sealed trait CatOfASTResult
-
-  case class LabelNotFound(label: Label) extends CatOfASTResult
-  case class Var(varName: String) extends CatOfASTResult
-  case class Concrete(cat: Cat) extends CatOfASTResult
-
-  def catOfAST(ast: AST, defs: Map[Label, Rule]): CatOfASTResult = {
-    ast match {
-      case astVar: ASTVar => Var(astVar.ident_)
-      case astSExp: ASTSExp => defs.get(astSExp.label_) match {
-        case None => LabelNotFound(astSExp.label_)
-        case Some(rule) => Concrete(rule.cat_)
-      }
-      case astSubst: ASTSubst => catOfAST(astSubst.ast_1, defs) match {
-        case lnf: LabelNotFound => lnf
-        case Var(v) if astSubst.ident_ == v => catOfAST(astSubst.ast_2, defs)
-        case other => other
-      }
-    }
-  }
-
-  def listDefToMap(listDef: ListDef): Map[Label, Rule] = {
-    listDef.asScala.collect {
-      case rule: Rule => rule.label_ -> rule
-    }.toMap
-  }
-
-  def catOfIdentInAST(ident: String, defs: Map[Label, Rule], context: Option[Cat], ast: AST): Either[String, Option[Cat]] = {
-    ast match {
-      case astSubst: ASTSubst => handleASTSubst(ident, defs, context, astSubst)
-      case astVar: ASTVar     => handleASTVar(ident, defs, context, astVar)
-      case astSExp: ASTSExp   => handleASTSExp(ident, defs, context, astSExp)
-      case _                  => Left(s"Unknown AST type: ${PrettyPrinter.print(ast)}")
-    }
-  }
-
-  def optCatFromItem(item: Item): Option[Cat] = {
-    item match {
-      case nt: NTerminal => Some(nt.cat_)
-      case ant: AbsNTerminal => Some(ant.cat_)
-      case bnt: BindNTerminal => Some(new IdCat(bnt.ident_1))
-      case _: Terminal => None
-    }
-  }
-
-  def handleASTSExp(ident: String, defs: Map[Label, Rule], context: Option[Cat], astSExp: ASTSExp): Either[String, Option[Cat]] = {
-    // match length with rule
-    val optRule = defs.get(astSExp.label_)
-    optRule match {
-      case None => Left(s"No rule with label ${PrettyPrinter.print(astSExp.label_)}")
-      case Some(rule) => {
-        val filtered = rule.listitem_.asScala.filter {
-          case _: Terminal => false
-          case _           => true
-        }
-        val children = astSExp.listast_.asScala
-        if (filtered.length != children.length) {
-          Left(s"Length mismatch with label ${PrettyPrinter.print(astSExp.label_)}")
-        } else {
-          // match category of rule with context
-          context match {
-            case Some(ctxCat) if rule.cat_ != ctxCat => Left(s"Label ${PrettyPrinter.print(astSExp.label_)}'s category ${PrettyPrinter.print(rule.cat_)} doesn't match context ${PrettyPrinter.print(ctxCat)}")
-            case _ => {
-              // fold over children
-              val childCats = children.zipWithIndex.map {
-                case (child, idx) => catOfIdentInAST(ident, defs, optCatFromItem(filtered(idx)), child)
-              }.toSeq
-              childCats.foldLeft[Either[String, Option[Cat]]](Right(None)) {
-                case (Left(err), _) => Left(err)
-                case (_, Left(err)) => Left(err)
-                case (Right(None), other) => other
-                case (other, Right(None)) => other
-                case (Right(Some(x)), Right(Some(y))) => if (x == y) {
-                  Right(Some(x))
-                } else {
-                  Left(s"Identifier $ident has mismatched categories ${PrettyPrinter.print(x)} and ${PrettyPrinter.print(y)} in ${PrettyPrinter.print(astSExp)}")
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
-  def handleASTVar(ident: String, defs: Map[Label, Rule], context: Option[Cat], astVar: ASTVar): Either[String, Option[Cat]] = {
-    if (ident == astVar.ident_) {
-      context match {
-        case None => Left(s"No context for identifier $ident")
-        case _ => Right(context)
-      }
-    } else {
-      Right(None)
-    }
-  }
-
-  def handleASTSubst(ident: String, defs: Map[Label, Rule], context: Option[Cat], astSubst: ASTSubst): Either[String, Option[Cat]] = {
-    catOfIdentInAST(ident, defs, context, findAndReplace(astSubst.ast_2, astSubst.ident_, defs)(astSubst.ast_1))
-  }
-
-  // Precondition: any label in the AST has to appear in defs.
-  def findAndReplace(replacement: AST, ident: String, defs: Map[Label, Rule])(ast: AST): AST = {
-    ast match {
-      case astVar: ASTVar => if (astVar.ident_ == ident) replacement else astVar
-      case astSExp: ASTSExp => {
-        val optRule = defs.get(astSExp.label_)
-        optRule match {
-          case Some(rule) => {
-            val filtered = nonTerminals(rule.listitem_)
-            val javaList = filtered.zip(astSExp.listast_.asScala).map {
-              case (item, ast) => item match {
-                // In the usual case, we recursively replace
-                case nt: NTerminal => findAndReplace(replacement, ident, defs)(ast)
-
-                // If the bound variable shadows the one being replaced, don't recurse; otherwise, do
-                case ant: AbsNTerminal =>
-                  if (ant.ident_ == ident) ast else findAndReplace(replacement, ident, defs)(ast)
-
-                // Never replace in a BindNTerminal
-                case bnt: BindNTerminal => ast
-              }
-            }.toSeq.asJava
-            val newListAST = new ListAST()
-            newListAST.addAll(javaList)
-            new ASTSExp(astSExp.label_, newListAST)
-          }
-        }
-      }
-      case astSubst: ASTSubst => {
-        findAndReplace(replacement, ident, defs)(
-          findAndReplace(astSubst.ast_2, astSubst.ident_, defs)(astSubst.ast_1)
-        )
-      }
-    }
-  }
 }

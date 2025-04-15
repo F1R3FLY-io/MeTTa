@@ -18,13 +18,8 @@ class InstInterpreter(resolvedModules: Map[String, Module], currentModulePath: S
     case addEquations: TheoryInstAddEquations       => handleAddEquations(this, env, addEquations)
     case addRewrites: TheoryInstAddRewrites         => handleAddRewrites(this, env, addRewrites)
     case empty: TheoryInstEmpty                     => handleEmpty()
-    case ctor: TheoryInstCtor                       => handleCtor(
-                                                         this,
-                                                         env,
-                                                         resolvedModules,
-                                                         currentModulePath,
-                                                         ctor
-                                                       )
+    case ctor: TheoryInstCtor                       => 
+      handleCtor(this, env, resolvedModules, currentModulePath, ctor)
     case ref: TheoryInstRef                         => handleRef(env, ref)
     case rec: TheoryInstRec                         => handleRec(this, env, rec)
     case free: TheoryInstFree                       => handleFree()

@@ -7,6 +7,8 @@ import scala.jdk.CollectionConverters._
 class InstInterpreter(resolvedModules: Map[String, Module], currentModulePath: String) {
 
   import InstInterpreterCases._
+  import InstInterpreterHelpers._
+
   // BasePresOps is defined in InstInterpreterCases below and imported here
   def interpret(env: List[(String, BasePres)], thInst: TheoryInst): Either[String, BasePres] = thInst match {
     case disj: TheoryInstDisj                       => handleDisj(this, env, disj)

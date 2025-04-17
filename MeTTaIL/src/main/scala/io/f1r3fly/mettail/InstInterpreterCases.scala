@@ -171,7 +171,7 @@ object InstInterpreterCases {
               if (!rule.cat_.equals(s.cat_))
                 Left(s"Error: Category mismatch for definition with label ${PrettyPrinter.print(s.label_)}.")
               else {
-                // Extract the non-terminal items from the original rule (ignoring Terminals).
+                // Extract the non-terminal items from the original rule.
                 val origNonTerminals = nonTerminals(rule.listitem_)
                 // s.def_ must be a Rule as well.
                 s.def_ match {
@@ -382,8 +382,11 @@ object InstInterpreterCases {
           //    OR one has a category and the other is a top-level variable.
           _ <- sameCategory(catOfAST(rb.ast_1, defs), catOfAST(rb.ast_2, defs), rewriteDecl)
           // 2. Check that each variable has a consistent category
+          //    Check that the vars on the left are consistent.
           m1 <- consistentCategory(rb.ast_1, rewriteDecl, defs)
+          //    Check that the vars on the right are consistent.
           m2 <- consistentCategory(rb.ast_2, rewriteDecl, defs)
+          //    Check that the both sides are consistent with each other.
           allVars = m1.keySet ++ m2.keySet
           _ <- allVars.foldLeft[Either[String, Unit]](Right(())) { (acc, ident) =>
             (m1.get(ident), m2.get(ident)) match {
@@ -394,7 +397,7 @@ object InstInterpreterCases {
               case _ => acc
             }
           }
-          // 3. Check each rewrite declaration (all are RDecls) to ensure that
+          // 3. Check each rewrite declaration to ensure that
           //    every variable on the right appears on the left.
           lVars = leftVars(rw)
           rVars = rightVars(rw)
@@ -406,9 +409,12 @@ object InstInterpreterCases {
               + s" not found on the left-hand side: $missingVars"
           )
           
-          // TODO:
           // 4. When the Rewrite is a RewriteContext let Src ~> Tgt in r,
+          //    Src must appear only on the left, Tgt must appear on the right, and
           //    the category of Src must match the category of Tgt
+          hVars = hypVars(rw)
+          _ <- checkHypotheticals(hVars, defs, rb)
+          
           bp <- basePres
         } yield copyPres(
           bp,

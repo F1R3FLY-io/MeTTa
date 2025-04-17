@@ -112,6 +112,14 @@ object InstInterpreterHelpers {
     case _                  => Set.empty[String]
   }
 
+  def hypVars(rew: Rewrite): Set[(String, String)] = rew match {
+    case rc: RewriteContext => {
+      hypVars(rc.rewrite_) ++
+        Set(rc.hypothesis_ match { case h: Hyp => (h.ident_1, h.ident_2) })
+    }
+    case _                  => Set.empty[(String, String)]
+  }
+
   object addEquationsHelpers {
     sealed trait CatOfASTResult
 
@@ -234,6 +242,68 @@ object InstInterpreterHelpers {
         case ant: AbsNTerminal => Some(ant.cat_)
         case bnt: BindNTerminal => Some(new IdCat(bnt.ident_))
         case _: Terminal => None
+      }
+    }
+
+    def checkHypotheticals(
+      hVars: Set[(String, String)],
+      defs: Map[Label, Rule],
+      rb: RewriteBase
+    ): Either[String, Unit] = {
+      hVars.foldLeft[Either[String, Unit]](Right(())) { case (acc, (src, tgt)) =>
+        catOfIdentInAST(src, defs, None, rb.ast_1) match {
+          case COIIAError(err) => Left(err)
+          case COIIANotInAST => Left(s"Source of hypothetical rewrite $src ~> $tgt must"
+                                     + s" appear on the left of ${PrettyPrinter.print(rb)}")
+          case COIIAVar(_) => {
+            catOfIdentInAST(src, defs, None, rb.ast_2) match {
+              case COIIAError(err) => Left(err)
+              case COIIANotInAST => {
+                catOfIdentInAST(tgt, defs, None, rb.ast_1) match {
+                  case COIIAError(err) => Left(err)
+                  case COIIANotInAST => {
+                    catOfIdentInAST(tgt, defs, None, rb.ast_2) match {
+                      case COIIAError(err) => Left(err)
+                      case COIIANotInAST => Left(s"Target of hypothetical rewrite $src ~> $tgt must"
+                                                 + s" appear on the right of ${PrettyPrinter.print(rb)}")
+                      case _ => Right(())
+                    }
+                  }
+                  case _ => Left(s"Target of hypothetical rewrite $src ~> $tgt must not"
+                                 + s" appear on the left of ${PrettyPrinter.print(rb)}")
+                }
+              }
+              case _ => Left(s"Source of hypothetical rewrite $src ~> $tgt must not"
+                             + s" appear on the right of ${PrettyPrinter.print(rb)}")
+            }
+          }
+          case COIIAConcrete(cat1) => {
+            catOfIdentInAST(src, defs, None, rb.ast_2) match {
+              case COIIAError(err) => Left(err)
+              case COIIANotInAST => {
+                catOfIdentInAST(tgt, defs, None, rb.ast_1) match {
+                  case COIIAError(err) => Left(err)
+                  case COIIANotInAST => {
+                    catOfIdentInAST(tgt, defs, None, rb.ast_2) match {
+                      case COIIAError(err) => Left(err)
+                      case COIIANotInAST => Left(s"Target of hypothetical rewrite $src ~> $tgt must"
+                                                 + s" appear on the right of ${PrettyPrinter.print(rb)}")
+                      case COIIAVar(_) => Right(())
+                      case COIIAConcrete(cat2) if cat1 == cat2 => Right(())
+                      case _ => Left(s"Variables of hypothetical rewrite $src ~> $tgt have"
+                                     + s" have different categories ${PrettyPrinter.print(cat1)}"
+                                     + s" and ${PrettyPrinter.print(cat1)} in ${PrettyPrinter.print(rb)}")
+                    }
+                  }
+                  case _ => Left(s"Target of hypothetical rewrite $src ~> $tgt must not"
+                                 + s" appear on the left of ${PrettyPrinter.print(rb)}")
+                }
+              }
+              case _ => Left(s"Source of hypothetical rewrite $src ~> $tgt must not"
+                             + s" appear on the right of ${PrettyPrinter.print(rb)}")
+            }
+          }
+        }
       }
     }
 

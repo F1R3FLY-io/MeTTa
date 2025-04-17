@@ -5,10 +5,21 @@ import metta_venus.PrettyPrinter
 import scala.jdk.CollectionConverters._
 
 object InstInterpreterCases {
+  import AddEqRwHelpers._
+  import ASTHelpers._
   import BasePresOps._
-  import InstInterpreterHelpers._
-  import InstInterpreterHelpers.addEquationsHelpers._
+  import LabelHelpers._
   import ModuleProcessor._
+
+  // Distributes List over Either.  If any element is a Left(err),
+  //   the result is a Left(err); otherwise, it's a Right(listOfA)
+  def sequence[E, A](eithers: List[Either[E, A]]): Either[E, List[A]] =
+    eithers.foldRight(Right(Nil): Either[E, List[A]]) { (e, acc) =>
+      for {
+        x  <- e
+        xs <- acc
+      } yield x :: xs
+    }
 
   def handleEmpty(): Either[String, BasePres] =
     Right(empty)
@@ -31,7 +42,6 @@ object InstInterpreterCases {
                      listrewritedecl = Some(rewrites))
 
   def handleConj(interpreter: InstInterpreter, env: List[(String, BasePres)], conj: TheoryInstConj): Either[String, BasePres] = {
-    val h = interpreter.helpers
     for {
       presA <- interpreter.interpret(env, conj.theoryinst_1)
       presB <- interpreter.interpret(env, conj.theoryinst_2)
@@ -55,12 +65,12 @@ object InstInterpreterCases {
 
       commonEquations = presA.listequation_.asScala.toSet intersect presB.listequation_.asScala.toSet
       filteredEquations = commonEquations.filter { eq =>
-        h.labelsInEquation(eq).subsetOf(allowedLabels)
+        labelsInEquation(eq).subsetOf(allowedLabels)
       }
 
       commonRewrites = presA.listrewritedecl_.asScala.toSet intersect presB.listrewritedecl_.asScala.toSet
       filteredRewrites = commonRewrites.filter {
-        case rdecl: RDecl => h.labelsInRewrite(rdecl.rewrite_).subsetOf(allowedLabels)
+        case rdecl: RDecl => labelsInRewrite(rdecl.rewrite_).subsetOf(allowedLabels)
         case _ => true
       }
     } yield copyPres(empty,
@@ -73,7 +83,6 @@ object InstInterpreterCases {
   def handleSubtract(interpreter: InstInterpreter,
                      env: List[(String, BasePres)],
                      subtract: TheoryInstSubtract): Either[String, BasePres] = {
-    val h = interpreter.helpers
     for {
       bp1 <- interpreter.interpret(env, subtract.theoryinst_1)
       bp2 <- interpreter.interpret(env, subtract.theoryinst_2)
@@ -96,13 +105,13 @@ object InstInterpreterCases {
       // For equations, only keep those not in bp2 and whose mentioned labels are among allowedLabels.
       diffEquations = bp1.listequation_.asScala.toSet.filter { eq =>
         !bp2.listequation_.asScala.toSet.contains(eq) &&
-        h.labelsInEquation(eq).subsetOf(allowedLabels)
+        labelsInEquation(eq).subsetOf(allowedLabels)
       }
       // For rewrite declarations, keep only those not in bp2 and whose rewrite’s labels are a subset of allowedLabels.
       diffRewrites = bp1.listrewritedecl_.asScala.toSet.filter { rw =>
         !bp2.listrewritedecl_.asScala.toSet.contains(rw) &&
         (rw match {
-           case rdecl: RDecl => h.labelsInRewrite(rdecl.rewrite_).subsetOf(allowedLabels)
+           case rdecl: RDecl => labelsInRewrite(rdecl.rewrite_).subsetOf(allowedLabels)
            case _ => true
         })
       }
@@ -357,13 +366,13 @@ object InstInterpreterCases {
             Left(s"Mismatch in number of arguments for theory ${PrettyPrinter.print(baseDecl.name_)}")
           else {
             val actuals = ctor.listtheoryinst_.asScala.toList
-            interpreter.helpers.sequence(actuals.map(interpreter.interpret(env, _))).flatMap { actualPresentations =>
+            sequence(actuals.map(interpreter.interpret(env, _))).flatMap { actualPresentations =>
               val formalsEither = baseDecl.listvariabledecl_.asScala.toList.map {
                 case varDecl: VarDecl => Right(varDecl.ident_.toString)
                 case _ => Left(s"Non-var declaration in formal parameter list"
                                + s" for theory ${PrettyPrinter.print(baseDecl.name_)}")
               }
-              interpreter.helpers.sequence(formalsEither).flatMap { formals =>
+              sequence(formalsEither).flatMap { formals =>
                 val newBindings = formals.zip(actualPresentations)
                 new InstInterpreter(resolvedModules, modulePath).interpret(env ++ newBindings, baseDecl.theoryinst_)
               }

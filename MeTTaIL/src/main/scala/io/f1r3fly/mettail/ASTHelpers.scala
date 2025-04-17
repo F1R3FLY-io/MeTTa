@@ -5,22 +5,27 @@ import scala.annotation.tailrec
 import scala.jdk.CollectionConverters._
 
 object ASTHelpers {
+  
+  // Gets the EquationImpl from an Equation.
   @tailrec
   def equationImpl(e: Equation): EquationImpl = e match {
     case ef: EquationFresh   => equationImpl(ef.equation_)
     case impl: EquationImpl  => impl
   }
 
+  // Gets the RewriteBase from a Rewrite.
   @tailrec
   def rewriteBase(r: Rewrite): RewriteBase = r match {
     case rc: RewriteContext => rewriteBase(rc.rewrite_)
     case rb: RewriteBase => rb
   }
 
+  // Gets the Rewrite from a RewriteDecl.
   def rewrite(rd: RewriteDecl): Rewrite = rd match {
     case r: RDecl => r.rewrite_
   }
 
+  // Substitutes one category for another.  Used by addExports when there's a RenameExport.
   def replaceCats(oldCat: Cat, newCat: Cat, listItem: ListItem): ListItem = {
     val javaList = listItem.asScala.map {
       case t: Terminal => t
@@ -33,10 +38,12 @@ object ASTHelpers {
     newListItem
   }
 
+  // Updates a rule with new information.  Used by addReplacements.
   def updateDef(d: Def, oldCat: Cat, newCat: Cat): Def = d match {
     case rule: Rule => new Rule(rule.label_, newCat, replaceCats(oldCat, newCat, rule.listitem_))
   }
 
+  // All vars (as opposed to free vars)
   def varsInAST(ast: AST): Set[String] = ast match {
     case as: ASTSubst =>
       // Variables appear in as.ast_1, as.ast_2, and as.ident_

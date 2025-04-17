@@ -15,14 +15,7 @@ object AddEqRwHelpers {
   case class COAVar(varName: String) extends CatOfASTResult
   case class COAConcrete(cat: Cat) extends CatOfASTResult
 
-  def printCatOfASTResult(c: CatOfASTResult) = {
-    c match {
-      case COALabelNotFound(l) => s"COALabelNotFound(${PrettyPrinter.print(l)})"
-      case COAVar(v) => s"COAVar($v)"
-      case COAConcrete(c) => s"COAConcrete(${PrettyPrinter.print(c)})"
-    }
-  }
-
+  // Determines the category of an AST.  Doesn't recurse.
   def catOfAST(ast: AST, defs: Map[Label, Rule]): CatOfASTResult = {
     ast match {
       case astVar: ASTVar => COAVar(astVar.ident_)
@@ -38,6 +31,8 @@ object AddEqRwHelpers {
     }
   }
 
+  // Checks if the two sides of an equation or rewrite have the same category
+  // and provides nice error handling when they're not the same.
   def sameCategory(
     leftCat: CatOfASTResult,
     rightCat: CatOfASTResult,
@@ -64,6 +59,10 @@ object AddEqRwHelpers {
     }
   }
   
+  // Checks whether all the free vars in an AST have a consistent category.
+  // For example, we don't want x to refer to both a process and a name in
+  // RHO calculus.
+  // TODO: check consistency of shadowed vars
   def consistentCategory(
     ast: AST,
     defs: Map[Label, Rule],
@@ -87,6 +86,7 @@ object AddEqRwHelpers {
     }
   }
 
+  // Finds all the free variables in an AST.
   def freeVarsInAST(ast: AST): Set[String] = {
     ast match {
       case astVar: ASTVar => Set(astVar.ident_)
@@ -96,12 +96,6 @@ object AddEqRwHelpers {
     }
   }
 
-  def listDefToMap(listDef: ListDef): Map[Label, Rule] = {
-    listDef.asScala.collect {
-      case rule: Rule => rule.label_ -> rule
-    }.toMap
-  }
-
   sealed trait CatOfIdentInASTResult
 
   case class COIIAError(err: String) extends CatOfIdentInASTResult
@@ -109,6 +103,7 @@ object AddEqRwHelpers {
   case class COIIAVar(varName: String) extends CatOfIdentInASTResult
   case class COIIAConcrete(cat: Cat) extends CatOfIdentInASTResult
 
+  // Infers the category of an identifier from its position in an AST.
   def catOfIdentInAST(
     ident: String,
     defs: Map[Label, Rule],
@@ -217,6 +212,7 @@ object AddEqRwHelpers {
     }
   }
 
+  // Validates the use of the vars introduced in the freshness constraints of equations.
   def checkHypotheticals(
     hVars: Set[(String, String)],
     defs: Map[Label, Rule],
@@ -280,7 +276,7 @@ object AddEqRwHelpers {
   }
 
   // Precondition: any label in the AST has to appear in defs.
-  def findAndReplace(replacement: AST, ident: String, defs: Map[Label, Rule])(ast: AST): AST = {
+  private def findAndReplace(replacement: AST, ident: String, defs: Map[Label, Rule])(ast: AST): AST = {
     ast match {
       case astVar: ASTVar => if (astVar.ident_ == ident) replacement else astVar
       case astSExp: ASTSExp => {

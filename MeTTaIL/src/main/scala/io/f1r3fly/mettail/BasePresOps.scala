@@ -37,4 +37,11 @@ object BasePresOps {
 
     new BasePres(newListCat, newListDef, newListEquation, newListRewriteDecl)
   }
+  
+  // Converts the list of defs in a BasePres to a map.
+  def listDefToMap(listDef: ListDef): Map[Label, Rule] = {
+    listDef.asScala.collect {
+      case rule: Rule => rule.label_ -> rule
+    }.toMap
+  }  
 }

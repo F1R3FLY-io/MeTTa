@@ -40,7 +40,7 @@ Module Rholang {
                 (PNew x Src) ~> (PNew x Tgt) ;
       }
   }
- 
+
   Theory QuoteDropCalc(pm: ParMonoid) {
     pm
       Exports {

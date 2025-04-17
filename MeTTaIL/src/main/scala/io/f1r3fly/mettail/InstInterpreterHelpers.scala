@@ -48,6 +48,15 @@ object InstInterpreterHelpers {
       } yield x :: xs
     }
 
+  def rewriteBase(r: Rewrite): RewriteBase = r match {
+    case rb: RewriteBase => rb
+    case rc: RewriteContext => rewriteBase(rc.rewrite_)
+  }
+  
+  def rewrite(rd: RewriteDecl): Rewrite = rd match {
+    case r: RDecl => r.rewrite_
+  }
+
   def createLabelHelpers: LabelHelpers = new LabelHelpers {
     def labelsInAST(ast: AST): Set[String] = InstInterpreterHelpers.labelsInAST(ast)
     def labelsInEquation(eq: Equation): Set[String] = InstInterpreterHelpers.labelsInEquation(eq)
@@ -74,6 +83,33 @@ object InstInterpreterHelpers {
 
   def nonTerminals(items: ListItem): Seq[Item] = {
     items.asScala.toSeq.filter(item => !item.isInstanceOf[Terminal])
+  }
+
+  def varsInAST(ast: AST): Set[String] = ast match {
+    case as: ASTSubst =>
+      // Variables appear in as.ast_1, as.ast_2, and as.ident_
+      varsInAST(as.ast_1) ++ varsInAST(as.ast_2) + as.ident_
+    case av: ASTVar =>
+      Set(av.ident_)
+    case ase: ASTSExp =>
+      ase.listast_.asScala.toSet.flatMap(varsInAST)
+    case _ => Set.empty[String]
+  }
+
+  def leftVars(rew: Rewrite): Set[String] = rew match {
+    case rb: RewriteBase    => varsInAST(rb.ast_1)
+    case rc: RewriteContext => {
+      leftVars(rc.rewrite_) ++
+        Set(rc.hypothesis_ match { case h: Hyp => h.ident_1 }) ++
+        Set(rc.hypothesis_ match { case h: Hyp => h.ident_2 })
+    }
+    case _                  => Set.empty[String]
+  }
+
+  def rightVars(rew: Rewrite): Set[String] = rew match {
+    case rb: RewriteBase    => varsInAST(rb.ast_2)
+    case rc: RewriteContext => rightVars(rc.rewrite_)
+    case _                  => Set.empty[String]
   }
 
   object addEquationsHelpers {
@@ -103,6 +139,56 @@ object InstInterpreterHelpers {
           case COAVar(v) if astSubst.ident_ == v => catOfAST(astSubst.ast_2, defs)
           case other => other
         }
+      }
+    }
+
+    def sameCategory(
+      leftCat: CatOfASTResult,
+      rightCat: CatOfASTResult,
+      rewriteDecl: RewriteDecl
+    ): Either[String, Unit] = leftCat match {
+      case COALabelNotFound(label) => 
+        Left(s"Label $label not found in rewrite ${PrettyPrinter.print(rewriteDecl)}")
+      case COAVar(leftVarName) => rightCat match {
+        case COALabelNotFound(label) => 
+          Left(s"Label $label not found in rewrite ${PrettyPrinter.print(rewriteDecl)}")
+        case COAVar(rightVarName) =>
+          Left(s"Cannot determine categories of variables $leftVarName and $rightVarName"
+               + s" in rewrite ${PrettyPrinter.print(rewriteDecl)}")
+        case COAConcrete(rightConcreteCat) => Right(())
+      }
+      case COAConcrete(leftConcreteCat) => rightCat match {
+        case COALabelNotFound(label) => 
+          Left(s"Label $label not found in rewrite ${PrettyPrinter.print(rewriteDecl)}")
+        case COAVar(rightVarName) => Right(())
+        case COAConcrete(rightConcreteCat) if (leftConcreteCat != rightConcreteCat) =>
+          Left(s"Categories of the sides differ (${PrettyPrinter.print(leftConcreteCat)}"
+               + s" != ${PrettyPrinter.print(rightConcreteCat)}) in rewrite"
+               + s" ${PrettyPrinter.print(rewriteDecl)}")
+        case _ => Right(())
+      }
+    }
+    
+    def consistentCategory(
+      ast: AST,
+      rewriteDecl: RewriteDecl,
+      defs: Map[Label, Rule]
+    ): Either[String, Map[String, Cat]] = {
+      freeVarsInAST(ast).foldLeft[Either[String, Map[String, Cat]]](
+        Right(Map.empty[String, Cat])
+      ){ (acc, ident) =>
+        for {
+          m <- acc
+          newAcc <- catOfIdentInAST(ident, defs, None, ast) match {
+            case COIIAError(err) => Left(err)
+            case COIIAConcrete(cat) => Right(m + (ident -> cat))
+            case COIIAVar(v) => Right(m)
+            case COIIANotInAST => {
+              Left(s"Somehow ${ident} is free (so it appears), but has no category"
+                   + s" (so it doesn't) in ${PrettyPrinter.print(rewriteDecl)}?")
+            }
+          }
+        } yield newAcc
       }
     }
 

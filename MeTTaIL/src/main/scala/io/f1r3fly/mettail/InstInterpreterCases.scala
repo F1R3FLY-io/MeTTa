@@ -244,6 +244,7 @@ object InstInterpreterCases {
       }
     }
 
+  // TODO: convert this to use the same for-structure and helpers as handleAddRewrites below
   def handleAddEquations(interpreter: InstInterpreter,
                           env: List[(String, BasePres)],
                           inst: TheoryInstAddEquations): Either[String, BasePres] = {
@@ -331,7 +332,7 @@ object InstInterpreterCases {
                             case COIIAVar(v) => Right(())
                             case COIIANotInAST => {
                               Left(s"Somehow ${ident} is free (so it appears), but has no category"
-                                   + s" (so it doesn't) in ${PrettyPrinter.print(eqn.ast_1)}?!")
+                                   + s" (so it doesn't) in ${PrettyPrinter.print(eqn.ast_2)}?!")
                             }
                           }
                           result
@@ -366,75 +367,56 @@ object InstInterpreterCases {
                         env: List[(String, BasePres)],
                         inst: TheoryInstAddRewrites): Either[String, BasePres] =
     interpreter.interpret(env, inst.theoryinst_).flatMap { basePres =>
+      val defs: Map[Label, Rule] = listDefToMap(basePres.listdef_)
+
       // Extract the new rewrite declarations from the instruction.
-      val newRewrites = inst.listrewritedecl_.asScala.toList
-
-      val allowedLabels: Set[String] = basePres.listdef_.asScala.collect {
-        case rule: Rule => labelToString(rule.label_)
-      }.toSet
-
-      newRewrites.find {
-        case rd: RDecl => !interpreter.helpers.labelsInRewrite(rd.rewrite_).subsetOf(allowedLabels)
-        case _ => false
-      } match {
-        case Some(rd: RDecl) =>
-          val unknownLabels = interpreter.helpers.labelsInRewrite(rd.rewrite_) diff allowedLabels
-          Left(s"Error: RewriteDecl mentions unknown labels: $unknownLabels in theory ${PrettyPrinter.print(inst)}. Presentation: ${PrettyPrinter.print(basePres)}")
-        case _ =>
-          // Now perform the variable check:
-          // Helper function: extract variable identifiers from an AST.
-          def varsInAST(ast: AST): Set[String] = ast match {
-            case as: ASTSubst =>
-              // Variables appear in as.ast_1, as.ast_2, and as.ident_
-              varsInAST(as.ast_1) ++ varsInAST(as.ast_2) + as.ident_
-            case av: ASTVar =>
-              Set(av.ident_)
-            case ase: ASTSExp =>
-              ase.listast_.asScala.toSet.flatMap(varsInAST)
-            case _ => Set.empty[String]
-          }
-
-          // For a Rewrite, the left-hand side is determined by:
-          def leftVars(rew: Rewrite): Set[String] = rew match {
-            case rb: RewriteBase    => varsInAST(rb.ast_1)
-            case rc: RewriteContext => {
-              leftVars(rc.rewrite_) ++
-                Set(rc.hypothesis_ match { case h: Hyp => h.ident_1 }) ++
-                Set(rc.hypothesis_ match { case h: Hyp => h.ident_2 })
+      inst.listrewritedecl_.asScala.foldLeft[Either[String, BasePres]](
+        Right(basePres)
+      ) { (basePres, rewriteDecl) =>
+        val rw = rewrite(rewriteDecl)
+        val rb = rewriteBase(rw)
+        
+        // Check validity of rewrites as follows
+        for {
+          // 1. The two sides of the rewrite have the same category
+          //    OR one has a category and the other is a top-level variable.
+          _ <- sameCategory(catOfAST(rb.ast_1, defs), catOfAST(rb.ast_2, defs), rewriteDecl)
+          // 2. Check that each variable has a consistent category
+          m1 <- consistentCategory(rb.ast_1, rewriteDecl, defs)
+          m2 <- consistentCategory(rb.ast_2, rewriteDecl, defs)
+          allVars = m1.keySet ++ m2.keySet
+          _ <- allVars.foldLeft[Either[String, Unit]](Right(())) { (acc, ident) =>
+            (m1.get(ident), m2.get(ident)) match {
+              case (Some(l), Some(r)) if l != r =>
+                Left(s"Variable ${ident} has category ${PrettyPrinter.print(l)} on the left-"
+                     + s"hand side and category ${PrettyPrinter.print(r)} on the right-hand"
+                     + s" side of rewrite ${PrettyPrinter.print(rewriteDecl)}")
+              case _ => acc
             }
-            case _                  => Set.empty[String]
           }
-
-          // Similarly, extract the right-hand side variables:
-          def rightVars(rew: Rewrite): Set[String] = rew match {
-            case rb: RewriteBase    => varsInAST(rb.ast_2)
-            case rc: RewriteContext => rightVars(rc.rewrite_)
-            case _                  => Set.empty[String]
-          }
-
-          // Check each rewrite declaration (all are RDecls) to ensure that
-          // every variable on the right appears on the left.
-          newRewrites.find {
-            case rdecl: RDecl =>
-              val lVars = leftVars(rdecl.rewrite_)
-              val rVars = rightVars(rdecl.rewrite_)
-              !rVars.subsetOf(lVars)
-            case _ => false
-          } match {
-            case Some(rdecl: RDecl) =>
-              val lVars = leftVars(rdecl.rewrite_)
-              val rVars = rightVars(rdecl.rewrite_)
-              val missingVars = rVars diff lVars
-              Left(s"Error: In RewriteDecl, variables on the right-hand side not found on the left-hand side: $missingVars")
-            case Some(other) =>
-              sys.error(s"Unexpected RewriteDecl encountered: $other")
-            case None =>
-              Right(copyPres(basePres,
-                             listrewritedecl = Some(basePres.listrewritedecl_.asScala.toList ++ newRewrites)))
-          }
+          // 3. Check each rewrite declaration (all are RDecls) to ensure that
+          //    every variable on the right appears on the left.
+          lVars = leftVars(rw)
+          rVars = rightVars(rw)
+          missingVars = rVars diff lVars
+          _ <- Either.cond(
+            missingVars.isEmpty,
+            (),
+            "Error: In RewriteDecl, variables on the right-hand side"
+              + s" not found on the left-hand side: $missingVars"
+          )
+          
+          // TODO:
+          // 4. When the Rewrite is a RewriteContext let Src ~> Tgt in r,
+          //    the category of Src must match the category of Tgt
+          bp <- basePres
+        } yield copyPres(
+          bp,
+          listrewritedecl = Some(bp.listrewritedecl_.asScala.toList :+ rewriteDecl)
+        )
       }
     }
-
+      
   def handleCtor(interpreter: InstInterpreter, env: List[(String, BasePres)],
                  resolvedModules: Map[String, Module], currentModulePath: String,
                  ctor: TheoryInstCtor): Either[String, BasePres] = {

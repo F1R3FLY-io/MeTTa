@@ -244,121 +244,44 @@ object InstInterpreterCases {
       }
     }
 
-  // TODO: convert this to use the same for-structure and helpers as handleAddRewrites below
   def handleAddEquations(interpreter: InstInterpreter,
                           env: List[(String, BasePres)],
                           inst: TheoryInstAddEquations): Either[String, BasePres] = {
     interpreter.interpret(env, inst.theoryinst_).flatMap { basePres =>
       val defs: Map[Label, Rule] = listDefToMap(basePres.listdef_)
-      val checkEqns = inst.listequation_.asScala.toList.foldLeft[Either[String, Unit]](
-        Right(())
-      ) { (acc, e) =>
-        acc match {
-          case Left(err) => Left(err)
-          case Right(()) => {
-            var eqAbs = e
-            while (eqAbs.isInstanceOf[EquationFresh]) eqAbs match {
-              case ef: EquationFresh => eqAbs = ef.equation_
-            }
-            eqAbs match {
-              case eqn: EquationImpl => {
-                // Check validity of equations as follows
-                // 1. The two sides of the equation have the same category
-                //    OR one has a category and the other is a top-level variable.
-                val leftCat = catOfAST(eqn.ast_1, defs)
-                val rightCat = catOfAST(eqn.ast_2, defs)
-                val sameCategory: Either[String, Cat] = leftCat match {
-                  case COALabelNotFound(label) => Left(s"Label $label not found in equation ${PrettyPrinter.print(eqn)}")
-                  case COAVar(leftVarName) => rightCat match {
-                    case COALabelNotFound(label) => Left(s"Label $label not found in equation ${PrettyPrinter.print(eqn)}")
-                    case COAVar(rightVarName) =>
-                      Left(s"Cannot determine categories of variables $leftVarName and $rightVarName"
-                           + s" in equation ${PrettyPrinter.print(eqn)}")
-                    case COAConcrete(rightConcreteCat) => Right(rightConcreteCat)
-                  }
-                  case COAConcrete(leftConcreteCat) => rightCat match {
-                    case COALabelNotFound(label) => Left(s"Label $label not found in equation ${PrettyPrinter.print(eqn)}")
-                    case COAVar(rightVarName) => Right(leftConcreteCat)
-                    case COAConcrete(rightConcreteCat) => if (leftConcreteCat == rightConcreteCat) {
-                      Right(leftConcreteCat)
-                    } else {
-                      Left(s"Categories of the sides differ (${PrettyPrinter.print(leftConcreteCat)}"
-                           + s" |!= ${PrettyPrinter.print(rightConcreteCat)}) in equation ${PrettyPrinter.print(eqn)}")
-                    }
-                  }
-                }
+      inst.listequation_.asScala.toList.foldLeft[Either[String, BasePres]](
+        Right(basePres)
+      ) { (basePres, e) =>
+        val pretty = s"equation ${PrettyPrinter.print(e)}"
 
-                sameCategory match {
-                  case Left(err) => Left(err)
-                  case Right(concreteCat) => {
-                    // 2. Check that each variable has a consistent category
-
-                    val freeInAST1 = freeVarsInAST(eqn.ast_1).foldLeft[Either[String, Map[String, Cat]]](
-                      Right(Map.empty[String, Cat])
-                    ) { (acc, ident) =>
-                      acc match {
-                        case Left(err) => Left(err)
-                        case Right(m) => {
-                          catOfIdentInAST(ident, defs, None, eqn.ast_1) match {
-                            case COIIAError(err) => Left(err)
-                            case COIIAConcrete(cat) => Right(m + (ident -> cat))
-                            case COIIAVar(v) => Right(m)
-                            case COIIANotInAST => {
-                              Left(s"Somehow ${ident} is free (so it appears), but has no category"
-                                   + s" (so it doesn't) in ${PrettyPrinter.print(eqn.ast_1)}?")
-                            }
-                          }
-                        }
-                      }
-                    }
-
-                    freeInAST1 match {
-                      case Left(err) => Left(err)
-                      case Right(freeVars) => {
-                        freeVarsInAST(eqn.ast_2).foldLeft[Either[String, Unit]](
-                          Right(())
-                        ) { (acc, ident) =>
-                          val result = catOfIdentInAST(ident, defs, None, eqn.ast_2) match {
-                            case COIIAError(err) => Left(err)
-                            case COIIAConcrete(cat) => freeVars.get(ident) match {
-                              case None => Right(())
-                              case Some(cat2) if cat == cat2 => Right(())
-                              case Some(cat2) => {
-                                Left(s"Variable ${ident} has category ${PrettyPrinter.print(cat)} on the left-"
-                                     + s"hand side and category ${PrettyPrinter.print(cat2)} on the right-hand"
-                                     + s" side of ${PrettyPrinter.print(eqn)}")
-                              }
-                            }
-                            case COIIAVar(v) => Right(())
-                            case COIIANotInAST => {
-                              Left(s"Somehow ${ident} is free (so it appears), but has no category"
-                                   + s" (so it doesn't) in ${PrettyPrinter.print(eqn.ast_2)}?!")
-                            }
-                          }
-                          result
-                        }
-                      }
-                    }
-
-                  }
-                }
-              }
+        // Check validity of equations as follows
+        for {
+          bp <- basePres
+          eqn = equationImpl(e)
+          // 1. The two sides of the equation have the same category
+          //    OR one has a category and the other is a top-level variable.
+          _ <- sameCategory(catOfAST(eqn.ast_1, defs), catOfAST(eqn.ast_2, defs), pretty)
+          // 2. Check that each variable has a consistent category
+          //    Check that the vars on the left are consistent.
+          m1 <- consistentCategory(eqn.ast_1, defs, pretty)
+          //    Check that the vars on the right are consistent.
+          m2 <- consistentCategory(eqn.ast_2, defs, pretty)
+          //    Check that the both sides are consistent with each other.
+          allVars = m1.keySet ++ m2.keySet
+          _ <- allVars.foldLeft[Either[String, Unit]](Right(())) { (acc, ident) =>
+            (m1.get(ident), m2.get(ident)) match {
+              case (Some(l), Some(r)) if l != r =>
+                Left(s"Variable ${ident} has category ${PrettyPrinter.print(l)} on the left-"
+                     + s"hand side and category ${PrettyPrinter.print(r)} on the right-hand"
+                     + s" side of $pretty")
+              case _ => acc
             }
           }
-        }
-      }
-      checkEqns match {
-        case Left(err) => Left(err)
-        case Right(()) =>
-          // If all equations are valid, add them to the current presentation.
-          Right(
-            copyPres(
-              basePres,
-              listequation = Some(
-                basePres.listequation_.asScala.toList ++ inst.listequation_.asScala.toList
-              )
-            )
-          )
+  
+        } yield copyPres(
+          bp,
+          listequation = Some(bp.listequation_.asScala.toList :+ e)
+        )
       }
     }
   }
@@ -375,17 +298,18 @@ object InstInterpreterCases {
       ) { (basePres, rewriteDecl) =>
         val rw = rewrite(rewriteDecl)
         val rb = rewriteBase(rw)
+        val pretty = s"rewrite ${PrettyPrinter.print(rewriteDecl)}"
         
         // Check validity of rewrites as follows
         for {
           // 1. The two sides of the rewrite have the same category
           //    OR one has a category and the other is a top-level variable.
-          _ <- sameCategory(catOfAST(rb.ast_1, defs), catOfAST(rb.ast_2, defs), rewriteDecl)
+          _ <- sameCategory(catOfAST(rb.ast_1, defs), catOfAST(rb.ast_2, defs), pretty)
           // 2. Check that each variable has a consistent category
           //    Check that the vars on the left are consistent.
-          m1 <- consistentCategory(rb.ast_1, rewriteDecl, defs)
+          m1 <- consistentCategory(rb.ast_1, defs, pretty)
           //    Check that the vars on the right are consistent.
-          m2 <- consistentCategory(rb.ast_2, rewriteDecl, defs)
+          m2 <- consistentCategory(rb.ast_2, defs, pretty)
           //    Check that the both sides are consistent with each other.
           allVars = m1.keySet ++ m2.keySet
           _ <- allVars.foldLeft[Either[String, Unit]](Right(())) { (acc, ident) =>
@@ -393,7 +317,7 @@ object InstInterpreterCases {
               case (Some(l), Some(r)) if l != r =>
                 Left(s"Variable ${ident} has category ${PrettyPrinter.print(l)} on the left-"
                      + s"hand side and category ${PrettyPrinter.print(r)} on the right-hand"
-                     + s" side of rewrite ${PrettyPrinter.print(rewriteDecl)}")
+                     + s" side of $pretty")
               case _ => acc
             }
           }
@@ -410,10 +334,9 @@ object InstInterpreterCases {
           )
           
           // 4. When the Rewrite is a RewriteContext let Src ~> Tgt in r,
-          //    Src must appear only on the left, Tgt must appear on the right, and
-          //    the category of Src must match the category of Tgt
-          hVars = hypVars(rw)
-          _ <- checkHypotheticals(hVars, defs, rb)
+          //    Src must appear only on the left, Tgt must appear only on the right,
+          //    and the category of Src must match the category of Tgt
+          _ <- checkHypotheticals(hypVars(rw), defs, rb)
           
           bp <- basePres
         } yield copyPres(

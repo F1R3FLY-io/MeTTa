@@ -2,6 +2,7 @@ package io.f1r3fly.mettail
 
 import metta_venus.Absyn._
 import metta_venus.PrettyPrinter
+import scala.annotation.tailrec
 import scala.jdk.CollectionConverters._
 
 object InstInterpreterHelpers {
@@ -47,6 +48,12 @@ object InstInterpreterHelpers {
         xs <- acc
       } yield x :: xs
     }
+
+  @tailrec
+  def equationImpl(e: Equation): EquationImpl = e match {
+    case ef: EquationFresh   => equationImpl(ef.equation_)
+    case impl: EquationImpl  => impl
+  }
 
   def rewriteBase(r: Rewrite): RewriteBase = r match {
     case rb: RewriteBase => rb
@@ -153,34 +160,33 @@ object InstInterpreterHelpers {
     def sameCategory(
       leftCat: CatOfASTResult,
       rightCat: CatOfASTResult,
-      rewriteDecl: RewriteDecl
+      prettyStructure: String
     ): Either[String, Unit] = leftCat match {
       case COALabelNotFound(label) => 
-        Left(s"Label $label not found in rewrite ${PrettyPrinter.print(rewriteDecl)}")
+        Left(s"Label $label not found in $prettyStructure")
       case COAVar(leftVarName) => rightCat match {
         case COALabelNotFound(label) => 
-          Left(s"Label $label not found in rewrite ${PrettyPrinter.print(rewriteDecl)}")
+          Left(s"Label $label not found in $prettyStructure")
         case COAVar(rightVarName) =>
           Left(s"Cannot determine categories of variables $leftVarName and $rightVarName"
-               + s" in rewrite ${PrettyPrinter.print(rewriteDecl)}")
+               + s" in $prettyStructure")
         case COAConcrete(rightConcreteCat) => Right(())
       }
       case COAConcrete(leftConcreteCat) => rightCat match {
         case COALabelNotFound(label) => 
-          Left(s"Label $label not found in rewrite ${PrettyPrinter.print(rewriteDecl)}")
+          Left(s"Label $label not found in $prettyStructure")
         case COAVar(rightVarName) => Right(())
         case COAConcrete(rightConcreteCat) if (leftConcreteCat != rightConcreteCat) =>
           Left(s"Categories of the sides differ (${PrettyPrinter.print(leftConcreteCat)}"
-               + s" != ${PrettyPrinter.print(rightConcreteCat)}) in rewrite"
-               + s" ${PrettyPrinter.print(rewriteDecl)}")
+               + s" != ${PrettyPrinter.print(rightConcreteCat)}) in $prettyStructure")
         case _ => Right(())
       }
     }
     
     def consistentCategory(
       ast: AST,
-      rewriteDecl: RewriteDecl,
-      defs: Map[Label, Rule]
+      defs: Map[Label, Rule],
+      prettyStructure: String
     ): Either[String, Map[String, Cat]] = {
       freeVarsInAST(ast).foldLeft[Either[String, Map[String, Cat]]](
         Right(Map.empty[String, Cat])
@@ -193,7 +199,7 @@ object InstInterpreterHelpers {
             case COIIAVar(v) => Right(m)
             case COIIANotInAST => {
               Left(s"Somehow ${ident} is free (so it appears), but has no category"
-                   + s" (so it doesn't) in ${PrettyPrinter.print(rewriteDecl)}?")
+                   + s" (so it doesn't) in $prettyStructure?\n${PrettyPrinter.print(ast)}")
             }
           }
         } yield newAcc
@@ -233,6 +239,91 @@ object InstInterpreterHelpers {
         case astVar: ASTVar     => handleASTVar(ident, defs, context, astVar)
         case astSExp: ASTSExp   => handleASTSExp(ident, defs, context, astSExp)
         case _                  => COIIAError(s"Unknown AST type: ${PrettyPrinter.print(ast)}")
+      }
+    }
+
+    def handleASTSExp(ident: String, defs: Map[Label, Rule], context: Option[Cat], astSExp: ASTSExp): CatOfIdentInASTResult = {
+      // match length with rule
+      val optRule = defs.get(astSExp.label_)
+      optRule match {
+        case None => COIIAError(s"No rule with label ${PrettyPrinter.print(astSExp.label_)}")
+        case Some(rule) => {
+          val filtered = nonTerminals(rule.listitem_)
+          val children = astSExp.listast_.asScala
+          if (filtered.length != children.length) {
+            COIIAError(s"Length mismatch with label ${PrettyPrinter.print(astSExp.label_)}")
+          } else {
+            // match category of rule with context
+            context match {
+              case Some(ctxCat) if rule.cat_ != ctxCat => 
+                COIIAError(s"Label ${PrettyPrinter.print(astSExp.label_)}'s"
+                           + s" category ${PrettyPrinter.print(rule.cat_)} doesn't"
+                           + s" match context ${PrettyPrinter.print(ctxCat)}")
+              case _ => {
+                // fold over children
+                val childCats = children.zipWithIndex.map {
+                  case (child, idx) => {
+                    val ctx = optCatFromItem(filtered(idx))
+                    catOfIdentInAST(ident, defs, ctx, child)
+                  }
+                }.toSeq
+                val result = childCats.foldLeft[CatOfIdentInASTResult](
+                  COIIANotInAST
+                ) {
+                  // An error in any subtree propagates up.
+                  case (COIIAError(err), _) => COIIAError(err)
+                  case (_, COIIAError(err)) => COIIAError(err)
+                  // If it's not found in one subtree, defer to any other result.
+                  case (COIIANotInAST, other) => other
+                  case (other, COIIANotInAST) => other
+                  case (COIIAConcrete(x), COIIAConcrete(y)) => if (x == y) {
+                    COIIAConcrete(x)
+                  } else {
+                    COIIAError(s"Identifier $ident has mismatched categories"
+                               + s" ${PrettyPrinter.print(x)} and ${PrettyPrinter.print(y)}"
+                               + s" in ${PrettyPrinter.print(astSExp)}")
+                  }
+                  case pair => COIIAError(s"Unexpected pairing in fold: $pair")
+                }
+                result
+              }
+            }
+          }
+        }
+      }
+    }
+
+    def handleASTVar(ident: String, defs: Map[Label, Rule], context: Option[Cat], astVar: ASTVar): CatOfIdentInASTResult = {
+      if (ident == astVar.ident_) {
+        context match {
+          case None => COIIAVar(ident)
+          case Some(ctx) => COIIAConcrete(ctx)
+        }
+      } else {
+        COIIANotInAST
+      }
+    }
+
+    def handleASTSubst(ident: String, defs: Map[Label, Rule], context: Option[Cat], astSubst: ASTSubst): CatOfIdentInASTResult = {
+      // Find cat of ident in astSubst.ast_2, then check it's consistent with
+      //   cat of ident in astSubst.ast_1 after substitution happens
+      val catInReplaced = catOfIdentInAST(
+        ident,
+        defs,
+        context,
+        findAndReplace(astSubst.ast_2, astSubst.ident_, defs)(astSubst.ast_1)
+      )
+      val coiiacat1 = catOfIdentInAST(ident, defs, context, astSubst.ast_2)
+      coiiacat1 match {
+        case COIIAError(err) => COIIAError(err)
+        case COIIAConcrete(cat1) => catInReplaced match {
+          case COIIAError(err) => COIIAError(err)
+          case COIIAConcrete(cat2) if cat1 == cat2 => COIIAConcrete(cat1)
+          case COIIAConcrete(cat2) => COIIAError(s"Variable $ident has inconsistent categories"
+                                                 + s" $cat1 and $cat2 in ${PrettyPrinter.print(astSubst)}")
+          case _ => COIIAConcrete(cat1)
+        }
+        case _ => catInReplaced
       }
     }
 
@@ -305,72 +396,6 @@ object InstInterpreterHelpers {
           }
         }
       }
-    }
-
-    def handleASTSExp(ident: String, defs: Map[Label, Rule], context: Option[Cat], astSExp: ASTSExp): CatOfIdentInASTResult = {
-      // match length with rule
-      val optRule = defs.get(astSExp.label_)
-      optRule match {
-        case None => COIIAError(s"No rule with label ${PrettyPrinter.print(astSExp.label_)}")
-        case Some(rule) => {
-          val filtered = nonTerminals(rule.listitem_)
-          val children = astSExp.listast_.asScala
-          if (filtered.length != children.length) {
-            COIIAError(s"Length mismatch with label ${PrettyPrinter.print(astSExp.label_)}")
-          } else {
-            // match category of rule with context
-            context match {
-              case Some(ctxCat) if rule.cat_ != ctxCat => 
-                COIIAError(s"Label ${PrettyPrinter.print(astSExp.label_)}'s"
-                           + s" category ${PrettyPrinter.print(rule.cat_)} doesn't"
-                           + s" match context ${PrettyPrinter.print(ctxCat)}")
-              case _ => {
-                // fold over children
-                val childCats = children.zipWithIndex.map {
-                  case (child, idx) => {
-                    val ctx = optCatFromItem(filtered(idx))
-                    catOfIdentInAST(ident, defs, ctx, child)
-                  }
-                }.toSeq
-                val result = childCats.foldLeft[CatOfIdentInASTResult](
-                  COIIANotInAST
-                ) {
-                  // An error in any subtree propagates up.
-                  case (COIIAError(err), _) => COIIAError(err)
-                  case (_, COIIAError(err)) => COIIAError(err)
-                  // If it's not found in one subtree, defer to any other result.
-                  case (COIIANotInAST, other) => other
-                  case (other, COIIANotInAST) => other
-                  case (COIIAConcrete(x), COIIAConcrete(y)) => if (x == y) {
-                    COIIAConcrete(x)
-                  } else {
-                    COIIAError(s"Identifier $ident has mismatched categories"
-                               + s" ${PrettyPrinter.print(x)} and ${PrettyPrinter.print(y)}"
-                               + s" in ${PrettyPrinter.print(astSExp)}")
-                  }
-                  case pair => COIIAError(s"Unexpected pairing in fold: $pair")
-                }
-                result
-              }
-            }
-          }
-        }
-      }
-    }
-
-    def handleASTVar(ident: String, defs: Map[Label, Rule], context: Option[Cat], astVar: ASTVar): CatOfIdentInASTResult = {
-      if (ident == astVar.ident_) {
-        context match {
-          case None => COIIAVar(ident)
-          case Some(ctx) => COIIAConcrete(ctx)
-        }
-      } else {
-        COIIANotInAST
-      }
-    }
-
-    def handleASTSubst(ident: String, defs: Map[Label, Rule], context: Option[Cat], astSubst: ASTSubst): CatOfIdentInASTResult = {
-      catOfIdentInAST(ident, defs, context, findAndReplace(astSubst.ast_2, astSubst.ident_, defs)(astSubst.ast_1))
     }
 
     // Precondition: any label in the AST has to appear in defs.

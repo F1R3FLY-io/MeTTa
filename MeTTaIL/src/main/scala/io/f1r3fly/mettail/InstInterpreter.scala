@@ -3,8 +3,13 @@ package io.f1r3fly.mettail
 import metta_venus.Absyn._
 import metta_venus.PrettyPrinter
 import scala.jdk.CollectionConverters._
+import ModuleProcessor._
 
-class InstInterpreter(resolvedModules: Map[String, Module], currentModulePath: String) {
+class InstInterpreter(
+  resolvedModules: Map[String, Module],
+  currentModulePath: String,
+  moduleProcessor: ModuleProcessor
+) {
 
   import InstInterpreterCases._
 
@@ -20,7 +25,7 @@ class InstInterpreter(resolvedModules: Map[String, Module], currentModulePath: S
     case addRewrites: TheoryInstAddRewrites         => handleAddRewrites(this, env, addRewrites)
     case empty: TheoryInstEmpty                     => handleEmpty()
     case ctor: TheoryInstCtor                       => 
-      handleCtor(this, env, resolvedModules, currentModulePath, ctor)
+      handleCtor(this, env, resolvedModules, currentModulePath, ctor, moduleProcessor)
     case ref: TheoryInstRef                         => handleRef(env, ref)
     case rec: TheoryInstRec                         => handleRec(this, env, rec)
     case free: TheoryInstFree                       => handleFree()

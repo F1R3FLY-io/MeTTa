@@ -286,7 +286,7 @@ object InstInterpreterCases {
               case _ => acc
             }
           }
-  
+
         } yield copyPres(
           bp,
           listequation = Some(bp.listequation_.asScala.toList :+ e)
@@ -308,7 +308,7 @@ object InstInterpreterCases {
         val rw = rewrite(rewriteDecl)
         val rb = rewriteBase(rw)
         val pretty = s"rewrite ${PrettyPrinter.print(rewriteDecl)}"
-        
+
         // Check validity of rewrites as follows
         for {
           // 1. The two sides of the rewrite have the same category
@@ -341,12 +341,12 @@ object InstInterpreterCases {
             "Error: In RewriteDecl, variables on the right-hand side"
               + s" not found on the left-hand side: $missingVars"
           )
-          
+
           // 4. When the Rewrite is a RewriteContext let Src ~> Tgt in r,
           //    Src must appear only on the left, Tgt must appear only on the right,
           //    and the category of Src must match the category of Tgt
           _ <- checkHypotheticals(hypVars(rw), defs, rb)
-          
+
           bp <- basePres
         } yield copyPres(
           bp,
@@ -354,11 +354,16 @@ object InstInterpreterCases {
         )
       }
     }
-      
-  def handleCtor(interpreter: InstInterpreter, env: List[(String, BasePres)],
-                 resolvedModules: Map[String, Module], currentModulePath: String,
-                 ctor: TheoryInstCtor): Either[String, BasePres] = {
-    resolveDottedPath(resolvedModules, currentModulePath, ctor.dottedpath_) match {
+
+  def handleCtor(
+    interpreter: InstInterpreter,
+    env: List[(String, BasePres)],
+    resolvedModules: Map[String, Module],
+    currentModulePath: String,
+    ctor: TheoryInstCtor,
+    moduleProcessor: ModuleProcessor
+  ): Either[String, BasePres] = {
+    moduleProcessor.resolveDottedPath(resolvedModules, currentModulePath, ctor.dottedpath_) match {
       case Left(error) => Left(error)
       case Right((modulePath, theoryDecl)) => theoryDecl match {
         case baseDecl: BaseTheoryDecl =>
@@ -374,7 +379,11 @@ object InstInterpreterCases {
               }
               sequence(formalsEither).flatMap { formals =>
                 val newBindings = formals.zip(actualPresentations)
-                new InstInterpreter(resolvedModules, modulePath).interpret(env ++ newBindings, baseDecl.theoryinst_)
+                new InstInterpreter(
+                  resolvedModules,
+                  modulePath,
+                  moduleProcessor
+                ).interpret(env ++ newBindings, baseDecl.theoryinst_)
               }
             }
           }

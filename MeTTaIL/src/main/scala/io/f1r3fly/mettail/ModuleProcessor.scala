@@ -1,19 +1,54 @@
 package io.f1r3fly.mettail
 
-import java.io.{File, FileReader, Reader}
-import org.antlr.v4.runtime.ANTLRInputStream
-import org.antlr.v4.runtime.CommonTokenStream
+import java.io.Reader
+import org.antlr.v4.runtime.{ANTLRInputStream, CommonTokenStream}
 import metta_venus.Absyn._
 import metta_venus.{MettaVenusLexer, MettaVenusParser, PrettyPrinter}
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
 
-object ModuleProcessor {
+/** A small interface over a backing store.
+  * In prod use RealFileSystem; in tests swap in a FakeFileSystem.
+  */
+trait FileSystem {
+  /** Normalize and dedupe a path (e.g. remove “../” and symlinks). */
+  def canonical(path: String): String
+
+  /** Open a reader on the given path. */
+  def reader(path: String): Reader
+
+  /** Given a parent directory and a child filename, produce a new path. */
+  def join(parentPath: String, child: String): String
+
+  /** Given a path, return its parent directory path. */
+  def parent(path: String): String
+}
+
+/** Implementation using java.io.File/FileReader. */
+class RealFileSystem extends FileSystem {
+  import java.io.{File, FileReader}
+  override def canonical(path: String): String =
+    new File(path).getCanonicalPath
+
+  override def reader(path: String): Reader =
+    new FileReader(path)
+
+  override def join(parentPath: String, child: String): String = {
+    val parentDir = new File(parentPath).getParentFile
+    new File(parentDir, child).getPath
+  }
+
+  override def parent(path: String): String =
+    new File(path).getParentFile.getPath
+}
+
+class ModuleProcessor(fs: FileSystem) {
 
   def dottedPathToString(dottedPath: DottedPath): String =
     dottedPath match {
-      case bdp: BaseDottedPath => bdp.ident_
-      case qdp: QualifiedDottedPath => s"${qdp.ident_}.${dottedPathToString(qdp.dottedpath_)}"
+      case bdp: BaseDottedPath           => bdp.ident_
+      case qdp: QualifiedDottedPath =>
+        s"${qdp.ident_}.${dottedPathToString(qdp.dottedpath_)}"
     }
 
   def resolveModules(entryPath: String): Map[String, Module] = {
@@ -21,39 +56,40 @@ object ModuleProcessor {
     val loaded = mutable.Map[String, Module]()
 
     def resolveModule(path: String): Unit = {
-      val file = new File(path)
-      val canonicalPath = file.getCanonicalPath
-
-      // If this module is already loaded, skip reloading.
+      // Normalize. If this module is already loaded, skip reloading.
+      val canonicalPath = fs.canonical(path)
       if (loaded.contains(canonicalPath)) return
 
       // Open and parse the module.
-      val reader: Reader = new FileReader(file)
-      val lexer = new MettaVenusLexer(new ANTLRInputStream(reader))
+      val rdr    = fs.reader(canonicalPath)
+      val lexer  = new MettaVenusLexer(new ANTLRInputStream(rdr))
       lexer.addErrorListener(new BNFCErrorListener)
       val tokens = new CommonTokenStream(lexer)
       val parser = new MettaVenusParser(tokens)
       parser.addErrorListener(new BNFCErrorListener)
-      val pc = parser.start_Module()
-      val mod = pc.result.asInstanceOf[Module]
+      val pc     = parser.start_Module()
+      val mod    = pc.result.asInstanceOf[Module]
 
       // Add the parsed module to the cache.
       loaded(canonicalPath) = mod
 
-      // Process each import statement in the module.
-      // We assume that if the parsed module is an instance of ModuleImpl,
-      // it has a field `listimport_` containing the list of import statements.
+      val parentDir = fs.parent(canonicalPath)
+
+      // Walk imports.
       mod match {
         case m: ModuleImpl =>
           m.listimport_.asScala.foreach {
             case imp: ImportModuleAs =>
-              val importedFile = new File(file.getParentFile, imp.string_)
-              resolveModule(importedFile.getCanonicalPath)
+              val importedPath = fs.canonical(fs.join(parentDir, imp.string_))
+              resolveModule(importedPath)
+
             case imp: ImportFromModule =>
-              val importedFile = new File(file.getParentFile, imp.string_)
-              resolveModule(importedFile.getCanonicalPath)
+              val importedPath = fs.canonical(fs.join(parentDir, imp.string_))
+              resolveModule(importedPath)
+
             case _ => ()
           }
+
         case _ => ()
       }
     }
@@ -62,24 +98,21 @@ object ModuleProcessor {
     loaded.toMap
   }
 
-  /** Helper function to search for a theory declaration with the given name
-    * in a module (assumed to be a ModuleImpl).
-    */
-  def findTheoryDeclInModule(m: ModuleImpl, theoryName: String): Option[TheoryDecl] = {
+  // Helper function to search for a theory declaration with the given name in a module.
+  def findTheoryDeclInModule(m: ModuleImpl, theoryName: String): Option[TheoryDecl] =
     m.listprog_.asScala.flatMap {
       case pt: ProgTheoryDecl =>
         pt.theorydecl_ match {
           case bt: BaseTheoryDecl =>
             bt.name_ match {
               case nv: NameVar if nv.ident_ == theoryName => Some(pt.theorydecl_)
-              case nw: NameWildcard if "_" == theoryName   => Some(pt.theorydecl_)
-              case _ => None
+              case nw: NameWildcard if theoryName == "_"  => Some(pt.theorydecl_)
+              case _                                      => None
             }
           case _ => None
         }
       case _ => None
     }.headOption
-  }
 
   /** Resolve a dotted path to a theory declaration.
     *
@@ -97,88 +130,74 @@ object ModuleProcessor {
     * @return Either an error message (Left) or a pair consisting of the canonical path of
     *         the module that contains the theory and the resolved TheoryDecl (Right).
     */
-  def resolveDottedPath(resolvedModules: Map[String, Module],
-                        canonicalPathToCurrentModule: String,
-                        dottedPath: DottedPath): Either[String, (String, TheoryDecl)] = {
-    // Retrieve the current module.
-    val currentModule = resolvedModules.get(canonicalPathToCurrentModule) match {
-      case Some(m) => m
-      case None    => return Left("Current module not found: " + canonicalPathToCurrentModule)
-    }
-    currentModule match {
+  def resolveDottedPath(
+      resolvedModules: Map[String, Module],
+      currentModulePath: String,
+      dottedPath: DottedPath
+  ): Either[String, (String, TheoryDecl)] = {
+    def load(path: String) = resolvedModules.get(path).toRight("Module not found: " + path)
+
+    load(currentModulePath).flatMap {
       case m: ModuleImpl =>
         dottedPath match {
           // Single-element dotted path.
-          case bp: BaseDottedPath => {
-            val theoryName = bp.ident_
+          case bp: BaseDottedPath =>
+            val name = bp.ident_
             // First try to find the theory in the current module.
-            findTheoryDeclInModule(m, theoryName) match {
-              case Some(td) => Right((canonicalPathToCurrentModule, td))
+            findTheoryDeclInModule(m, name) match {
+              case Some(td) => Right(currentModulePath -> td)
               case None =>
                 // Not found in the current module; check each ImportFromModule.
-                val importOpt = m.listimport_.asScala.collectFirst {
-                  case imp: ImportFromModule if imp.ident_ == theoryName => imp
-                }
-                importOpt match {
+                m.listimport_.asScala.collectFirst {
+                  case imp: ImportFromModule if imp.ident_ == name => imp
+                } match {
                   case Some(imp) =>
-                    val currentFile = new File(canonicalPathToCurrentModule)
-                    val importedFile = new File(currentFile.getParentFile, imp.string_)
-                    val importedCanonicalPath = importedFile.getCanonicalPath
-                    resolvedModules.get(importedCanonicalPath) match {
-                      case Some(importedModule) =>
-                        importedModule match {
-                          case im: ModuleImpl =>
-                            findTheoryDeclInModule(im, theoryName) match {
-                              case Some(td) => Right((importedCanonicalPath, td))
-                              case None     => Left(s"Theory '${theoryName}' not found in module ${importedCanonicalPath}\nImported module: ${PrettyPrinter.print(importedModule)}")
-                            }
-                          case _ =>
-                            Left("Imported module is not a ModuleImpl: " + importedCanonicalPath)
-                        }
-                      case None => Left("Imported module not found: " + importedCanonicalPath)
+                    val importedPath = fs.canonical(fs.join(currentModulePath, imp.string_))
+                    load(importedPath).flatMap {
+                      case im: ModuleImpl =>
+                        findTheoryDeclInModule(im, name)
+                          .toRight(s"Theory '$name' not found in module $importedPath}"
+                                   + s"\nImported module: ${PrettyPrinter.print(im)}")
+                          .map(importedPath -> _)
+                      case nami => Left(s"Module at $importedPath is not a ModuleImpl:" 
+                                        + s"\n${PrettyPrinter.print(nami)}")
                     }
                   case None =>
-                    Left("Theory '" + theoryName + "' not found in current module or via any ImportFromModule")
+                    Left(s"Theory '$name' not found in $currentModulePath or imports")
                 }
             }
-          }
-          // Two-element dotted path.
+
           case qp: QualifiedDottedPath =>
             qp.dottedpath_ match {
               case inner: BaseDottedPath =>
-                val moduleAlias = qp.ident_
-                val theoryName  = inner.ident_
-                // Find the matching ImportModuleAs in the current module.
-                val importOpt = m.listimport_.asScala.collectFirst {
-                  case imp: ImportModuleAs if imp.ident_ == moduleAlias => imp
-                }
-                importOpt match {
+                val alias      = qp.ident_
+                val theoryName = inner.ident_
+                m.listimport_.asScala.collectFirst {
+                  case imp: ImportModuleAs if imp.ident_ == alias => imp
+                } match {
                   case Some(imp) =>
-                    val currentFile = new File(canonicalPathToCurrentModule)
-                    val importedFile = new File(currentFile.getParentFile, imp.string_)
-                    val importedCanonicalPath = importedFile.getCanonicalPath
-                    resolvedModules.get(importedCanonicalPath) match {
-                      case Some(importedModule) =>
-                        importedModule match {
-                          case im: ModuleImpl =>
-                            findTheoryDeclInModule(im, theoryName) match {
-                              case Some(td) => Right((importedCanonicalPath, td))
-                              case None     => Left("Theory '" + theoryName + "' not found in module " + importedCanonicalPath)
-                            }
-                          case _ =>
-                            Left("Imported module is not a ModuleImpl: " + importedCanonicalPath)
-                        }
-                      case None => Left("Imported module not found: " + importedCanonicalPath)
+                    val importedPath = fs.canonical(fs.join(currentModulePath, imp.string_))
+                    load(importedPath).flatMap {
+                      case im: ModuleImpl =>
+                        findTheoryDeclInModule(im, theoryName)
+                          .toRight(s"Theory '$theoryName' not in $importedPath")
+                          .map(importedPath -> _)
+                      case _ => Left("Not a ModuleImpl: " + importedPath)
                     }
                   case None =>
-                    Left("Module alias '" + moduleAlias + "' not found in ImportModuleAs statements")
+                    Left(s"Module alias '$alias' not found in ImportModuleAs statements of $currentModulePath")
                 }
-              case _ =>
-                Left("Invalid dotted path: expected a base dotted path for theory name")
+
+              case _ => Left("Invalid dotted path: expected a base dotted path,"
+                             + s" but got ${PrettyPrinter.print(qp.dottedpath_)}")
             }
         }
-      case _ =>
-        Left("Current module is not a ModuleImpl: " + canonicalPathToCurrentModule)
+
+      case _ => Left(s"Current module is not a ModuleImpl: $currentModulePath")
     }
   }
+}
+
+object ModuleProcessor {
+  def default: ModuleProcessor = new ModuleProcessor(new RealFileSystem)
 }

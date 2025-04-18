@@ -62,7 +62,8 @@ object AddEqRwHelpers {
   // Checks whether all the free vars in an AST have a consistent category.
   // For example, we don't want x to refer to both a process and a name in
   // RHO calculus.
-  // TODO: check consistency of shadowed vars
+  // TODO: check consistency of shadowing vars
+  //   Do a preliminary renaming to avoid shadowing and then check consistency
   def consistentCategory(
     ast: AST,
     defs: Map[Label, Rule],

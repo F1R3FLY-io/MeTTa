@@ -64,6 +64,4 @@ Module UnivAlg {
   Theory Ring(r: Rig, add: AbelianGroup) {
     r \/ add
   }
-  
-  theory Monoid(EmptySet())
 }

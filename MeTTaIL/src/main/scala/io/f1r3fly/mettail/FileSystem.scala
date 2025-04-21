@@ -29,10 +29,9 @@ class RealFileSystem extends FileSystem {
     new FileReader(path)
 
   override def join(parentPath: String, child: String): String = {
-    val parentDir = new File(parentPath).getParentFile
-    new File(parentDir, child).getPath
+    new File(parentPath, child).getCanonicalPath
   }
-
+    
   override def parent(path: String): String =
     new File(path).getParentFile.getPath
 }

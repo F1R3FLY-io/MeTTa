@@ -116,7 +116,8 @@ class ModuleProcessor(fs: FileSystem) {
                   case imp: ImportFromModule if imp.ident_ == name => imp
                 } match {
                   case Some(imp) =>
-                    val importedPath = fs.canonical(fs.join(currentModulePath, imp.string_))
+                    val parentDir    = fs.parent(currentModulePath)
+                    val importedPath = fs.canonical(fs.join(parentDir, imp.string_))
                     load(importedPath).flatMap {
                       case im: ModuleImpl =>
                         findTheoryDeclInModule(im, name)
@@ -140,7 +141,8 @@ class ModuleProcessor(fs: FileSystem) {
                   case imp: ImportModuleAs if imp.ident_ == alias => imp
                 } match {
                   case Some(imp) =>
-                    val importedPath = fs.canonical(fs.join(currentModulePath, imp.string_))
+                    val parentDir    = fs.parent(currentModulePath)
+                    val importedPath = fs.canonical(fs.join(parentDir, imp.string_))
                     load(importedPath).flatMap {
                       case im: ModuleImpl =>
                         findTheoryDeclInModule(im, theoryName)

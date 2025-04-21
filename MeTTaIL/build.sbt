@@ -7,6 +7,9 @@ Global / excludeLintKeys += ThisBuild / name
 // Add the fat jar (mettailparser.jar) from the target directory as an unmanaged dependency.
 Compile / unmanagedJars += baseDirectory.value / "../target/mettailparser.jar"
 
+// ScalaTest for unit testing
+libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.15" % Test
+
 // sbt-assembly settings:
 import sbtassembly.AssemblyPlugin.autoImport._
 

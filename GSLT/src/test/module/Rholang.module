@@ -3,6 +3,9 @@ import "UnivAlg.module" as u
 Module Rholang {
   Theory ParMonoid(cm: u.CommutativeMonoid) {
     cm
+      Exports {
+        Elem => Proc;
+      }
       Replacements {
         [] Zero.Proc => PZero.Proc ::= "0";
         [0, 1] Plus.Proc => PPar.Proc ::= "(" Proc "|" Proc ")";
@@ -23,7 +26,7 @@ Module Rholang {
       }
       Terms {
         PRepl . Proc ::= "!" Proc ;
-        PNew  . Proc ::= "new" (Bind Name x) "in" (x)Proc ;
+        PNew  . Proc ::= "new" (Bind x Name) "in" (x)Proc ;
       }
       Equations {
         if x # Q then
@@ -37,7 +40,7 @@ Module Rholang {
                 (PNew x Src) ~> (PNew x Tgt) ;
       }
   }
- 
+
   Theory QuoteDropCalc(pm: ParMonoid) {
     pm
       Exports {
@@ -57,7 +60,7 @@ Module Rholang {
     qd
       Terms {
         PSend . Proc ::= Name "!" "(" Proc ")" ;
-        PRecv . Proc ::= "for" "(" (Bind Name x) "<-" Name ")" "{" (x)Proc "}" ;
+        PRecv . Proc ::= "for" "(" (Bind x Name) "<-" Name ")" "{" (x)Proc "}" ;
       }
       Rewrites {
         RComm : ( PPar ( PRecv y x P) ( PSend x Q ) ) ~> ( Subst P ( NQuote Q ) y ) ;
@@ -73,7 +76,8 @@ Module Rholang {
   }
   
   Theory FreeRholang() {
-    let m = u.Monoid() in (
+    let s = u.EmptySet() in (
+    let m = u.Monoid(s) in (
     let cm = u.CommutativeMonoid(m) in (
     let pm = ParMonoid(cm) in (
     let qd = QuoteDropCalc(pm) in (
@@ -81,10 +85,8 @@ Module Rholang {
     let rc = RhoCalc(qd) in (
     let rl = Rholang(nr, rc) in (
     rl
-    )))))))
+    ))))))))
   }
-
-  theory let m = u.Monoid() in (
-    let cm = u.CommutativeMonoid(m) in (
-    let pm = ParMonoid(cm) in (pm)))
+  
+  theory FreeRholang()
 }

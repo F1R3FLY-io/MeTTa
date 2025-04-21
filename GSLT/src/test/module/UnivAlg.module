@@ -1,23 +1,16 @@
 Module UnivAlg {
-  Theory TwoPoint() {
-    Empty
-      Exports {
-        Proc;
-      }
-      Terms {
-        One . Proc ::= "1" ;
-        Two . Proc ::= "2" ;
+  Theory EmptySet() {
+    Empty 
+      Exports { 
+        Elem; 
       }
   }
 
-  Theory Monoid() {
-    Empty
-      Exports {
-        Proc;
-      }
+  Theory Monoid(s: Set) {
+    s
       Terms {
-        One . Proc ::= "1" ;
-        Mult . Proc ::= "(" Proc "*" Proc ")" ;
+        One . Elem ::= "1" ;
+        Mult . Elem ::= "(" Elem "*" Elem ")" ;
       }
       Equations {
         (Mult (Mult x y) z) == (Mult x (Mult y z));
@@ -26,11 +19,11 @@ Module UnivAlg {
       }
   }
 
-  Theory CommutativeMonoid(m: u.Monoid) {
+  Theory CommutativeMonoid(m: Monoid) {
     m
       Replacements {
-        [] One . Proc => Zero . Proc ::= "0" ;
-        [0, 1] Mult . Proc => Plus . Proc ::= "(" Proc "+" Proc ")" ;
+        [] One . Elem => Zero . Elem ::= "0" ;
+        [0, 1] Mult . Elem => Plus . Elem ::= "(" Elem "+" Elem ")" ;
       }
       Equations {
         (Plus x y) == (Plus y x);
@@ -50,7 +43,7 @@ Module UnivAlg {
   Theory Group(m: Monoid) {
     m
       Terms {
-        Inv . Proc ::= "inv" "(" Proc ")" ;
+        Inv . Elem ::= "inv" "(" Elem ")" ;
       }
       Equations {
         (Mult x (Inv x)) == (One);
@@ -62,15 +55,13 @@ Module UnivAlg {
   Theory AbelianGroup(g: Group, c: CommutativeMonoid) {
     g
       Replacements {
-        [] One . Proc => Zero . Proc ::= "0" ;
-        [0, 1] Mult . Proc => Plus . Proc ::= "(" Proc "+" Proc ")" ;
-        [0] Inv . Proc => Neg . Proc ::= "(" "-" Proc ")" ;
+        [] One . Elem => Zero . Elem ::= "0" ;
+        [0, 1] Mult . Elem => Plus . Elem ::= "(" Elem "+" Elem ")" ;
+        [0] Inv . Elem => Neg . Elem ::= "(" "-" Elem ")" ;
       } \/ c
   }
 
   Theory Ring(r: Rig, add: AbelianGroup) {
     r \/ add
   }
-  
-  theory TwoPoint() \/ Monoid()
 }

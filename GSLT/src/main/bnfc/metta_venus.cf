@@ -68,8 +68,7 @@ TheoryInstRec . TheoryInst5 ::= "let" Ident "=" TheoryInst5 "in" "(" TheoryInst5
 TheoryInstFree . TheoryInst5 ::= "free" "(" DottedPath ")" ;
 TheoryInstConj . TheoryInst4 ::= TheoryInst4 "/\\" TheoryInst5 ;
 TheoryInstDisj . TheoryInst3 ::= TheoryInst3 "\\/" TheoryInst4 ;
-TheoryInstSub . TheoryInst2 ::= TheoryInst2 "\\" TheoryInst3 ;
-TheoryInstRest . TheoryInst1 ::= TheoryInst1 "<|" TheoryInst2 ;
+TheoryInstSubtract . TheoryInst2 ::= TheoryInst2 "\\" TheoryInst3 ;
 separator TheoryInst "," ;
 
 BasePres . Pres ::= "Presentation" "Equations" "{" [Cat] "}" "Terms" "{" [Def] "}" "Equations" "{" [Equation] "}" "Rewrites" "{" [RewriteDecl] "}" ;
@@ -172,6 +171,7 @@ SendSymm.     Send ::= "!$" ;
 -- Exports
 
 BaseExport . Export ::= Cat ;
+RenameExport . Export ::= Cat "=>" Cat ;
 
 []  . [Export] ::= ;
 (:) . [Export] ::= Export ";" [Export] ;
@@ -200,7 +200,7 @@ Rule . Def ::= Label "." Cat "::=" [Item] ;
 Terminal         . Item ::= String ;
 NTerminal        . Item ::= Cat ;
 AbsNTerminal     . Item ::= "(" Ident ")" Cat;
-BindNTerminal    . Item ::= "(" "Bind" Ident Ident ")" ;
+BindNTerminal    . Item ::= "(" "Bind" Ident Cat ")" ;
 
 -- Categories
 ListOfCat     . Cat ::= "[" Cat "]" ;

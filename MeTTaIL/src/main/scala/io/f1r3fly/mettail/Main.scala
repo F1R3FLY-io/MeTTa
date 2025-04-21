@@ -16,7 +16,8 @@ object Main {
     val entryPath = entryFile.getCanonicalPath
     println(s"Entry module: $entryPath")
 
-    val resolvedModules: Map[String, Module] = ModuleProcessor.resolveModules(entryPath)
+    val moduleProcessor = ModuleProcessor.default
+    val resolvedModules: Map[String, Module] = moduleProcessor.resolveModules(entryPath)
 
     println("\n[Abstract Syntax Trees]\n")
     resolvedModules.foreach { case (path, module) =>
@@ -42,7 +43,7 @@ object Main {
             println("\n[Final Inst from Main Module]\n")
             println(PrettyPrinter.print(inst))
             // Interpret the final theory instance.
-            val interpreter = new InstInterpreter(resolvedModules, entryPath)
+            val interpreter = new InstInterpreter(resolvedModules, entryPath, moduleProcessor)
             interpreter.interpret(List.empty, inst) match {
               case Right(basePres) =>
                 println("\n[Interpreted Presentation]\n")
@@ -51,12 +52,12 @@ object Main {
                 println(s"\nError during interpretation: $error")
             }
           case None =>
-            println("No TheoryInst found in the main module of ${entryPath}}.")
+            println(s"No TheoryInst found in the main module of ${entryPath}.")
         }
       case Some(_) =>
-        println("Main module ${entryPath}} is not a ModuleImpl.")
+        println(s"Main module ${entryPath} is not a ModuleImpl.")
       case None =>
-        println("Main module ${entryPath}} not found in resolved modules.")
+        println(s"Main module ${entryPath} not found in resolved modules.")
     }
   }
 }

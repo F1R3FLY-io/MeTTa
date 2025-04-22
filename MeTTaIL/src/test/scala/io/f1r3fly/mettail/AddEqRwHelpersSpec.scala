@@ -41,8 +41,8 @@ class AddEqRwHelpersSpec extends AnyFunSuite {
     val rule = new Rule(new Id("L"), new IdCat("C"), new ListItem())
     val subst = new ASTSubst(
       new ASTVar("x"),
-      "x",
-      new ASTSExp(new Id("L"), new ListAST())
+      new ASTSExp(new Id("L"), new ListAST()),
+      "x"
     )
     val result = catOfAST(subst, Map(new Id("L") -> rule))
     assert(result.isInstanceOf[COAConcrete])
@@ -52,8 +52,8 @@ class AddEqRwHelpersSpec extends AnyFunSuite {
   test("catOfAST should propagate COALabelNotFound on ASTSubst when left side unknown") {
     val subst = new ASTSubst(
       new ASTSExp(new Id("M"), new ListAST()),
-      "x",
-      new ASTVar("v")
+      new ASTVar("v"),
+      "x"
     )
     val result = catOfAST(subst, Map.empty)
     assert(result.isInstanceOf[COALabelNotFound])

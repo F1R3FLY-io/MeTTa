@@ -1,0 +1,19 @@
+Module ReplacementShadows {
+  Theory One() {
+    Empty
+      Exports { T; }
+      Terms {
+        Foo . T ::= "Foo";
+        Bar . T ::= "Bar";
+      }
+  }
+  
+  Theory Two(one: One) {
+    one
+      Replacements {
+        [] Foo . T => Bar . T ::= "Oh-no!";
+      }
+  }
+  
+  theory Two(One())
+}

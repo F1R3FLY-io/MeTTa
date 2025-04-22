@@ -1,0 +1,1 @@
+cd MeTTaIL; sbt ";compile ;assembly ;test"; cd -

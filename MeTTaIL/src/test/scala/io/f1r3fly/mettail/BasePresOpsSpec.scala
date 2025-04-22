@@ -24,7 +24,7 @@ class BasePresOpsSpec extends AnyFlatSpec with Matchers {
 
   "copyPres with overrides" should "replace the specified lists" in {
     val cat = new IdCat("C1")
-    val rule = new Rule(new Label("L1"), new IdCat("C1"), new ListItem())
+    val rule = new Rule(new Id("L1"), new IdCat("C1"), new ListItem())
 
     val pres = BasePresOps.empty
     val overridden = BasePresOps.copyPres(
@@ -41,8 +41,8 @@ class BasePresOpsSpec extends AnyFlatSpec with Matchers {
   }
 
   "listDefToMap" should "map Rule labels to Rule instances" in {
-    val rule1 = new Rule(new Label("A"), new IdCat("C"), new ListItem())
-    val rule2 = new Rule(new Label("B"), new IdCat("D"), new ListItem())
+    val rule1 = new Rule(new Id("A"), new IdCat("C"), new ListItem())
+    val rule2 = new Rule(new Id("B"), new IdCat("D"), new ListItem())
     val defs = new ListDef()
     defs.addLast(rule1)
     defs.addLast(rule2)

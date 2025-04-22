@@ -12,7 +12,7 @@ class TheoryEnvSpec extends AnyFunSuite {
     val dp = new BaseDottedPath("X")
     val decl1: TheoryDecl = new BaseTheoryDecl(new NameVar("X"), new ListVariableDecl(), new TheoryInstEmpty())
     val decl2: TheoryDecl = new BaseTheoryDecl(new NameVar("Y"), new ListVariableDecl(), new TheoryInstEmpty())
-    val env1 = TheoryEnv(Map(dp -> (decl1 -> (decl1, TheoryEnv(Map.empty)))))
+    val env1 = TheoryEnv(Map(dp -> (decl1, TheoryEnv(Map.empty))))
     val env2 = TheoryEnv(Map(dp -> (decl2, TheoryEnv(Map.empty))))
     val merged = builder.merge(env1, env2)
     assert(merged.map(dp)._1 == decl2)

@@ -39,10 +39,10 @@ object AddEqRwHelpers {
     prettyStructure: String
   ): Either[String, Unit] = leftCat match {
     case COALabelNotFound(label) => 
-      Left(s"Label $label not found in $prettyStructure")
+      Left(s"Label ${PrettyPrinter.print(label)} not found in $prettyStructure")
     case COAVar(leftVarName) => rightCat match {
       case COALabelNotFound(label) => 
-        Left(s"Label $label not found in $prettyStructure")
+        Left(s"Label ${PrettyPrinter.print(label)} not found in $prettyStructure")
       case COAVar(rightVarName) =>
         Left(s"Cannot determine categories of variables $leftVarName and $rightVarName"
              + s" in $prettyStructure")
@@ -50,7 +50,7 @@ object AddEqRwHelpers {
     }
     case COAConcrete(leftConcreteCat) => rightCat match {
       case COALabelNotFound(label) => 
-        Left(s"Label $label not found in $prettyStructure")
+        Left(s"Label ${PrettyPrinter.print(label)} not found in $prettyStructure")
       case COAVar(rightVarName) => Right(())
       case COAConcrete(rightConcreteCat) if (leftConcreteCat != rightConcreteCat) =>
         Left(s"Categories of the sides differ (${PrettyPrinter.print(leftConcreteCat)}"

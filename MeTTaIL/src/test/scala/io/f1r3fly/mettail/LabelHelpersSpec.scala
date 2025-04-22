@@ -4,6 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import metta_venus.Absyn._
 import io.f1r3fly.mettail.LabelHelpers
+import metta_venus.PrettyPrinter
 
 class LabelHelpersSpec extends AnyFlatSpec with Matchers {
 
@@ -14,7 +15,7 @@ class LabelHelpersSpec extends AnyFlatSpec with Matchers {
     val eqImpl = new EquationImpl(ast1, ast2)
 
     val labels = LabelHelpers.labelsInEquation(eqImpl)
-    labels should contain allOf ("foo", ":)")
+    labels should contain allOf ("foo", "(:)")
     labels.size shouldEqual 2
   }
 

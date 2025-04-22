@@ -25,25 +25,25 @@ class ModuleProcessorSpec extends AnyFunSuite {
 
   test("findTheoryDeclInModule should locate an existing theory") {
     val decl = new BaseTheoryDecl(new NameVar("T"), new ListVariableDecl(), new TheoryInstEmpty())
-    val progList = new java.util.LinkedList[Prog]()
+    val progList = new ListProg()
     progList.add(new ProgTheoryDecl(decl))
-    val module = new ModuleImpl(new java.util.LinkedList[Import](), new NameVar("M"), progList)
+    val module = new ModuleImpl(new ListImport(), new NameVar("M"), progList)
     assert(processor.findTheoryDeclInModule(module, "T").contains(decl))
     assert(processor.findTheoryDeclInModule(module, "_").isEmpty)
   }
 
   test("resolveDottedPath should resolve BaseDottedPath in current module") {
     val decl = new BaseTheoryDecl(new NameVar("T"), new ListVariableDecl(), new TheoryInstEmpty())
-    val progList = new java.util.LinkedList[Prog]()
+    val progList = new ListProg()
     progList.add(new ProgTheoryDecl(decl))
-    val module = new ModuleImpl(new java.util.LinkedList[Import](), new NameVar("M"), progList)
+    val module = new ModuleImpl(new ListImport(), new NameVar("M"), progList)
     val resolved = Map("path" -> module)
     val dp = new BaseDottedPath("T")
     assert(processor.resolveDottedPath(resolved, "path", dp) == Right(("path", decl)))
   }
 
   test("resolveDottedPath should return Left when theory is missing") {
-    val module = new ModuleImpl(new java.util.LinkedList[Import](), new NameVar("M"), new java.util.LinkedList[Prog]())
+    val module = new ModuleImpl(new ListImport(), new NameVar("M"), new ListProg())
     val resolved = Map("p" -> module)
     val dp = new BaseDottedPath("X")
     assert(processor.resolveDottedPath(resolved, "p", dp).isLeft)

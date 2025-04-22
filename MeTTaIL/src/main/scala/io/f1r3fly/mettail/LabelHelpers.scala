@@ -7,9 +7,9 @@ object LabelHelpers {
   private def labelToString(l: Label): String = l match {
     case id: Id => id.ident_
     case _: Wild => "_"
-    case _: ListE => "[]"
-    case _: ListCons => "(:)"
-    case _: ListOne => "(:[])"
+    case l: ListE => s"[]{${PrettyPrinter.print(l.cat_)}}"
+    case l: ListCons => s"(:){${PrettyPrinter.print(l.cat_)}}"
+    case l: ListOne => s"(:[]){${PrettyPrinter.print(l.cat_)}}"
   }
 
   private def labelsInAST(ast: AST): Set[String] = ast match {

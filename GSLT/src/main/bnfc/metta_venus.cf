@@ -213,9 +213,9 @@ ImportedCat . Cat ::= Ident "." Cat;
 -- functional labels
 Id       . Label ::= Ident ;
 Wild     . Label ::= "_" ;
-ListE    . Label ::= "[" "]" ;
-ListCons . Label ::= "(" ":" ")" ;
-ListOne  . Label ::= "(" ":" "[" "]" ")" ;
+ListE    . Label ::= "[" "]" "{" Cat "}";
+ListCons . Label ::= "(" ":" ")" "{" Cat "}";
+ListOne  . Label ::= "(" ":" "[" "]" ")" "{" Cat "}";
 
 -- profiles (= permutation and binding patterns)
 ProfIt   . ProfItem ::= "(" "[" [IntList] "]" "," "[" [Integer] "]" ")" ;

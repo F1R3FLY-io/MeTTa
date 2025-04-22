@@ -77,7 +77,35 @@ class InstInterpreterSpec extends AnyFlatSpec with Matchers {
     actual.trim shouldEqual expected.trim
   }
 
-  "InstInterpreter" should "error when local theory not found" in {
+  it should "error when interpreting a module with duplicate term labels" in {
+    // Load the bad module that repeats the label Foo in addTerms
+    val moduleFile = new File("../GSLT/src/test/module/bad/RepeatLabel.module")
+    val entryPath  = moduleFile.getCanonicalPath
+    val processor  = ModuleProcessor.default
+    // Parse imports and dependencies…
+    val resolvedMap = processor.resolveModules(entryPath)
+
+    // Extract the top‐level TheoryInst from the module
+    val mainMod = resolvedMap(entryPath).asInstanceOf[ModuleImpl]
+    import scala.jdk.CollectionConverters._
+    val maybeInst = mainMod.listprog_.asScala.toList
+                       .reverse
+                       .collectFirst { case prg: ProgTheoryInst => prg.theoryinst_ }
+    val inst = maybeInst.getOrElse(
+      fail(s"No top‑level TheoryInst found in $entryPath")
+    )
+
+    // Run the interpreter: we expect a duplicate‐label error
+    val interpreter = new InstInterpreter(resolvedMap, entryPath, processor)
+    val res = interpreter.interpret(Nil, inst)
+
+    assert(res.isLeft)
+    assert(res.left.get.contains(
+      "Error: Duplicate label in addTerms: Foo"
+    ))
+  }
+    
+  it should "error when local theory not found" in {
     val emptyImports = new ListImport()
     val emptyProgs   = new ListProg()
     val module       = new ModuleImpl(emptyImports, new NameVar("M"), emptyProgs)
@@ -90,7 +118,7 @@ class InstInterpreterSpec extends AnyFlatSpec with Matchers {
     assert(res.left.get.contains("Theory 'Missing' not found in path or imports"))
   }
 
-  "InstInterpreter" should "error when module alias not declared" in {
+  it should "error when module alias not declared" in {
     val imports     = new ListImport()
     val progs       = new ListProg()
     val module      = new ModuleImpl(imports, new NameVar("M"), progs)
@@ -104,7 +132,7 @@ class InstInterpreterSpec extends AnyFlatSpec with Matchers {
     assert(res.left.get.contains("Module alias 'u' not found"))
   }
 
-  "InstInterpreter" should "error when theory not found in imported module" in {
+  it should "error when theory not found in imported module" in {
     val imports     = new ListImport()
     imports.addLast(new ImportModuleAs("u", "UnivAlg.module"))
     val progs       = new ListProg()
@@ -120,7 +148,7 @@ class InstInterpreterSpec extends AnyFlatSpec with Matchers {
     assert(res.left.get.contains("Module alias 'u' not found in ImportModuleAs statements of path"))
   }
 
-  "InstInterpreter" should "error when identifier is free" in {
+  it should "error when identifier is free" in {
     val resolved    = Map.empty[String, Module]
     val interpreter = new InstInterpreter(resolved, "path", ModuleProcessor.default)
     val ref         = new TheoryInstRef("missing")

@@ -224,32 +224,56 @@ object InstInterpreterCases {
     }
   }
 
-  def handleAddTerms(interpreter: InstInterpreter, env: List[(String, BasePres)], inst: TheoryInstAddTerms): Either[String, BasePres] =
+  def handleAddTerms(
+    interpreter: InstInterpreter,
+    env: List[(String, BasePres)],
+    inst: TheoryInstAddTerms
+  ): Either[String, BasePres] =
     interpreter.interpret(env, inst.theoryinst_).flatMap { basePres =>
-      val newTerms = inst.grammar_ match {
+      // Extract the incoming list of Defs (only Rules matter here)
+      val newTerms: List[Def] = inst.grammar_ match {
         case g: MkGrammar => g.listdef_.iterator.asScala.toList
-        case _ => Nil
+        case _            => Nil
       }
-      // Get the set of allowed categories from the existing presentation
-      val allowedCats = basePres.listcat_.asScala.toSet
-      // Check each new term: if it is a Rule, ensure that its category and all categories
-      // from its list of items are present in allowedCats.
-      newTerms.find {
-        case rule: Rule =>
-          val fromRule  = Set(rule.cat_)
-          val fromItems = rule.listitem_.asScala.collect { case nt: NTerminal => nt.cat_ }.toSet
-          val mentionedCats = fromRule ++ fromItems
-          !mentionedCats.subsetOf(allowedCats)
-        case _ => false
-      } match {
-        case Some(rule: Rule) =>
-          val fromRule  = Set(rule.cat_)
-          val fromItems = rule.listitem_.asScala.collect { case nt: NTerminal => nt.cat_ }.toSet
-          val unknownCats = (fromRule ++ fromItems) diff allowedCats
-          Left(s"Error: Def in addTerms mentions unknown categories: ${unknownCats.map(PrettyPrinter.print)}")
-        case _ =>
-          // If all new terms pass the check, update the BasePres by adding the new terms.
-          Right(copyPres(basePres, listdef = Some(basePres.listdef_.asScala.toList ++ newTerms)))
+      // Allowed categories come from the original BasePres
+      val allowedCats: Set[Cat] = basePres.listcat_.asScala.toSet
+
+      // Fold over newTerms, starting with Right(basePres)
+      newTerms.foldLeft[Either[String, BasePres]](Right(basePres)) {
+        case (Left(err), _) => Left(err)  // once an error, keep propagating
+        case (Right(bp), term) => term match {
+          case rule: Rule =>
+            // 1) Unknown‑category check
+            val fromRule  = Set(rule.cat_)
+            val fromItems = rule.listitem_.asScala.collect { case nt: NTerminal => nt.cat_ }.toSet
+            val mentioned = fromRule ++ fromItems
+            if (!mentioned.subsetOf(allowedCats)) {
+              val unknown = mentioned.diff(allowedCats).map(PrettyPrinter.print)
+              Left(s"Error: Def in addTerms mentions unknown categories: $unknown")
+            }
+            // 2) Duplicate‑label check
+            else if (bp.listdef_.asScala.collect { case r: Rule => r.label_ }.contains(rule.label_)) {
+              Left(s"Error: Duplicate label in addTerms: ${PrettyPrinter.print(rule.label_)}")
+            }
+            // 3) Special List‑label check
+            else {
+              rule.label_ match {
+                case l: ListE    if rule.cat_ != ListOfCat(l.cat_) =>
+                  Left(s"Error: Category for []{${rule.cat_}} must be [${rule.cat_}]")
+                case l: ListCons if rule.cat_ != ListOfCat(l.cat_) =>
+                Left(s"Error: Category for (:){${rule.cat_}} must be [${rule.cat_}]")
+                case l: ListOne  if rule.cat_ != ListOfCat(l.cat_) =>
+                Left(s"Error: Category for (:[]){${rule.cat_}} must be [${rule.cat_}]")
+                case _ =>
+                  // All checks pass: append this rule and continue
+                  Right(copyPres(bp, listdef = Some(bp.listdef_.asScala.toList :+ rule)))
+              }
+            }
+
+          case _ =>
+            // Non‑Rule defs (e.g. Comments) are ignored
+            Right(bp)
+        }
       }
     }
 

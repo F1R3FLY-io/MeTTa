@@ -14,8 +14,7 @@ class InstInterpreterSpec extends AnyFlatSpec with Matchers {
     val entryPath   = moduleFile.getCanonicalPath
     val processor   = ModuleProcessor.default
     // Parse all imports and dependencies…
-    val resolvedMap = processor.resolveModules(entryPath)  
-                              // resolveModules: recursively parse modules and imports :contentReference[oaicite:0]{index=0}&#8203;:contentReference[oaicite:1]{index=1}
+    val resolvedMap = processor.resolveModules(entryPath)
     
     // Extract the single top‑level TheoryInst (the “main” inst) from the module
     val mainMod = resolvedMap(entryPath).asInstanceOf[ModuleImpl]

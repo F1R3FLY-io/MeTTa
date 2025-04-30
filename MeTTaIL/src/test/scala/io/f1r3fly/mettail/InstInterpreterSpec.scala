@@ -8,35 +8,29 @@ import metta_venus.PrettyPrinter
 import scala.jdk.CollectionConverters._
 
 class InstInterpreterSpec extends AnyFlatSpec with Matchers {
-  "InstInterpreter" should "interpret the Rholang module correctly" in {
-    // Load the Rholang.module file under test and build the interpreter:
-    val moduleFile  = new File("../GSLT/src/test/module/Rholang.module")
+  private def loadInterpreterFor(relPath: String): (InstInterpreter, TheoryInst) = {
+    val moduleFile  = new File(relPath)
     val entryPath   = moduleFile.getCanonicalPath
     val processor   = ModuleProcessor.default
-    // Parse all imports and dependencies…
     val resolvedMap = processor.resolveModules(entryPath)
-    
-    // Extract the single top‑level TheoryInst (the “main” inst) from the module
-    val mainMod = resolvedMap(entryPath).asInstanceOf[ModuleImpl]
-    import scala.jdk.CollectionConverters._
-    val maybeInst = mainMod.listprog_.asScala.toList
-                       .reverse
-                       .collectFirst { case prg: ProgTheoryInst => prg.theoryinst_ }
-    val inst = maybeInst.getOrElse(
-      fail(s"No top‑level TheoryInst found in $entryPath")
-    )
-    
-    // Run the interpreter to get our BasePres
+    val mainMod     = resolvedMap(entryPath).asInstanceOf[ModuleImpl]
+    val inst = mainMod.listprog_.asScala.toList
+                   .reverse
+                   .collectFirst { case prg: ProgTheoryInst => prg.theoryinst_ }
+                   .getOrElse(fail(s"No top-level TheoryInst found in $entryPath"))
     val interpreter = new InstInterpreter(resolvedMap, entryPath, processor)
+    (interpreter, inst)
+  }
+
+  "InstInterpreter" should "interpret the Rholang module correctly" in {
+    val (interpreter, inst) = loadInterpreterFor("../GSLT/src/test/module/Rholang.module")
     val basePres = interpreter.interpret(Nil, inst)
-                         .getOrElse(fail("Interpretation of Rholang.module failed"))
-    
-    // After interpreting:
-    val actual = PrettyPrinter.print(basePres)
+                       .getOrElse(fail("Interpretation of Rholang.module failed"))
+    val actual   = PrettyPrinter.print(basePres)
 
     val expected =
       s"""
-      |Presentation Equations
+      |Presentation Exports
       |{
       |  Proc;
       |  Name;
@@ -78,33 +72,19 @@ class InstInterpreterSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "error when interpreting a module with duplicate term labels" in {
-    // Load the bad module that repeats the label Foo in addTerms
-    val moduleFile = new File("../GSLT/src/test/module/bad/RepeatLabel.module")
-    val entryPath  = moduleFile.getCanonicalPath
-    val processor  = ModuleProcessor.default
-    // Parse imports and dependencies…
-    val resolvedMap = processor.resolveModules(entryPath)
-
-    // Extract the top‐level TheoryInst from the module
-    val mainMod = resolvedMap(entryPath).asInstanceOf[ModuleImpl]
-    import scala.jdk.CollectionConverters._
-    val maybeInst = mainMod.listprog_.asScala.toList
-                       .reverse
-                       .collectFirst { case prg: ProgTheoryInst => prg.theoryinst_ }
-    val inst = maybeInst.getOrElse(
-      fail(s"No top‑level TheoryInst found in $entryPath")
-    )
-
-    // Run the interpreter: we expect a duplicate‐label error
-    val interpreter = new InstInterpreter(resolvedMap, entryPath, processor)
+    val (interpreter, inst) = loadInterpreterFor("../GSLT/src/test/module/bad/RepeatLabel.module")
     val res = interpreter.interpret(Nil, inst)
 
-    assert(res.isLeft)
-    assert(res.left.get.contains(
-      "Error: Duplicate label in addTerms: Foo"
-    ))
+    res shouldBe Left("Error: Duplicate label in addTerms: Foo")
   }
-    
+
+  it should "error when interpreting a module with duplicate replacement labels" in {
+    val (interpreter, inst) = loadInterpreterFor("../GSLT/src/test/module/bad/ReplacementShadows.module")
+    val res = interpreter.interpret(Nil, inst)
+
+    res shouldBe Left("Error: Replacement rule label Bar already exists in theory.")
+  }
+
   it should "error when local theory not found" in {
     val emptyImports = new ListImport()
     val emptyProgs   = new ListProg()

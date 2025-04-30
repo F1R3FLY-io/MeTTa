@@ -71,7 +71,7 @@ TheoryInstDisj . TheoryInst3 ::= TheoryInst3 "\\/" TheoryInst4 ;
 TheoryInstSubtract . TheoryInst2 ::= TheoryInst2 "\\" TheoryInst3 ;
 separator TheoryInst "," ;
 
-BasePres . Pres ::= "Presentation" "Equations" "{" [Cat] "}" "Terms" "{" [Def] "}" "Equations" "{" [Equation] "}" "Rewrites" "{" [RewriteDecl] "}" ;
+BasePres . Pres ::= "Presentation" "Exports" "{" [Cat] "}" "Terms" "{" [Def] "}" "Equations" "{" [Equation] "}" "Rewrites" "{" [RewriteDecl] "}" ;
 
 BaseSpaceDecl . SpaceDecl ::= "Space" Name "(" [VariableDecl] ")" "{" [Fact] [FactComprehension] "}" ;
 BaseTheoryDecl . TheoryDecl ::= "Theory" Name "(" [VariableDecl] ")" "{" TheoryInst "}" ;

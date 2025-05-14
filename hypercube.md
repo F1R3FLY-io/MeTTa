@@ -163,61 +163,60 @@ as "for each way that A₁ relates to B₁ in the context Γ, ..., and Aₙ rela
       Forall T . Type . T ::= "type" "^" ToString(T) ;
       Forall T . Kind . T ::= "kind" "^" ToString(T) ;
 
-    Similar to how we turn binders into idents, maybe we add monomorphic versions of these rules to every category in the grammar?
+    In all cases, the output category must be a generating category.  We'll add ArrowCat as an Item.
 
-    BNFC has
+      ArrowCat . Item ::= "(" Cat "->" Cat ")" ;
 
-      Rule             . Def  ::= Label "." Cat "::=" [Item] ;
-      Terminal         . Item ::= String ;
-      NTerminal        . Item ::= Cat ;
-
-    so BNFC can do term constructors with products as inputs
-
-      Label: C1 x ... x Cn -> C,
-
-    while MeTTa IL also currently has
-
-      AbsNTerminal     . Item ::= "(" Ident ")" Cat;
-      BindNTerminal    . Item ::= "(" "Bind" Ident Cat ")" ;
-
-    so can do term constructors with internal homs as inputs, too, e.g.
-
-      Label: C1 x (C2 -> C3) x ((C4 -> C5) -> C6) -> C.
-
-    In both, the output category must be a generating category.  We'd like to add ArrowCat
-
-      ArrowCat . Cat ::= "(" Cat "->" Cat ")" ;
-
-    to support things like 
-
-      Type . (T1 -> T2) ::= "type" "^" ToString(T1 -> T2).
-
-    Things of this shape are term contexts.  The Pi constructor (see below) can be either a type or kind of that shape:
+    The Pi constructor (see below) can be either a type or kind of that shape:
 
       Γ ⊢ A: s₁^T    Γ, x: A ⊢ B: s₂^{T'}
       ———————————————————————————————————.
       Γ ⊢ ∏(T, T', A, λx.B): s₂^{T -> T'}
-    
-    From
-    
-      Foo . (T -> T') ::= "foo" ;
-    
-    we can derive something like
-    
-      UncurryFoo . T' ::= "foo" T ;
-      
-    In the case of ∏, we provide an A (a refinement of T) and get a B (a refinement of T').
-    
-    What about
 
-      Bar . ((T1 -> T2) -> T3) ::= "bar" ; ?
+      Forall T . Forall T' . Pi . T' ::= "Pi" "(" ToString(T) "," ToString(T') "," T "," "lam" (Bind x T) "." (x)T' ")" ;
 
-    How do we provide a term context as input?  The rule itself?
+    From the point of view of the original GSLT, Pi is ∀T. ∀T'. T x (T -> T') -> T'.  Why, then, is it of sort s^{T->T'}?
+    Because it's related on the left to lambda terms/"term contexts".
+
+    Qux  . T1 ::= "qux" ;
+
+    Quux . T2 ::= "quux" ;
+
+    // Bar: (T1 -> T2) -> T3
+    Bar  . T3 ::= "bar" (Bind t1 T1) "." (t1)T2 ;
+
+    Baz  . T3 ::= "baz" T2 ;
     
-      UncurryBar . T3 ::= "bar" Label . "(" ToString(T1) "->" ToString(T2) ")" "::=" [Item] ; ?
+    // Bee: (T1 -> T2) -> T3
+    Bee  . T3 ::= "bee" (T1 -> T2) ;
+
+    // Foo: ((T1 -> T2) -> T3) -> T4
+    Foo  . T4 ::= "foo" (Bind t1t2 (T1 -> T2)) "." (t1t2)T3 ;
+
+    // In Foo and Bee,
+    //   (T1 -> T2)
+    // is used as a category, so we generate 
+    //   AppT1T2 . T2 ::= "α" "{" (T1 -> T2) "," T1 "}" ;
+    //   IdentT1T2 . (T1 -> T2) ::= Ident ;
+    //   LamT1T2 . (T1 -> T2) ::= "λ" "{" Ident "," T2 "}" ;
+    //   IdentT1 . T1 ::= Ident ;
+
+    // foo(bar)
+    // ⇓ η
+    // foo(λf.bar(f))
+    // ⇓ η
+    // foo(λf.bar(λx.f(x)))
+    foo f . bar x . α{f, x}
+
+    // foo(λf.baz(f(qux)))
+    foo f . baz α{f, qux}
+
+    // bar(λx.quux)
+    bar x quux
     
-    
-    
+    // bee(λx.quux)
+    bee λ{x, quux}
+
 - Start
 
     Γ ⊢ A: s
@@ -269,7 +268,7 @@ as "for each way that A₁ relates to B₁ in the context Γ, ..., and Aₙ rela
       ⊢ ||: ∏_{A: s^P}.∏_{B: s^P}.s^P 
 
       Γ ⊢ A: s^P
-      —————————————————
+      ———————————————————
       Γ ⊢ ||(A, 00^s) = A
 
       Γ ⊢ A: s^P  Γ ⊢ B: s^P

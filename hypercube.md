@@ -197,9 +197,10 @@ as "for each way that A₁ relates to B₁ in the context Γ, ..., and Aₙ rela
     //   (T1 -> T2)
     // is used as a category, so we generate 
     //   AppT1T2 . T2 ::= "α" "{" (T1 -> T2) "," T1 "}" ;
-    //   IdentT1T2 . (T1 -> T2) ::= Ident ;
+    //   IdentT1T2 . (T1 -> T2) ::= Ident ; 
     //   LamT1T2 . (T1 -> T2) ::= "λ" "{" Ident "," T2 "}" ;
     //   IdentT1 . T1 ::= Ident ;
+    // The IdentTX productions are the same as the one for Bind.
 
     // foo(bar)
     // ⇓ η
@@ -216,6 +217,9 @@ as "for each way that A₁ relates to B₁ in the context Γ, ..., and Aₙ rela
     
     // bee(λx.quux)
     bee λ{x, quux}
+    
+    // bee(λx.bar(λy.quux))
+    bee λ{x, bar y quux}
 
 - Start
 

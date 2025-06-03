@@ -199,7 +199,7 @@ Rule . Def ::= Label "." Cat "::=" [Item] ;
 -- Items
 Terminal         . Item ::= String ;
 NTerminal        . Item ::= Cat ;
-AbsNTerminal     . Item ::= "(" Ident ")" Cat;
+AbsNTerminal     . Item ::= "(" Ident ")" Item;
 BindNTerminal    . Item ::= "(" "Bind" Ident Cat ")" ;
 
 -- Categories

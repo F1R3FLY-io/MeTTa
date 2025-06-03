@@ -30,7 +30,11 @@ object ASTHelpers {
     val javaList = listItem.asScala.map {
       case t: Terminal => t
       case nt: NTerminal => if (nt.cat_ == oldCat) new NTerminal(newCat) else nt
-      case ant: AbsNTerminal => if (ant.cat_ == oldCat) new AbsNTerminal(ant.ident_, newCat) else ant
+      case ant: AbsNTerminal => {
+        val antListItem = new ListItem()
+        antListItem.add(ant.item_)
+        new AbsNTerminal(ant.ident_, replaceCats(oldCat, newCat, antListItem).get(0))
+      }
       case bnt: BindNTerminal => if (bnt.cat_ == oldCat) new BindNTerminal(bnt.ident_, newCat) else bnt
     }.toSeq.asJava
     val newListItem = new ListItem()

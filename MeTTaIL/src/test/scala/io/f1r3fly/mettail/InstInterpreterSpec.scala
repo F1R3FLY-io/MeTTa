@@ -95,6 +95,7 @@ class InstInterpreterSpec extends AnyFlatSpec with Matchers {
       |  Baz . T3 ::= "baz" T2;
       |  Bee . T3 ::= "bee" (T1 -> T2);
       |  Foo . T4 ::= "foo" (Bind t1t2 (T1 -> T2)) "." (t1t2) T3;
+      |  Deep . T1 ::= "deep" (Bind t (((T1 -> T1) -> (T1 -> T1)) -> T1)) "." (t) T1;
       |}
       |Equations
       |{

@@ -8,36 +8,29 @@ import metta_venus.PrettyPrinter
 import scala.jdk.CollectionConverters._
 
 class InstInterpreterSpec extends AnyFlatSpec with Matchers {
-  "InstInterpreter" should "interpret the Rholang module correctly" in {
-    // Load the Rholang.module file under test and build the interpreter:
-    val moduleFile  = new File("../GSLT/src/test/module/Rholang.module")
+  private def loadInterpreterFor(relPath: String): (InstInterpreter, TheoryInst) = {
+    val moduleFile  = new File(relPath)
     val entryPath   = moduleFile.getCanonicalPath
     val processor   = ModuleProcessor.default
-    // Parse all imports and dependencies…
-    val resolvedMap = processor.resolveModules(entryPath)  
-                              // resolveModules: recursively parse modules and imports :contentReference[oaicite:0]{index=0}&#8203;:contentReference[oaicite:1]{index=1}
-    
-    // Extract the single top‑level TheoryInst (the “main” inst) from the module
-    val mainMod = resolvedMap(entryPath).asInstanceOf[ModuleImpl]
-    import scala.jdk.CollectionConverters._
-    val maybeInst = mainMod.listprog_.asScala.toList
-                       .reverse
-                       .collectFirst { case prg: ProgTheoryInst => prg.theoryinst_ }
-    val inst = maybeInst.getOrElse(
-      fail(s"No top‑level TheoryInst found in $entryPath")
-    )
-    
-    // Run the interpreter to get our BasePres
+    val resolvedMap = processor.resolveModules(entryPath)
+    val mainMod     = resolvedMap(entryPath).asInstanceOf[ModuleImpl]
+    val inst = mainMod.listprog_.asScala.toList
+                   .reverse
+                   .collectFirst { case prg: ProgTheoryInst => prg.theoryinst_ }
+                   .getOrElse(fail(s"No top-level TheoryInst found in $entryPath"))
     val interpreter = new InstInterpreter(resolvedMap, entryPath, processor)
+    (interpreter, inst)
+  }
+
+  "InstInterpreter" should "interpret the Rholang module correctly" in {
+    val (interpreter, inst) = loadInterpreterFor("../GSLT/src/test/module/Rholang.module")
     val basePres = interpreter.interpret(Nil, inst)
-                         .getOrElse(fail("Interpretation of Rholang.module failed"))
-    
-    // After interpreting:
-    val actual = PrettyPrinter.print(basePres)
+                       .getOrElse(fail("Interpretation of Rholang.module failed"))
+    val actual   = PrettyPrinter.print(basePres)
 
     val expected =
       s"""
-      |Presentation Equations
+      |Presentation Exports
       |{
       |  Proc;
       |  Name;
@@ -78,7 +71,21 @@ class InstInterpreterSpec extends AnyFlatSpec with Matchers {
     actual.trim shouldEqual expected.trim
   }
 
-  "InstInterpreter" should "error when local theory not found" in {
+  it should "error when interpreting a module with duplicate term labels" in {
+    val (interpreter, inst) = loadInterpreterFor("../GSLT/src/test/module/bad/RepeatLabel.module")
+    val res = interpreter.interpret(Nil, inst)
+
+    res shouldBe Left("Error: Duplicate label in addTerms: Foo")
+  }
+
+  it should "error when interpreting a module with duplicate replacement labels" in {
+    val (interpreter, inst) = loadInterpreterFor("../GSLT/src/test/module/bad/ReplacementShadows.module")
+    val res = interpreter.interpret(Nil, inst)
+
+    res shouldBe Left("Error: Replacement rule label Bar already exists in theory.")
+  }
+
+  it should "error when local theory not found" in {
     val emptyImports = new ListImport()
     val emptyProgs   = new ListProg()
     val module       = new ModuleImpl(emptyImports, new NameVar("M"), emptyProgs)
@@ -91,7 +98,7 @@ class InstInterpreterSpec extends AnyFlatSpec with Matchers {
     assert(res.left.get.contains("Theory 'Missing' not found in path or imports"))
   }
 
-  "InstInterpreter" should "error when module alias not declared" in {
+  it should "error when module alias not declared" in {
     val imports     = new ListImport()
     val progs       = new ListProg()
     val module      = new ModuleImpl(imports, new NameVar("M"), progs)
@@ -105,7 +112,7 @@ class InstInterpreterSpec extends AnyFlatSpec with Matchers {
     assert(res.left.get.contains("Module alias 'u' not found"))
   }
 
-  "InstInterpreter" should "error when theory not found in imported module" in {
+  it should "error when theory not found in imported module" in {
     val imports     = new ListImport()
     imports.addLast(new ImportModuleAs("u", "UnivAlg.module"))
     val progs       = new ListProg()
@@ -121,7 +128,7 @@ class InstInterpreterSpec extends AnyFlatSpec with Matchers {
     assert(res.left.get.contains("Module alias 'u' not found in ImportModuleAs statements of path"))
   }
 
-  "InstInterpreter" should "error when identifier is free" in {
+  it should "error when identifier is free" in {
     val resolved    = Map.empty[String, Module]
     val interpreter = new InstInterpreter(resolved, "path", ModuleProcessor.default)
     val ref         = new TheoryInstRef("missing")

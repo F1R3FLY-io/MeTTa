@@ -71,7 +71,7 @@ TheoryInstDisj . TheoryInst3 ::= TheoryInst3 "\\/" TheoryInst4 ;
 TheoryInstSubtract . TheoryInst2 ::= TheoryInst2 "\\" TheoryInst3 ;
 separator TheoryInst "," ;
 
-BasePres . Pres ::= "Presentation" "Equations" "{" [Cat] "}" "Terms" "{" [Def] "}" "Equations" "{" [Equation] "}" "Rewrites" "{" [RewriteDecl] "}" ;
+BasePres . Pres ::= "Presentation" "Exports" "{" [Cat] "}" "Terms" "{" [Def] "}" "Equations" "{" [Equation] "}" "Rewrites" "{" [RewriteDecl] "}" ;
 
 BaseSpaceDecl . SpaceDecl ::= "Space" Name "(" [VariableDecl] ")" "{" [Fact] [FactComprehension] "}" ;
 BaseTheoryDecl . TheoryDecl ::= "Theory" Name "(" [VariableDecl] ")" "{" TheoryInst "}" ;
@@ -199,7 +199,7 @@ Rule . Def ::= Label "." Cat "::=" [Item] ;
 -- Items
 Terminal         . Item ::= String ;
 NTerminal        . Item ::= Cat ;
-AbsNTerminal     . Item ::= "(" Ident ")" Cat;
+AbsNTerminal     . Item ::= "(" Ident ")" Item;
 BindNTerminal    . Item ::= "(" "Bind" Ident Cat ")" ;
 
 -- Categories
@@ -213,9 +213,9 @@ ImportedCat . Cat ::= Ident "." Cat;
 -- functional labels
 Id       . Label ::= Ident ;
 Wild     . Label ::= "_" ;
-ListE    . Label ::= "[" "]" ;
-ListCons . Label ::= "(" ":" ")" ;
-ListOne  . Label ::= "(" ":" "[" "]" ")" ;
+ListE    . Label ::= "[" "]" "{" Cat "}";
+ListCons . Label ::= "(" ":" ")" "{" Cat "}";
+ListOne  . Label ::= "(" ":" "[" "]" ")" "{" Cat "}";
 
 -- profiles (= permutation and binding patterns)
 ProfIt   . ProfItem ::= "(" "[" [IntList] "]" "," "[" [Integer] "]" ")" ;

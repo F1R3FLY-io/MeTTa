@@ -154,14 +154,11 @@ object InstInterpreterCases {
                             inst: TheoryInstAddReplacements): Either[String, BasePres] = {
     interpreter.interpret(env, inst.theoryinst_).flatMap { basePres =>
       import scala.jdk.CollectionConverters._
-      // Convert the Java list of replacements to a Scala list.
       val replacements: List[SimpleRepl] =
         inst.listreplacement_.asScala.toList.collect { case s: SimpleRepl => s }
 
-      // Helper function to convert an IntList (defined in Absyn/IntList.java) into a Scala List[Int].
       def convertIntList(intList: IntList): List[Int] = intList match {
-        case ints: Ints =>
-          ints.listinteger_.asScala.toList.map(_.intValue())
+        case ints: Ints => ints.listinteger_.asScala.toList.map(_.intValue())
       }
 
       // Process each replacement sequentially.
@@ -175,47 +172,67 @@ object InstInterpreterCases {
           ruleOpt match {
             case None =>
               Left(s"Error: No definition found with label ${PrettyPrinter.print(s.label_)} in theory.")
+
             case Some(rule) =>
-              // Check that the category in the rule matches the replacement's category.
+              // 1) Category must match
               if (!rule.cat_.equals(s.cat_))
                 Left(s"Error: Category mismatch for definition with label ${PrettyPrinter.print(s.label_)}.")
               else {
-                // Extract the non-terminal items from the original rule.
-                val origNonTerminals = nonTerminals(rule.listitem_)
-                // s.def_ must be a Rule as well.
+                // s.def_ must be a Rule
                 s.def_ match {
                   case replRule: Rule =>
-                    val replNonTerminals = nonTerminals(replRule.listitem_)
-                    if (origNonTerminals.size != replNonTerminals.size)
-                      Left(s"Error: Arity mismatch for definition with label ${s.label_}. " +
-                           s"Expected ${origNonTerminals.size} non-terminal items but got ${replNonTerminals.size}.")
+                    // 2) Duplicate‐label check: the new rule’s label must not collide
+                    val existingLabels = currentPres.listdef_.asScala.collect { case r: Rule => r.label_ }
+                    val otherLabels    = existingLabels.filterNot(_ == s.label_)
+                    if (otherLabels.contains(replRule.label_))
+                      Left(
+                        s"Error: Replacement rule label " +
+                        s"${PrettyPrinter.print(replRule.label_)} already exists in theory."
+                      )
                     else {
-                      val n = origNonTerminals.size
-                      val perm: List[Int] = convertIntList(s.intlist_)
-                      if (perm.sorted != (0 until n).toList)
-                        Left(s"Error: intlist in replacement for label ${PrettyPrinter.print(s.label_)} " +
-                             s"is not a permutation of 0 to ${n - 1}.")
+                      // 3) Arity check
+                      val origNTs  = nonTerminals(rule.listitem_)
+                      val replNTs  = nonTerminals(replRule.listitem_)
+                      if (origNTs.size != replNTs.size)
+                        Left(
+                          s"Error: Arity mismatch for definition with label ${s.label_}. " +
+                          s"Expected ${origNTs.size} non-terminal items but got ${replNTs.size}."
+                        )
                       else {
-                        // For each index j, verify that the item of the jth non-terminal in the original rule
-                        // matches the item of the non-terminal at position perm(j) in the replacement rule.
-                        val check = (0 until n).forall { j =>
-                          origNonTerminals(j) == replNonTerminals(perm(j))
-                        }
-                        if (!check)
-                          Left(s"Error: Category mismatch among non-terminal items in replacement for label ${PrettyPrinter.print(s.label_)}.")
+                        val n    = origNTs.size
+                        val perm = convertIntList(s.intlist_)
+                        // 4) Permutation check
+                        if (perm.sorted != (0 until n).toList)
+                          Left(
+                            s"Error: intlist in replacement for label " +
+                            s"${PrettyPrinter.print(s.label_)} is not a permutation of 0 to ${n - 1}."
+                          )
                         else {
-                          // All checks pass; update the presentation by replacing the matching Rule.
-                          val newDefs: List[Def] = currentPres.listdef_.asScala.toList.map {
-                            case r: Rule if r.label_.toString == s.label_.toString => s.def_
-                            case other => other
+                          // 5) Category‐alignment check across each position
+                          val coordsMatch = (0 until n).forall { j =>
+                            origNTs(j) == replNTs(perm(j))
                           }
-                          val updatedPres = copyPres(currentPres, listdef = Some(newDefs))
-                          Right(updatedPres)
+                          if (!coordsMatch)
+                            Left(
+                              s"Error: Category mismatch among non-terminal items in replacement " +
+                              s"for label ${PrettyPrinter.print(s.label_)}."
+                            )
+                          else {
+                            // All OK: install the new rule
+                            val newDefs = currentPres.listdef_.asScala.toList.map {
+                              case r: Rule if r.label_.toString == s.label_.toString => replRule
+                              case other                                             => other
+                            }
+                            Right(copyPres(currentPres, listdef = Some(newDefs)))
+                          }
                         }
                       }
                     }
+
                   case _ =>
-                    Left(s"Error: Replacement definition for label ${PrettyPrinter.print(s.label_)} is not a Rule.")
+                    Left(
+                      s"Error: Replacement definition for label ${PrettyPrinter.print(s.label_)} is not a Rule."
+                    )
                 }
               }
           }
@@ -224,32 +241,56 @@ object InstInterpreterCases {
     }
   }
 
-  def handleAddTerms(interpreter: InstInterpreter, env: List[(String, BasePres)], inst: TheoryInstAddTerms): Either[String, BasePres] =
+  def handleAddTerms(
+    interpreter: InstInterpreter,
+    env: List[(String, BasePres)],
+    inst: TheoryInstAddTerms
+  ): Either[String, BasePres] =
     interpreter.interpret(env, inst.theoryinst_).flatMap { basePres =>
-      val newTerms = inst.grammar_ match {
+      // Extract the incoming list of Defs (only Rules matter here)
+      val newTerms: List[Def] = inst.grammar_ match {
         case g: MkGrammar => g.listdef_.iterator.asScala.toList
-        case _ => Nil
+        case _            => Nil
       }
-      // Get the set of allowed categories from the existing presentation
-      val allowedCats = basePres.listcat_.asScala.toSet
-      // Check each new term: if it is a Rule, ensure that its category and all categories
-      // from its list of items are present in allowedCats.
-      newTerms.find {
-        case rule: Rule =>
-          val fromRule  = Set(rule.cat_)
-          val fromItems = rule.listitem_.asScala.collect { case nt: NTerminal => nt.cat_ }.toSet
-          val mentionedCats = fromRule ++ fromItems
-          !mentionedCats.subsetOf(allowedCats)
-        case _ => false
-      } match {
-        case Some(rule: Rule) =>
-          val fromRule  = Set(rule.cat_)
-          val fromItems = rule.listitem_.asScala.collect { case nt: NTerminal => nt.cat_ }.toSet
-          val unknownCats = (fromRule ++ fromItems) diff allowedCats
-          Left(s"Error: Def in addTerms mentions unknown categories: ${unknownCats.map(PrettyPrinter.print)}")
-        case _ =>
-          // If all new terms pass the check, update the BasePres by adding the new terms.
-          Right(copyPres(basePres, listdef = Some(basePres.listdef_.asScala.toList ++ newTerms)))
+      // Allowed categories come from the original BasePres
+      val allowedCats: Set[Cat] = basePres.listcat_.asScala.toSet
+
+      // Fold over newTerms, starting with Right(basePres)
+      newTerms.foldLeft[Either[String, BasePres]](Right(basePres)) {
+        case (Left(err), _) => Left(err)  // once an error, keep propagating
+        case (Right(bp), term) => term match {
+          case rule: Rule =>
+            // 1) Unknown‑category check
+            val fromRule  = Set(rule.cat_)
+            val fromItems = rule.listitem_.asScala.collect { case nt: NTerminal => nt.cat_ }.toSet
+            val mentioned = fromRule ++ fromItems
+            if (!mentioned.subsetOf(allowedCats)) {
+              val unknown = mentioned.diff(allowedCats).map(PrettyPrinter.print)
+              Left(s"Error: Def in addTerms mentions unknown categories: $unknown")
+            }
+            // 2) Duplicate‑label check
+            else if (bp.listdef_.asScala.collect { case r: Rule => r.label_ }.contains(rule.label_)) {
+              Left(s"Error: Duplicate label in addTerms: ${PrettyPrinter.print(rule.label_)}")
+            }
+            // 3) Special List‑label check
+            else {
+              rule.label_ match {
+                case l: ListE    if rule.cat_ != ListOfCat(l.cat_) =>
+                  Left(s"Error: Category for []{${rule.cat_}} must be [${rule.cat_}]")
+                case l: ListCons if rule.cat_ != ListOfCat(l.cat_) =>
+                Left(s"Error: Category for (:){${rule.cat_}} must be [${rule.cat_}]")
+                case l: ListOne  if rule.cat_ != ListOfCat(l.cat_) =>
+                Left(s"Error: Category for (:[]){${rule.cat_}} must be [${rule.cat_}]")
+                case _ =>
+                  // All checks pass: append this rule and continue
+                  Right(copyPres(bp, listdef = Some(bp.listdef_.asScala.toList :+ rule)))
+              }
+            }
+
+          case _ =>
+            // Non‑Rule defs (e.g. Comments) are ignored
+            Right(bp)
+        }
       }
     }
 

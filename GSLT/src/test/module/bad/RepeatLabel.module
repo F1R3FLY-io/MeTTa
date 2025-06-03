@@ -1,0 +1,11 @@
+Module RepeatLabel {
+  Theory R() {
+    Empty
+      Exports { T; }
+      Terms {
+        Foo . T ::= "Foo1";
+        Foo . T ::= "Foo2";
+      }
+  }
+  theory R()
+}

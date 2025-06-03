@@ -207,7 +207,7 @@ object AddEqRwHelpers {
   def optCatFromItem(item: Item): Option[Cat] = {
     item match {
       case nt: NTerminal => Some(nt.cat_)
-      case ant: AbsNTerminal => Some(ant.cat_)
+      case ant: AbsNTerminal => optCatFromItem(ant.item_)
       case bnt: BindNTerminal => Some(new IdCat(bnt.ident_))
       case _: Terminal => None
     }
@@ -281,28 +281,24 @@ object AddEqRwHelpers {
     ast match {
       case astVar: ASTVar => if (astVar.ident_ == ident) replacement else astVar
       case astSExp: ASTSExp => {
-        val optRule = defs.get(astSExp.label_)
-        optRule match {
-          case Some(rule) => {
-            val filtered = nonTerminals(rule.listitem_)
-            val javaList = filtered.zip(astSExp.listast_.asScala).map {
-              case (item, ast) => item match {
-                // In the usual case, we recursively replace
-                case nt: NTerminal => findAndReplace(replacement, ident, defs)(ast)
+        val rule = defs(astSExp.label_)
+        val filtered = nonTerminals(rule.listitem_)
+        val javaList = filtered.zip(astSExp.listast_.asScala).map {
+          case (item, ast) => item match {
+            // In the usual case, we recursively replace
+            case nt: NTerminal => findAndReplace(replacement, ident, defs)(ast)
 
-                // If the bound variable shadows the one being replaced, don't recurse; otherwise, do
-                case ant: AbsNTerminal =>
-                  if (ant.ident_ == ident) ast else findAndReplace(replacement, ident, defs)(ast)
+            // If the bound variable shadows the one being replaced, don't recurse; otherwise, do
+            case ant: AbsNTerminal =>
+              if (ant.ident_ == ident) ast else findAndReplace(replacement, ident, defs)(ast)
 
-                // Never replace in a BindNTerminal
-                case bnt: BindNTerminal => ast
-              }
-            }.toSeq.asJava
-            val newListAST = new ListAST()
-            newListAST.addAll(javaList)
-            new ASTSExp(astSExp.label_, newListAST)
+            // Never replace in a BindNTerminal
+            case bnt: BindNTerminal => ast
           }
-        }
+        }.toSeq.asJava
+        val newListAST = new ListAST()
+        newListAST.addAll(javaList)
+        new ASTSExp(astSExp.label_, newListAST)
       }
       case astSubst: ASTSubst => {
         findAndReplace(replacement, ident, defs)(

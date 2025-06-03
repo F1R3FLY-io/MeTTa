@@ -1,0 +1,34 @@
+Module List {
+  Theory ListOfNat() {
+    Empty
+      Exports {
+        Digit;
+        [Digit];
+        Nat;
+        [Nat];
+        ListNat;
+      }
+      Terms {
+        Zero . Digit ::= "0";
+        One . Digit ::= "1";
+        Two . Digit ::= "2";
+        Three . Digit ::= "3";
+        Four  . Digit ::= "4";
+        Five  . Digit ::= "5";
+        Six   . Digit ::= "6";
+        Seven . Digit ::= "7";
+        Eight . Digit ::= "8";
+        Nine  . Digit ::= "9";
+        Nil . Nat ::= ;
+        Cons . Nat ::= Digit Nat;
+        []{Nat} . [Nat] ::= ;
+        (:){Nat} . [Nat] ::= Nat "," [Nat];
+        Brackets . ListNat ::= "[" [Nat] "]";
+        []{Digit} . [Digit] ::= ;
+        (:){Digit} . [Digit] ::= Digit ":" [Digit];
+      }
+      Equations {
+        ((:){Nat} x ((:){Nat} y ([]{Nat}))) == ((:){Nat} y ((:){Nat} x ([]{Nat})));
+      }
+  }
+}

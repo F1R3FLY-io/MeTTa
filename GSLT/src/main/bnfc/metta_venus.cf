@@ -203,9 +203,10 @@ AbsNTerminal     . Item ::= "(" Ident ")" Item;
 BindNTerminal    . Item ::= "(" "Bind" Ident Cat ")" ;
 
 -- Categories
-ListOfCat     . Cat ::= "[" Cat "]" ;
+ListOfCat   . Cat ::= "[" Cat "]" ;
 IdCat       . Cat ::= Ident ;
-ImportedCat . Cat ::= Ident "." Cat;
+ImportedCat . Cat ::= Ident "." Cat ;
+ArrowCat    . Cat ::= "(" Cat "->" Cat ")";
 
 [] . [Cat] ::= ;
 (:) . [Cat] ::= Cat ";" [Cat] ;
@@ -213,9 +214,10 @@ ImportedCat . Cat ::= Ident "." Cat;
 -- functional labels
 Id       . Label ::= Ident ;
 Wild     . Label ::= "_" ;
-ListE    . Label ::= "[" "]" "{" Cat "}";
-ListCons . Label ::= "(" ":" ")" "{" Cat "}";
-ListOne  . Label ::= "(" ":" "[" "]" ")" "{" Cat "}";
+ListE    . Label ::= "[" "]" "{" Cat "}" ;
+ListCons . Label ::= "(" ":" ")" "{" Cat "}" ;
+ListOne  . Label ::= "(" ":" "[" "]" ")" "{" Cat "}" ;
+-- ForAll   . Label ::= "Forall" Cat "." Label ;
 
 -- profiles (= permutation and binding patterns)
 ProfIt   . ProfItem ::= "(" "[" [IntList] "]" "," "[" [Integer] "]" ")" ;

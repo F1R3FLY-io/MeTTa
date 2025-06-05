@@ -199,14 +199,16 @@ Rule . Def ::= Label "." Cat "::=" [Item] ;
 -- Items
 Terminal         . Item ::= String ;
 NTerminal        . Item ::= Cat ;
-AbsNTerminal     . Item ::= "(" Ident ")" Item;
+AbsNTerminal     . Item ::= "(" Ident ")" Item ;
 BindNTerminal    . Item ::= "(" "Bind" Ident Cat ")" ;
+StringNTerminal  . Item ::= "ToString" "(" Cat ")" ;
 
 -- Categories
 ListOfCat   . Cat ::= "[" Cat "]" ;
 IdCat       . Cat ::= Ident ;
 ImportedCat . Cat ::= Ident "." Cat ;
-ArrowCat    . Cat ::= "(" Cat "->" Cat ")";
+ArrowCat    . Cat ::= "(" Cat "->" Cat ")" ;
+ForallCat   . Cat ::= "Forall" Ident "." Cat ;
 
 [] . [Cat] ::= ;
 (:) . [Cat] ::= Cat ";" [Cat] ;

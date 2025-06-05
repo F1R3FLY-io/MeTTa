@@ -108,6 +108,32 @@ class InstInterpreterSpec extends AnyFlatSpec with Matchers {
     actual.trim shouldEqual expected.trim
   }
 
+  it should "interpret the Quantifier module correctly" in {
+    val (interpreter, inst) = loadInterpreterFor("../GSLT/src/test/module/Quantifier.module")
+    val basePres = interpreter.interpret(Nil, inst)
+                       .getOrElse(fail("Interpretation of ArrowCats.module failed"))
+    val actual   = PrettyPrinter.print(basePres)
+
+    val expected =
+      s"""
+      |Presentation Exports
+      |{
+      |  Forall T . T;
+      |}
+      |Terms
+      |{
+      |  MakeT . Forall T . T ::= "makeT";
+      |}
+      |Equations
+      |{
+      |}
+      |Rewrites
+      |{
+      |}
+      """.stripMargin
+
+    actual.trim shouldEqual expected.trim
+  }
 
   it should "error when interpreting a module with duplicate term labels" in {
     val (interpreter, inst) = loadInterpreterFor("../GSLT/src/test/module/bad/RepeatLabel.module")

@@ -1,0 +1,13 @@
+Module Quantifier {
+  Theory Universal() {
+    Empty
+      Exports {
+        Forall T . T;
+      }
+      Terms {
+        MakeT . Forall T . T ::= "makeT" ;
+      }
+  }
+  
+  theory Universal()
+}

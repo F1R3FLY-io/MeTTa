@@ -195,7 +195,7 @@ as "for each way that A₁ relates to B₁ in the context Γ, ..., and Aₙ rela
 
     // In Foo and Bee,
     //   (T1 -> T2)
-    // is used as a category, so we generate 
+    // is used as a category, so we generate
     //   AppT1T2 . T2 ::= "α" "{" (T1 -> T2) "," T1 "}" ;
     //   IdentT1T2 . (T1 -> T2) ::= Ident ; 
     //   LamT1T2 . (T1 -> T2) ::= "λ" "{" Ident "," T2 "}" ;
@@ -626,7 +626,7 @@ as "for each way that A₁ relates to B₁ in the context Γ, ..., and Aₙ rela
       Γ ⊢ A | x!(S): ◊(D {S / Q})
       Γ ⊢ A | x!(S): ◊ev(λQ.D, S)
 
-- Later: Cut-like rules for each rewrite target with a use of ev on an exponental object.  TODO: express extraction from wrapper in terms of coalgebraic structure of free GSLT.
+- Later: Cut-like rules for each rewrite target with a use of ev on an exponential object.  TODO: express extraction from wrapper in terms of coalgebraic structure of free GSLT.
 
     for(chan, cont)
     For(Chan, Pi)  Pi type holds lambda Pi(L) and in the consequent we could write ev(L, @E) instead of using sugar

@@ -33,7 +33,7 @@ class ModuleProcessor(fs: FileSystem) {
       parser.addErrorListener(new BNFCErrorListener)
       val pc     = parser.start_Module()
       val mod    = pc.result.asInstanceOf[Module]
-
+      
       // Add the parsed module to the cache.
       loaded(canonicalPath) = mod
 

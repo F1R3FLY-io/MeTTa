@@ -33,7 +33,7 @@ class ModuleProcessor(fs: FileSystem) {
       parser.addErrorListener(new BNFCErrorListener)
       val pc     = parser.start_Module()
       val mod    = pc.result.asInstanceOf[Module]
-
+      
       // Add the parsed module to the cache.
       loaded(canonicalPath) = mod
 
@@ -89,7 +89,7 @@ class ModuleProcessor(fs: FileSystem) {
     * whose alias matches the identifier, and then search that imported module.
     *
     * @param resolvedModules a map from canonical module paths to parsed Module ASTs.
-    * @param canonicalPathToCurrentModule the canonical path of the current module.
+    * @param currentModulePath the canonical path of the current module.
     * @param dottedPath the dotted path to resolve.
     * @return Either an error message (Left) or a pair consisting of the canonical path of
     *         the module that contains the theory and the resolved TheoryDecl (Right).
@@ -121,7 +121,7 @@ class ModuleProcessor(fs: FileSystem) {
                     load(importedPath).flatMap {
                       case im: ModuleImpl =>
                         findTheoryDeclInModule(im, name)
-                          .toRight(s"Theory '$name' not found in module $importedPath}"
+                          .toRight(s"Theory '$name' not found in module $importedPath"
                                    + s"\nImported module: ${PrettyPrinter.print(im)}")
                           .map(importedPath -> _)
                       case nami => Left(s"Module at $importedPath is not a ModuleImpl:" 

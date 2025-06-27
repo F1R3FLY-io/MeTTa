@@ -158,31 +158,21 @@ as "for each way that A₁ relates to B₁ in the context Γ, ..., and Aₙ rela
 
 - Axiom
 
-    Add term constructors `*^T, □^T: 1 -> T` for each shape T in the theory.
+    Add term constructors `*^T, □^T: 1 -> T` for each generating shape T in the theory.
 
-      Forall T . Type . T ::= "type" "^" ToString(T) ;
-      Forall T . Kind . T ::= "kind" "^" ToString(T) ;
+      Type . T ::= "type" "T" ;
+      Kind . T ::= "kind" "T" ;
 
     In all cases, the output category must be a generating category.  We'll add ArrowCat as an Item.
 
       ArrowCat . Item ::= "(" Cat "->" Cat ")" ;
-
-    The Pi constructor (see below) can be either a type or kind of that shape:
-
-      Γ ⊢ A: s₁^T    Γ, x: A ⊢ B: s₂^{T'}
-      ———————————————————————————————————.
-      Γ ⊢ ∏(T, T', A, λx.B): s₂^{T -> T'}
-
-      Forall T . Forall T' . Pi . T' ::= "Pi" "(" ToString(T) "," ToString(T') "," T "," "lam" (Bind x T) "." (x)T' ")" ;
-
-    From the point of view of the original GSLT, Pi is ∀T. ∀T'. T x (T -> T') -> T'.  Why, then, is it of sort s^{T->T'}?
-    Because it's related on the left to lambda terms/"term contexts".
 
     Qux  . T1 ::= "qux" ;
 
     Quux . T2 ::= "quux" ;
 
     // Bar: (T1 -> T2) -> T3
+    // TODO: Rewrite all Bind forms to Arrow forms with a compiler pass
     Bar  . T3 ::= "bar" (Bind t1 T1) "." (t1)T2 ;
 
     Baz  . T3 ::= "baz" T2 ;
@@ -193,9 +183,10 @@ as "for each way that A₁ relates to B₁ in the context Γ, ..., and Aₙ rela
     // Foo: ((T1 -> T2) -> T3) -> T4
     Foo  . T4 ::= "foo" (Bind t1t2 (T1 -> T2)) "." (t1t2)T3 ;
 
+
     // In Foo and Bee,
     //   (T1 -> T2)
-    // is used as a category, so we generate 
+    // is used as a category, so we generate
     //   AppT1T2 . T2 ::= "α" "{" (T1 -> T2) "," T1 "}" ;
     //   IdentT1T2 . (T1 -> T2) ::= Ident ; 
     //   LamT1T2 . (T1 -> T2) ::= "λ" "{" Ident "," T2 "}" ;
@@ -233,205 +224,231 @@ as "for each way that A₁ relates to B₁ in the context Γ, ..., and Aₙ rela
     ————————————————————
     Γ, x: C ⊢ A: B
 
-- Dependent product, abstraction, application, beta equivalence as part of lambda theory
-
-    Add a term constructor `∏: T x (T -> T') -> T'` for each pair of shapes T, T' in the theory.
-    We write `∏(A, λx.B)` as `∏_{x: A}.B`.  (Do we need to track T, T' like we do on * & □?)
-
-    Γ ⊢ A: s₁^T    Γ, x: A ⊢ B: s₂^{T'}
-    ———————————————————————————————————
-    Γ ⊢ ∏_{x: A}.B: s₂^{T -> T'}
-    Γ ⊢ ∏(A, λx.B): s₂^{T -> T'}
-
-    Γ ⊢ A: s₁^T    Γ, x: A ⊢ B: s₂^{T'}    Γ, x: A ⊢ C: B
-    —————————————————————————————————————————————————————
-    Γ ⊢ λx.C: ∏_{x: A}.B
-    Γ ⊢ λx.C: ∏(A, λx.B)
-
-    Γ ⊢ C: ∏(A, λx.B)    Γ ⊢ D: A
-    Γ ⊢ C: ∏_{x: A}.B    Γ ⊢ D: A
-    —————————————————————————————
-    Γ ⊢ (C D): B[D / x]
-    Γ ⊢ (C D): (λx.B D)
-
-    Beta rules from lambda cube article...
+- Arrow type (Not dependent product!  This is just a lambda theory), abstraction, application, beta equivalence as part of lambda theory
 
 - For each term constructor, a pair of functions (one for structural type, one for term) and inference rules for principal structural types.
 
   - E.g. RHO calc
 
+      00^s: 1 -> P
+
       ———————————
       ⊢ 00^s: s^P
+
+      0^s: 1 -> P
 
       ———————————
       ⊢ 0^s: 00^s
 
 
-
-      ————————————————————————————————
-      ⊢ ||: ∏_{A: s^P}.∏_{B: s^P}.s^P 
-
-      Γ ⊢ A: s^P
-      ———————————————————
-      Γ ⊢ ||(A, 00^s) = A
+      ||^s: P x P -> P
 
       Γ ⊢ A: s^P  Γ ⊢ B: s^P
-      ———————————————————————
-      Γ ⊢ ||(A, B) = ||(B, A)
+      ——————————————————————
+      Γ ⊢ ||^s(A, B): s^P
+
+      Γ ⊢ A: s^P
+      —————————————————————
+      Γ ⊢ ||^s(A, 00^s) = A
+
+      Γ ⊢ A: s^P  Γ ⊢ B: s^P
+      ———————————————————————————
+      Γ ⊢ ||^s(A, B) = ||^s(B, A)
 
       Γ ⊢ A: s^P  Γ ⊢ B: s^P  Γ ⊢ C: s^P
-      —————————————————————————————————————
-      Γ ⊢ ||(||(A, B), C) = ||(A, ||(B, C))
+      —————————————————————————————————————————————
+      Γ ⊢ ||^s(||^s(A, B), C) = ||^s(A, ||^s(B, C))
 
 
+      |^s: P x P x P x P -> P
 
-      ———————————————————————————————————————————————————————
-      ⊢ |: ∏_{A: s^P}.∏_{B: s^P}.∏_{C: A}.∏_{D: B}.||(A, B) 
+      Γ ⊢ A: s^P  Γ ⊢ B: s^P  Γ ⊢ C: A  Γ ⊢ D: B
+      ——————————————————————————————————————————z
+      ⊢ |^s(A, B, C, D): ||^s(A, B)
 
       Γ ⊢ A: s^P  Γ ⊢ C: A
-      ——————————————————————————
-      Γ ⊢ |(A, 00^s, C, 0^s) = C
+      ————————————————————————————
+      Γ ⊢ |^s(A, 00^s, C, 0^s) = C
 
       Γ ⊢ A: s^P  Γ ⊢ B: s^P  Γ ⊢ C: A  Γ ⊢ D: B
       ——————————————————————————————————————————
-      Γ ⊢ |(A, B, C, D) = |(B, A, D, C)
+      Γ ⊢ |^s(A, B, C, D) = |(B, A, D, C)
 
       Γ ⊢ A: s^P  Γ ⊢ B: s^P  Γ ⊢ C: s^P  Γ ⊢ D: A  Γ ⊢ E: B  Γ ⊢ F: C
-      ———————————————————————————————————————————————————————————————————————
-      Γ ⊢ |(||(A, B), C, |(A, B, D, E), F) = |(A, ||(B, C), D, |(B, C, E, F))
+      ———————————————————————————————————————————————————————————————————————————————————
+      Γ ⊢ |^s(||^s(A, B), C, |^s(A, B, D, E), F) = |^s(A, ||^s(B, C), D, |^s(B, C, E, F))
 
 
+      !!^{s₁, s₂}: N x P -> P
 
-      ————————————————————————————————————————————
-      ⊢ !!: ∏_{A: s₁^N}.∏_{B: s₂^P}.∏_{x: A}.s₁^P
+      Γ ⊢ A: s₁^N  Γ ⊢ B: s₂^P
+      ———————————————————————————
+      Γ ⊢ !!^{s₁, s₂}(A, B): s₁^P
 
-      ———————————————————————————————————————————————————————————
-      ⊢ !: ∏_{A: s₁^N}.∏_{B: s₂^P}.∏_{x: A}.∏_{Q: B}.!!(A, B, x)
+      !^{s₁, s₂}: N x P x N x P -> P
 
+      Γ ⊢ A: s₁^N  Γ ⊢ B: s₂^P  Γ ⊢ x: A  Γ ⊢ Q: B
+      ——————————————————————————————————————————————
+      ⊢ !^{s₁, s₂}(A, B, x, Q): !!^{s₁, s₂}(A, B, x)
 
-      // Exponential, so need s₂ & s₃ for hypercube
+      
+      forfor^{s₁, s₂, s₃}: N x N x (N -> P) x N -> P
+
       Γ ⊢ A: s₁^N  Γ ⊢ B: s₂^N  Γ, y: B ⊢ C: s₃^P  Γ ⊢ x: A
       —————————————————————————————————————————————————————
-      Γ ⊢ forfor(A, ∏_{y: B}.C, x): s₃^P <--- how is this forced?
+      Γ ⊢ forfor^{s₁, s₂, s₃}(A, B, λy.C, x): s₃^P <--- how is this forced?
+
+      for^{s₁, s₂, s₃}: N x N x (N -> P) x N x (N -> P) -> P
 
       Γ ⊢ A: s₁^N  Γ ⊢ B: s₂^N  Γ, y: B ⊢ C: s₃^P  Γ ⊢ x: A  Γ, y: B ⊢ D: C
-      ——————————————————————————————————————————————————————————————————————
-      Γ ⊢ for(A, ∏_{y: B}.C, x, λy: B. D): forfor(A, ∏_{y: B}.C, x)
+      ——————————————————————————————————————————————————————————————————————————————
+      Γ ⊢ for^{s₁, s₂, s₃}(A, B, λy.C, x, λy. D): forfor^{s₁, s₂, s₃}(A, B, λy.C, x)
 
 
-
-      —————————————————————
-      ⊢ @@: ∏_{A: s^P}.s^N
-
-      ———————————————————————————————
-      ⊢ @: ∏_{A: s^P}.∏_{B: A}.@@(A)
-
-      —————————————————————
-      ⊢ **: ∏_{A: s^N}.s^P
-
-      ———————————————————————————————
-      ⊢ *: ∏_{A: s^N}.∏_{x: A}.**(A)
+      @@^s: P -> N
 
       Γ ⊢ A: s^P
-      —————————————————
-      Γ ⊢ **(@@(A)) = A
+      ————————————————
+      Γ ⊢ @@^s(A): s^N
 
-      Γ ⊢ A: s^N
-      —————————————————
-      Γ ⊢ @@(**(N)) = N
+      @^s: P x P -> N
 
       Γ ⊢ A: s^P  Γ ⊢ B: A
-      —————————————————————————
-      Γ ⊢ *(@@(A), @(A, B)) = B
+      ——————————————————————
+      Γ ⊢ @^s(A, B): @@^s(A)
+
+      **^s: N -> P
+
+      Γ ⊢ A: s^N
+      ————————————————
+      Γ ⊢ **^s(A): s^P
+
+      *^s: N x N -> P
+
+      Γ ⊢ A: s^N  Γ ⊢ x: A
+      ————————————————————
+      ⊢ *^s(A, x): **^s(A)
+
+      Γ ⊢ A: s^P
+      —————————————————————
+      Γ ⊢ **^s(@@^s(A)) = A
+
+      Γ ⊢ A: s^N
+      —————————————————————
+      Γ ⊢ @@^s(**^s(N)) = N
+
+      Γ ⊢ A: s^P  Γ ⊢ B: A
+      ———————————————————————————————
+      Γ ⊢ *^s(@@^s(A), @^s(A, B)) = B
 
       Γ ⊢ A: s^N  Γ ⊢ B: A
-      —————————————————————————
-      Γ ⊢ @(**(A), *(A, B)) = B
+      ———————————————————————————————
+      Γ ⊢ @^s(**^s(A), *^s(A, B)) = B
 
 
       // Rewrites
+      
+      srcsrc^s, tgttgt^s: R -> P
 
+      Γ ⊢ A: s^R
       —————————————————————————————————
-      ⊢ srcsrc, tgttgt: ∏_{A: s^R}.s^P
+      Γ ⊢ srcsrc^s(A), tgttgt^s(A): s^P
 
-      —————————————————————————————————————————————————
-      ⊢ src, tgt: ∏_{A: s^R}.∏_{r: A}.srcsrc/tgttgt(A)
+      src, tgt: R x R -> P
+
+      Γ ⊢ A: s^R  Γ ⊢ r: A
+      ————————————————————————————————————————————————————
+      ⊢ src^s(A, r), tgt^s(A, r): srcsrc^s(A), tgttgt^s(A)
 
       // Non-dependent
 
+      commcomm^{s₁, s₂}: N x N x (N -> P) x N -> R
+
       Γ ⊢ A: s₁^N  Γ ⊢ B: s₂^P  Γ ⊢ C: s₁^P  Γ ⊢ x: A
       ——————————————————————————————————————————————— y # C
-      Γ ⊢ commcomm(A, ∏_{y:@@(B)}.C, x): s₁^R
+      Γ ⊢ commcomm^{s₁, s₂}(A, @@B, λy.C, x): s₁^R
+
+      comm: N x N x (N -> P) x N, (N -> P) x P -> R
 
       Γ ⊢ A: s₁^N  Γ ⊢ B: s₂^P  Γ ⊢ C: s₁^P  Γ ⊢ x: A  Γ, y: @@(B) ⊢ L: C  Γ ⊢ Q: B
-      ————————————————————————————————————————————————————————————————————————————— y # C
-      ⊢ comm(A, ∏_{y:@@(B)}.C, x, λy:@@(B).L, Q): commcomm(A, ∏_{y:@@(B)}.C, x)
+      ——————————————————————————————————————————————————————————————————————————————— y # C
+      Γ ⊢ comm^{s₁, s₂}(A, @@B, λy.C, x, λy.L, Q): commcomm^{s₁, s₂}(A, @@B, λy.C, x)
 
       // Dependent
 
       Γ ⊢ A: s₁^N  Γ ⊢ B: s₂^P  Γ, y: @@(B) ⊢ C: s₁^P  Γ ⊢ x: A
       —————————————————————————————————————————————————————————
-      Γ ⊢ commcomm(A, ∏_{y:@@(B)}.C, x): s₁^R
+      Γ ⊢ commcomm^{s₁, s₂}(A, @@B, λy.C, x): s₁^R
 
       Γ ⊢ A: s₁^N  Γ ⊢ B: s₂^P  Γ, y: @@(B)⊢ C: s₁^P  Γ ⊢ x: A  Γ, y: @@(B) ⊢ L: C  Γ ⊢ Q: B
       ——————————————————————————————————————————————————————————————————————————————————————
-      ⊢ comm(A, ∏_{y:@@(B)}.C, x, λy:@@(B).L, Q): commcomm(A, ∏_{y:@@(B)}.C, x)
+      Γ ⊢ comm^{s₁, s₂}(A, @@B, λy.C, x, λy.L, Q): commcomm^{s₁, s₂}(A, @@B, λy.C, x)
 
 
-      ——————————————————————————————————————
-      ⊢ par1par1: ∏_{A: s^R}.∏_{B: s^P}.s^R
+      par1par1^s: R x P -> R
 
-      ————————————————————————————————————————————————————————————————
-      ⊢ par1: ∏_{A: s^R}.∏_{B: s^P}.∏_{r: A}.∏_{Q: B}.par1par1(A, B)
+      Γ ⊢ A: s^R  Γ ⊢ B: s^P
+      —————————————————————————
+      Γ ⊢ par1par1^s(A, B): s^R
 
-      ——————————————————————————————————————
-      ⊢ par2par2: ∏_{A: s^R}.∏_{B: s^R}.s^R
+      par1^s: R x P x R x P -> R
 
-      ————————————————————————————————————————————————————————————————
-      ⊢ par2: ∏_{A: s^R}.∏_{B: s^R}.∏_{r1: A}.∏_{r2: B}.par2par2(A, B)
+      Γ ⊢ A: s^R  Γ ⊢ B: s^P  Γ ⊢ r: A  Γ ⊢ Q: B
+      ——————————————————————————————————————————
+      Γ ⊢ par1^s(A, B, r, Q): par1par1^s(A, B)
+
+      par2par2^s: R x R -> R
+
+      Γ ⊢ A: s^R  Γ ⊢ B: s^R
+      —————————————————————————
+      Γ ⊢ par2par2^s(A, B): s^R
+
+      Γ ⊢ A: s^R  Γ ⊢ B: s^R  Γ ⊢ r1: A  Γ ⊢ r2: B
+      ————————————————————————————————————————————
+      Γ ⊢ par2^s(A, B, r1, r2): par2par2^s(A, B)
 
 
 
       ////////////// Non-dependent continuation type //////////
 
       Γ ⊢ A: s₁^N  Γ ⊢ B: s₂^P  Γ ⊢ C: s₁^P  Γ ⊢ x: A
-      ———————————————————————————————————————————————— y # C
-      Γ ⊢ srcsrc(commcomm(A, ∏_{y:@@(B)}.C, x))
+      ——————————————————————————————————————————————————————————————— y # C
+      Γ ⊢ srcsrc^s₁(commcomm^{s₁, s₂}(A, @@B, λy.C, x))
       .   ==
-      .   ||(!!(A, B, x), forfor(A, ∏_{y:@@(B)}.C, x))
+      .   ||^s₁(!!^s₁(A, B, x), forfor^{s₁, s₂, s₁}(A, @@B, λy.C, x))  // Is s₁ s₂ s₁ correct?
 
       Γ ⊢ A: s₁^N  Γ ⊢ B: s₂^P  Γ ⊢ C: s₁^P  Γ ⊢ x: A  Γ, y:@@(B) ⊢ L: C  Γ ⊢ Q: B
-      ——————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————— y # C
-      Γ ⊢ src(commcomm(A, ∏_{y:@@(B)}.C, x), comm(A, ∏_{y:@@(B)}.C, x, λy:@@(B).L, Q)): srcsrc(commcomm(A, ∏_{y:@@(B)}.C, x))
+      ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————— y # C
+      Γ ⊢ src(commcomm(A, @@B, λy.C, x), comm(A, @@B, λy.C, x, λy.L, Q)): srcsrc(commcomm(A, @@B, λy.C, x))
       .   ==
-      .   |(!!(A, B, x), forfor(A, ∏_{y:@@(B)}.C, x), !(A, B, x, Q), for(A, ∏_{y:B}.C, x, λy:@@(B).L)): ||(!!(A, B, x), forfor(A, ∏_{y:@@(B)}.C, x))
+      .   |(!!(A, B, x), forfor(A, @@B, λy.C, x), !(A, B, x, Q), for(A, @@B, λy.C, x, λy.L)): ||(!!(A, B, x), forfor(A, @@B, λy.C, x))
 
       Γ ⊢ A: s₁^N  Γ ⊢ B: s₂^P  Γ ⊢ C: s₁^P  Γ ⊢ x: A
       ———————————————————————————————————————————————— y # C
-      Γ ⊢ tgttgt(commcomm(A, ∏_{y:@@(B)}.C, x))
+      Γ ⊢ tgttgt(commcomm(A, @@B, λy.C, x))
       .   ==
       .   C
 
       Γ ⊢ A: s₁^N  Γ ⊢ B: s₂^P  Γ ⊢ C: s₁^P  Γ ⊢ x: A  Γ, y:@@(B) ⊢ L: C  Γ ⊢ Q: B
-      ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————— y # C
-      Γ ⊢ tgt(commcomm(A, ∏_{y:@@(B)}.C, x), comm(A, ∏_{y:@@(B)}.C, x, λy:@@(B).L, Q)): tgttgt(commcomm(A, ∏_{y:@@(B)}.C, x))
+      ————————————————————————————————————————————————————————————————————————————————————————————————————— y # C
+      Γ ⊢ tgt(commcomm(A, @@B, λy.C, x), comm(A, @@B, λy.C, x, λy.L, Q)): tgttgt(commcomm(A, @@B, λy.C, x))
       .   ==
-      .   ((λy:@@(B).L) @(B, Q)): C
+      .   ((λy.L) @(B, Q)): C
 
 
       ////////////// Dependent continuation type: no type equations //////////
 
       Γ ⊢ A: s₁^N  Γ ⊢ B: s₂^P  Γ, y: @@(B) ⊢ C: s₁^P  Γ ⊢ x: A  Γ, y: @@(B) ⊢ L: C  Γ ⊢ Q: B
-      ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
-      Γ ⊢ src(commcomm(A, ∏_{y:@@(B)}.C, x), comm(A, ∏_{y:@@(B)}.C, x, λy:@@(B).L, Q)): srcsrc(commcomm(A, ∏_{y:@@(B)}.C, x))
+      ————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+      Γ ⊢ src(commcomm(A, @@B, λy.C, x), comm(A, @@B, λy.C, x, λy.L, Q)): srcsrc(commcomm(A, @@B, λy.C, x))
       .   ==
-      .   |(!!(A, B, x), forfor(A, ∏_{y:@@(B)}.C, x), !(A, B, x, Q), for(A, ∏_{y:B}.C, x, λy:@@(B).L)): ||(!!(A, B, x), forfor(A, ∏_{y:@@(B)}.C, x))
+      .   |(!!(A, B, x), forfor(A, @@B, λy.C, x), !(A, B, x, Q), for(A, @@B, λy.C, x, λy.L)): ||(!!(A, B, x), forfor(A, @@B, λy.C, x))
 
-      Γ ⊢ A: s₁^N  Γ ⊢ B: s₂^P  Γ, y: @@(B) ⊢ C: s₁^P  Γ ⊢ x: A  Γ, y:@@(B) ⊢ L: C  Γ ⊢ Q: B
+      Γ ⊢ A: s₁^N  Γ ⊢ B: s₂^P  Γ, y: @@(B) ⊢ C: s₁^P  Γ ⊢ x: A  Γ, y: @@(B) ⊢ L: C  Γ ⊢ Q: B
       ————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
-      Γ ⊢ tgt(commcomm(A, ∏_{y:@@(B)}.C, x), comm(A, ∏_{y:@@(B)}.C, x, λy:@@(B).L, Q)): tgttgt(commcomm(A, ∏_{y:@@(B)}.C, x))
+      Γ ⊢ tgt(commcomm(A, @@B, λy.C, x), comm(A, @@B, λy.C, x, λy.L, Q)): tgttgt(commcomm(A, @@B, λy.C, x))
       .   ==
-      .   ((λy:@@(B).L) @(B, Q)): (λy: @@(B).C @(B, Q))
+      .   ((λy.L) @(B, Q)): ((λy.C) @(B, Q))
 
 
       ////////////// Context rules //////////
@@ -522,7 +539,7 @@ as "for each way that A₁ relates to B₁ in the context Γ, ..., and Aₙ rela
   ——————————————
   Γ ⊢ K(A): K(B)
 
-  - E.g. SKI `σ: App(App(App(S, x), y), z) ~> App(App(x, z), App(y, z)`
+  - E.g. SKI `σ: App(App(App(S, x), y), z) ~> App(App(x, z), App(y, z))`
                                `A   B   C`
 
     Γ ⊢ A: s^P    Γ ⊢ x: A    Γ ⊢ B: s^P    Γ ⊢ y: B    Γ ⊢ C: s^P
@@ -626,7 +643,14 @@ as "for each way that A₁ relates to B₁ in the context Γ, ..., and Aₙ rela
       Γ ⊢ A | x!(S): ◊(D {S / Q})
       Γ ⊢ A | x!(S): ◊ev(λQ.D, S)
 
-- Later: Cut-like rules for each rewrite target with a use of ev on an exponental object.  TODO: express extraction from wrapper in terms of coalgebraic structure of free GSLT.
+- Implicit rewrites due to equations.  If A = A', A' ~> B', B' = B, then A ~> B.
+
+  - E.g. RHO
+
+      par1: R x P ~> R together with commutativity imply par1': P x R ~> R and par1' = par1 o swap.
+      This can be turned into equations among terms by s(par1'(p, r)) = s(par1(r, p)) and t(par1'(p, r)) = t(par1(r, p)).
+
+- Later: Cut-like rules for each rewrite target with a use of ev on an exponential object.  TODO: express extraction from wrapper in terms of coalgebraic structure of free GSLT.
 
     for(chan, cont)
     For(Chan, Pi)  Pi type holds lambda Pi(L) and in the consequent we could write ev(L, @E) instead of using sugar

@@ -48,6 +48,8 @@ object Main {
               case Right(basePres) =>
                 println("\n[Interpreted Presentation]\n")
                 println(PrettyPrinter.print(basePres))
+                // Generate BNFC from basePres
+                // 
               case Left(error) =>
                 println(s"\nError during interpretation: $error")
             }

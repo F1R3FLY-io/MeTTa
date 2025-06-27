@@ -49,7 +49,8 @@ object Main {
                 println("\n[Interpreted Presentation]\n")
                 println(PrettyPrinter.print(basePres))
                 // Generate BNFC from basePres
-                // 
+                println("\n[Generated BNFC]\n")
+                println(PrettyPrinter.print(BNFCRenderer.render(basePres)))
               case Left(error) =>
                 println(s"\nError during interpretation: $error")
             }

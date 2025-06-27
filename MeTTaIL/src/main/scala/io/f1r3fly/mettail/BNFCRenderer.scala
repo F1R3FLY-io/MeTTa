@@ -29,43 +29,47 @@ object BNFCRenderer {
 
       val rule = defn.asInstanceOf[Rule]
       val varToCat: mutable.Map[String, Cat] = mutable.Map()
+      var hasBind = false
 
       for (item <- rule.listitem_.asScala) {
         item match {
           case bnt: BindNTerminal => {
             varToCat(bnt.ident_) = bnt.cat_
+            hasBind = true
           }
           case _ => ()
         }
       }
 
-      val labelStr = arrowMangleLabel(rule.label_.asInstanceOf[Id].ident_)
-      val items = new ListItem()
-      items.add(Terminal(labelStr))
-      val r = new Rule(Id(labelStr), rule.cat_, items)
+      if (hasBind) {
+        val labelStr = arrowMangleLabel(rule.label_.asInstanceOf[Id].ident_)
+        val items = new ListItem()
+        items.add(Terminal(labelStr))
+        val r = new Rule(Id(labelStr), rule.cat_, items)
 
-      for (item <- rule.listitem_.asScala) {
-        item match {
-          case nt: NTerminal => {
-            r.listitem_.add(new NTerminal(nt.cat_))
-          }
-          case ant: AbsNTerminal => {
-            val stack: Stack[Item] = Stack()
-            stack.push(item)
-            while (stack.top.isInstanceOf[AbsNTerminal]) {
-              stack.push(stack.top.asInstanceOf[AbsNTerminal].item_)
+        for (item <- rule.listitem_.asScala) {
+          item match {
+            case nt: NTerminal => {
+              r.listitem_.add(new NTerminal(nt.cat_))
             }
-            var p = stack.pop().asInstanceOf[NTerminal].cat_
-            while (stack.nonEmpty) {
-              val sourceVar = stack.pop().asInstanceOf[AbsNTerminal].ident_
-              p = new ArrowCat(varToCat(sourceVar), p)
+            case ant: AbsNTerminal => {
+              val stack: Stack[Item] = Stack()
+              stack.push(item)
+              while (stack.top.isInstanceOf[AbsNTerminal]) {
+                stack.push(stack.top.asInstanceOf[AbsNTerminal].item_)
+              }
+              var p = stack.pop().asInstanceOf[NTerminal].cat_
+              while (stack.nonEmpty) {
+                val sourceVar = stack.pop().asInstanceOf[AbsNTerminal].ident_
+                p = new ArrowCat(varToCat(sourceVar), p)
+              }
+              r.listitem_.add(new NTerminal(p))
             }
-            r.listitem_.add(new NTerminal(p))
+            case _ => ()
           }
-          case _ => ()
         }
+        retList.add(r)
       }
-      retList.add(r)
     }
     retList
   }

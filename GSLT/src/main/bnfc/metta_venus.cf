@@ -205,7 +205,6 @@ BindNTerminal    . Item ::= "(" "Bind" Ident Cat ")" ;
 -- Categories
 ListOfCat   . Cat ::= "[" Cat "]" ;
 IdCat       . Cat ::= Ident ;
-ImportedCat . Cat ::= Ident "." Cat ;
 ArrowCat    . Cat ::= "(" Cat "->" Cat ")" ;
 
 [] . [Cat] ::= ;

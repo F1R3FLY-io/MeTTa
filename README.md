@@ -2,7 +2,12 @@
 MeTTaIL: Meta Type Talk Intermediate Language
 
 # Prerequisites
-scala 3, bnfc, ghc, alex, happy
+
+- scala 3
+- bnfc (https://bnfc.digitalgrammars.com/)
+- ghc (https://www.haskell.org/ghcup/)
+- alex (https://haskell-alex.readthedocs.io/en/latest/)
+- happy (https://haskell-happy.readthedocs.io/en/latest/)
 
 # Build
 ./build

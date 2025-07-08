@@ -1,5 +1,5 @@
-# MeTTa
-MeTTa 2.0
+# MeTTaIL
+MeTTaIL: Meta Type Talk Intermediate Language
 
 # Prerequisites
 bnfc, ghc, alex, happy
@@ -8,4 +8,4 @@ bnfc, ghc, alex, happy
 ./build
 
 # Run
-E.g. `target/Main GSLT/src/test/module/RhoCalc.module`
+`java -jar MeTTaIL/target/scala-3.4.1/mettail_assembly.jar GSLT/src/test/module/Product.module`

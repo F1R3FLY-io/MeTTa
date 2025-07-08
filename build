@@ -1,5 +1,92 @@
-bnfc -m -d GSLT/src/main/bnfc/metta_venus.cf
-alex MettaVenus/Lex.x
-happy -iMettaVenus/Par.info MettaVenus/Par.y
-make
-rm MettaVenus/*.bak 2> /dev/null
+#!/bin/sh
+set -euo pipefail
+
+#------------------------------------------------------------------------------
+# Configuration and Directory Definitions
+#------------------------------------------------------------------------------
+TARGET_DIR="target"
+BUILD_DIR="build_files"
+SOURCE_CF="../GSLT/src/main/bnfc/metta_venus.cf"
+CLASS_DIR="bin"
+MANIFEST_DIR="META-INF"
+MANIFEST_FILE="${MANIFEST_DIR}/MANIFEST.MF"
+JAR_FILE="mettailparser.jar"
+MAIN_CLASS="metta_venus.Test"  # Update if the main class changes
+
+#------------------------------------------------------------------------------
+# Create Necessary Directories
+#------------------------------------------------------------------------------
+mkdir -p "$TARGET_DIR" "$BUILD_DIR"
+
+#------------------------------------------------------------------------------
+# Switch to the Build Directory
+#------------------------------------------------------------------------------
+cd "$BUILD_DIR"
+
+#------------------------------------------------------------------------------
+# Generate Parser/Lexer using BNFC
+#------------------------------------------------------------------------------
+CLASSPATH="lib/antlr-4.9.3-complete.jar:$CLASSPATH" bnfc --antlr --java -m "$SOURCE_CF"
+
+#------------------------------------------------------------------------------
+# Prepare Build Directories for Compilation and Manifest
+#------------------------------------------------------------------------------
+mkdir -p "$CLASS_DIR" "$MANIFEST_DIR" "${CLASS_DIR}/lib"
+
+#------------------------------------------------------------------------------
+# Update Makefile for Compiling Classes to the Specified Directory
+# Note: The sed -i '' syntax is for BSD/MacOS. Adjust if needed for Linux.
+#------------------------------------------------------------------------------
+sed -i '' 's|JAVAC_FLAGS=-sourcepath .|JAVAC_FLAGS=-d bin -sourcepath .|' Makefile
+sed -i '' 's|\t\${JAVAC} \${JAVAC_FLAGS} \$\^|\t\${JAVAC} \${JAVAC_FLAGS} -d bin \$\^|' Makefile
+
+#------------------------------------------------------------------------------
+# Create the Manifest File with the Main-Class Entry
+#------------------------------------------------------------------------------
+echo "Main-Class: $MAIN_CLASS" > "$MANIFEST_FILE"
+
+#------------------------------------------------------------------------------
+# Append the JAR Creation Rule to the Makefile if Not Already Present
+#------------------------------------------------------------------------------
+if ! grep -q '^jar:' Makefile; then
+    cat <<EOF >> Makefile
+
+# Rule to create JAR file with manifest and dependency classes
+jar:
+	jar cfm $JAR_FILE $MANIFEST_FILE -C $CLASS_DIR . -C $CLASS_DIR/lib .
+EOF
+fi
+
+#------------------------------------------------------------------------------
+# Extract Dependency JARs from the Project's lib Directory (Project Root)
+#------------------------------------------------------------------------------
+for jarfile in ../lib/*.jar; do
+    echo "Extracting $jarfile..."
+    unzip -o "$jarfile" -d "${CLASS_DIR}/lib"
+done
+
+#------------------------------------------------------------------------------
+# Build the Project and Create the JAR
+#------------------------------------------------------------------------------
+CLASSPATH="../lib/antlr-4.9.3-complete.jar:$CLASSPATH" make
+CLASSPATH="../lib/antlr-4.9.3-complete.jar:$CLASSPATH" make jar
+
+#------------------------------------------------------------------------------
+# Return to Project Root and Move the JAR to the Target Directory
+#------------------------------------------------------------------------------
+cd ..
+mv build_files/"$JAR_FILE" "$TARGET_DIR"
+
+#------------------------------------------------------------------------------
+# Build the scala code
+#------------------------------------------------------------------------------
+cd MeTTaIL
+sbt assembly
+cd ..
+
+#------------------------------------------------------------------------------
+# Completion Message with Example Usage
+#------------------------------------------------------------------------------
+echo "Build complete."
+echo "Example:"
+echo "java -jar MeTTaIL/target/scala-3.4.1/mettail_assembly.jar GSLT/src/test/module/Rholang.module"

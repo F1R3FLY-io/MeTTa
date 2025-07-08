@@ -1,8 +1,0 @@
-Theory BadBindEmpty () = {
-  Exports { Proc; }
-  Terms {
-    PRecv . Proc ::= "for" "(" (Bind []) "<-" Name ")" "{" Proc "}" ;
-  }
-  Equations {}
-  Rewrites {}
-}

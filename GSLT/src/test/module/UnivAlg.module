@@ -1,0 +1,67 @@
+Module UnivAlg {
+  Theory EmptySet() {
+    Empty 
+      Exports { 
+        Elem; 
+      }
+  }
+
+  Theory Monoid(s: Set) {
+    s
+      Terms {
+        One . Elem ::= "1" ;
+        Mult . Elem ::= "(" Elem "*" Elem ")" ;
+      }
+      Equations {
+        (Mult (Mult x y) z) == (Mult x (Mult y z));
+        (Mult x (One)) == x;
+        (Mult (One) x) == x;
+      }
+  }
+
+  Theory CommutativeMonoid(m: Monoid) {
+    m
+      Replacements {
+        [] One . Elem => Zero . Elem ::= "0" ;
+        [0, 1] Mult . Elem => Plus . Elem ::= "(" Elem "+" Elem ")" ;
+      }
+      Equations {
+        (Plus x y) == (Plus y x);
+      }
+  }
+  
+  Theory Rig(add: CommutativeMonoid, mult: Monoid) {
+    {add \/ mult}
+      Equations {
+        (Mult x (Plus y z)) == (Plus (Mult x y) (Mult x z));
+        (Mult (Plus x y) z) == (Plus (Mult x z) (Mult y z));
+        (Mult x (Zero)) == (Zero);
+        (Mult (Zero) x) == (Zero);
+      }
+  }
+
+  Theory Group(m: Monoid) {
+    m
+      Terms {
+        Inv . Elem ::= "inv" "(" Elem ")" ;
+      }
+      Equations {
+        (Mult x (Inv x)) == (One);
+        (Inv (Inv x)) == x;
+        (Inv (Mult x y)) == (Mult (Inv y) (Inv x));
+      }
+  }
+
+  Theory AbelianGroup(g: Group, c: CommutativeMonoid) {
+    g
+      Replacements {
+        [] One . Elem => Zero . Elem ::= "0" ;
+        [0, 1] Mult . Elem => Plus . Elem ::= "(" Elem "+" Elem ")" ;
+        [0] Inv . Elem => Neg . Elem ::= "(" "-" Elem ")" ;
+      } \/ c
+  }
+
+  Theory Ring(r: Rig, add: AbelianGroup) {
+    r \/ add
+  }
+}

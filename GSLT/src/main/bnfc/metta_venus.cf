@@ -3,31 +3,84 @@
 -}
 
 -- A module is a collection of decls and instances
+-- and communications between instances.
 
-ModuleImpl . Module ::= "Module" Name "{" [Prog] "}" ;
+ModuleImpl . Module ::= [Import] "Module" Name "{" [Prog] "}" ;
 
-ProgDecl . Prog ::= Decl ;
-ProgInst . Prog ::= Inst ;
-separator Prog "." ;
+ImportModuleAs . Import ::= "import" String "as" Ident ;
+ImportFromModule . Import ::= "import" Ident "from" String ;
+[] . [Import] ::= ;
+(:) . [Import] ::= Import [Import] ;
+
+ProgSpaceDecl . Prog ::= SpaceDecl ;
+ProgTheoryDecl . Prog ::= TheoryDecl ;
+ProgSpaceInst . Prog ::= "space" SpaceInst ;
+ProgTheoryInst . Prog ::= "theory" TheoryInst ;
+
+ProgRecv . Prog ::= FactComprehension ;
+separator nonempty Prog "" ;
 
 -- A Space is a GSLT and a FactBase
 
-_. Inst  ::= Inst1 ;
-_. Inst1 ::= "{" Inst "}" ;
+_. SpaceInst  ::= SpaceInst1 ;
+_. SpaceInst1  ::= SpaceInst2 ;
+_. SpaceInst2  ::= SpaceInst3 ;
+_. SpaceInst3  ::= SpaceInst4 ;
+_. SpaceInst4  ::= SpaceInst5 ;
+_. SpaceInst5  ::= SpaceInst6 ;
+_. SpaceInst6  ::= SpaceInst7 ;
+_. SpaceInst7 ::= "{" SpaceInst "}" ;
 
-InstEmpty . Inst1 ::= "Nil" ;
-InstCtor . Inst ::= Name "(" [Inst] ")" ;
-InstRec . Inst1 ::= "let" Ptrn "=" Inst1 "in" Inst1 ;
-InstRef . Inst1 ::= Ident ;
-InstPar . Inst ::= Inst "|" Inst1 ;
-separator Inst "," ;
+SpaceInstEmpty . SpaceInst7 ::= "NilSpace" ;
+SpaceInstCtor . SpaceInst7 ::= DottedPath "(" [SpaceInst] ")" ;
+SpaceInstK . SpaceInst7 ::= SpaceInst7 "=>" "{" [Prog] "}" ;
+SpaceInstRef . SpaceInst7 ::= Ident ;
+SpaceInstRec . SpaceInst7 ::= "let" Ident "=" SpaceInst7 "in" "(" SpaceInst7 ")";
+SpaceInstTail . SpaceInst7 ::= "tail" "(" SpaceInst7 ")" ;
+SpaceInstSup . SpaceInst7 ::= "sup" "(" SpaceInst7 ")" ;
+SpaceInstInf . SpaceInst7 ::= "inf" "(" SpaceInst7 ")";
+SpaceInstComp . SpaceInst6 ::= SpaceInst6 "::" SpaceInst7 ;
+SpaceInstConj . SpaceInst5 ::= SpaceInst5 "/\\" SpaceInst6 ;
+SpaceInstDisj . SpaceInst4 ::= SpaceInst4 "\\/" SpaceInst5 ;
+SpaceInstSub . SpaceInst3 ::= SpaceInst3 "\\" SpaceInst4 ;
+SpaceInstRest . SpaceInst2 ::= SpaceInst2 "<|" SpaceInst3 ;
+SpaceInstGCD . SpaceInst1 ::= SpaceInst1 "**" SpaceInst2 ;
+SpaceInstPar . SpaceInst ::= SpaceInst "|" SpaceInst1 ;
+separator SpaceInst "," ;
 
-PtrnSeq . Ptrn ::= "(" [Ptrn] ")" ;
-PtrnInst . Ptrn ::= Inst1 ;
-separator Ptrn "," ;
+_. TheoryInst  ::= TheoryInst1 ;
+_. TheoryInst1 ::= TheoryInst2 ;
+_. TheoryInst2 ::= TheoryInst3 ;
+_. TheoryInst3 ::= TheoryInst4 ;
+_. TheoryInst4 ::= TheoryInst5 ;
+_. TheoryInst5 ::= TheoryInst6 ;
+_. TheoryInst6 ::= "{" TheoryInst "}" ;
 
-SpaceDecl . Decl ::= "Space" Name "(" [VariableDecl] ")" "=" "{" [Fact] [FactComprehension] "}" ;
-GSLTDecl . Decl ::= "Theory" Name "(" [VariableDecl] ")" "=" "{" Exports FreeTheory Equations Rewrites "}" ;
+TheoryInstEmpty . TheoryInst6 ::= "Empty" ;
+TheoryInstAddExports . TheoryInst5 ::= TheoryInst5 "Exports" "{" [Export] "}" ;
+TheoryInstAddReplacements . TheoryInst5 ::= TheoryInst5 "Replacements" "{" [Replacement] "}" ;
+TheoryInstAddTerms . TheoryInst5 ::= TheoryInst5 "Terms" "{" Grammar "}" ;
+TheoryInstAddEquations . TheoryInst5 ::= TheoryInst5 "Equations" "{" [Equation] "}" ;
+TheoryInstAddRewrites . TheoryInst5 ::= TheoryInst5 "Rewrites" "{" [RewriteDecl] "}" ;
+TheoryInstCtor . TheoryInst5 ::= DottedPath "(" [TheoryInst] ")" ;
+TheoryInstRef . TheoryInst5 ::= Ident ;
+TheoryInstRec . TheoryInst5 ::= "let" Ident "=" TheoryInst5 "in" "(" TheoryInst5 ")";
+TheoryInstFree . TheoryInst5 ::= "free" "(" DottedPath ")" ;
+TheoryInstConj . TheoryInst4 ::= TheoryInst4 "/\\" TheoryInst5 ;
+TheoryInstDisj . TheoryInst3 ::= TheoryInst3 "\\/" TheoryInst4 ;
+TheoryInstSubtract . TheoryInst2 ::= TheoryInst2 "\\" TheoryInst3 ;
+separator TheoryInst "," ;
+
+BasePres . Pres ::= "Presentation" "Exports" "{" [Cat] "}" "Terms" "{" [Def] "}" "Equations" "{" [Equation] "}" "Rewrites" "{" [RewriteDecl] "}" ;
+
+BaseSpaceDecl . SpaceDecl ::= "Space" Name "(" [VariableDecl] ")" "{" [Fact] [FactComprehension] "}" ;
+BaseTheoryDecl . TheoryDecl ::= "Theory" Name "(" [VariableDecl] ")" "{" TheoryInst "}" ;
+
+VarDecl . VariableDecl ::= Ident ":" DottedPath ;
+separator VariableDecl "," ;
+
+BaseDottedPath . DottedPath ::= Ident ;
+QualifiedDottedPath . DottedPath ::= Ident "." DottedPath ;
 
 -- Names
 NameWildcard. Name ::= "_" ;
@@ -38,20 +91,52 @@ separator Name "," ;
 NameRemainderVar.   NameRemainder ::= "..." "@" Ident ;
 NameRemainderEmpty. NameRemainder ::= "" ;
 
-VarDecl . VariableDecl ::= Ident ":" Name ;
-separator VariableDecl "," ;
-
 FactImpl . Fact ::= Item ;
-separator Fact "," ;
+separator nonempty Fact ";" ;
 
-FactComprehensionImpl . FactComprehension ::= "for" "(" [ReceiptSymm] ")" "{" Inst "}" ;
+PRecv.           FactComprehension ::= "for" "(" [Receipt] ")" SpaceInst7 ;
+PSend.           FactComprehension ::= Name Send "(" [Fact] ")" ;
+PSendEmtpy.      FactComprehension ::= Name Send "(" ")" ;
+PSendSynch.      FactComprehension ::= Name "!?" "(" [Fact] ")" SynchSendCont ;
+PSendSynchEmpty. FactComprehension ::= Name "!?" "(" ")" SynchSendCont ;
 separator FactComprehension "," ;
 
+-- Receipt
+ReceiptLinear.        Receipt ::= ReceiptLinearImpl ;
+ReceiptRepeated.      Receipt ::= ReceiptRepeatedImpl ;
+ReceiptPeek.          Receipt ::= ReceiptPeekImpl ;
 -- ReceiptSymm
-ReceiptSymmLinear.    ReceiptSymm ::= ReceiptSymmLinearImpl ;
-ReceiptSymmRepeated.  ReceiptSymm ::= ReceiptSymmRepeatedImpl ;
-ReceiptSymmPeek.      ReceiptSymm ::= ReceiptSymmPeekImpl ;
-separator nonempty ReceiptSymm ";" ;
+ReceiptSymmLinear.    Receipt ::= ReceiptSymmLinearImpl ;
+ReceiptSymmRepeated.  Receipt ::= ReceiptSymmRepeatedImpl ;
+ReceiptSymmPeek.      Receipt ::= ReceiptSymmPeekImpl ;
+separator nonempty Receipt ";" ;
+
+-- Linear Receipts
+LinearSimple. ReceiptLinearImpl ::= [LinearBind] ;
+-- Implementing this will be tricky.
+-- for (x <- a; y <- b if *x)
+-- LinearCond.   Linear ::= [LinearBind] "if" Proc ;
+
+-- Single Linear Bind
+LinearBindImpl. LinearBind ::= [Name] NameRemainder "<-" NameSource ;
+separator nonempty LinearBind "&" ;
+
+SimpleSource.         NameSource ::= Name ;
+Self.                 NameSource ::= "self" ;
+ReceiveSendSource.    NameSource ::= Name "?!" ;
+SendReceiveSource.    NameSource ::= Name "!?" "(" [Fact] ")" ;
+
+-- Repeated Receipts
+RepeatedSimple. ReceiptRepeatedImpl ::= [RepeatedBind] ;
+-- Single Repeated Bind
+RepeatedBindImpl. RepeatedBind ::= [Name] NameRemainder "<=" Name ;
+separator nonempty RepeatedBind "&" ;
+
+-- Peek Receipts
+PeekSimple. ReceiptPeekImpl ::= [PeekBind] ;
+-- Single Peek
+PeekBindImpl. PeekBind ::= [Name] NameRemainder "<<-" Name ;
+separator nonempty PeekBind "&" ;
 
 -- Linear ReceiptSymms
 LinearSymmSimple. ReceiptSymmLinearImpl ::= [LinearBindSymm] ;
@@ -60,13 +145,8 @@ LinearSymmSimple. ReceiptSymmLinearImpl ::= [LinearBindSymm] ;
 -- LinearCond.   Linear ::= [LinearBindSymm] "if" Proc ;
 
 -- Single Linear BindSymm
-LinearBindSymmImpl. LinearBindSymm ::= [Name] NameRemainder "<->" NameSymmSource ;
+LinearBindSymmImpl. LinearBindSymm ::= [Name] NameRemainder "<->" NameSource ;
 separator nonempty LinearBindSymm "&" ;
-
-SimpleSymmSource.         NameSymmSource ::= Name ;
-Self.                     NameSymmSource ::= "self" ;
-ReceiveSendSymmSource.    NameSymmSource ::= Name "?!" ;
-SendReceiveSymmSource.    NameSymmSource ::= Name "!?" "(" [Fact] ")" ;
 
 -- Repeated ReceiptSymms
 RepeatedSymmSimple. ReceiptSymmRepeatedImpl ::= [RepeatedBindSymm] ;
@@ -80,33 +160,25 @@ PeekSymmSimple. ReceiptSymmPeekImpl ::= [PeekBindSymm] ;
 PeekBindSymmImpl. PeekBindSymm ::= [Name] NameRemainder "<<->>" Name ;
 separator nonempty PeekBindSymm "&" ;
 
--- A GSLT is a Grammar, a set of equations, and a list of rewrite rules
+EmptyCont.      SynchSendCont ::= "." ;
+NonEmptyCont.   SynchSendCont ::= ";" SpaceInst ;
 
-Categories . Exports ::= "Exports" "{" [Export] "}" ;
-Generators . FreeTheory ::= "Terms" "{" Grammar "}" ;
-Relations . Equations ::= "Equations" "{" [Equation] "}" ;
-Transitions . Rewrites ::= "Rewrites" "{" [RewriteDecl] "}" ;
+-- Types of Send:
+SendSingle.   Send ::= "!" ;
+SendMultiple. Send ::= "!!" ;
+SendSymm.     Send ::= "!$" ;
 
 -- Exports
+
+BaseExport . Export ::= Cat ;
+RenameExport . Export ::= Cat "=>" Cat ;
 
 []  . [Export] ::= ;
 (:) . [Export] ::= Export ";" [Export] ;
 
-SimpleExp . Export ::= Ident ;
-Extends . Export ::= Ident "extends" Import Imports ;
+-- Replacements
 
--- Imports
-SimpleImp . Import ::= Ident "." Ident Where;
-
-Empty . Where ::= ;
-Block . Where ::= "where" "{" [Replacement] "}" ;
-
-EmptyImp . Imports ::= ;
-AndImp . Imports ::= "and" Import Imports;
-
--- May eventually generalize to
--- Replacement ::= Label "." Cat "=>" Def ;
-SimpleRepl . Replacement ::= Ident "." Ident "=>" Ident "." Ident "::=" [Item] ;
+SimpleRepl . Replacement ::= IntList Label "." Cat "=>" Def;
 
 []  . [Replacement] ::= ;
 (:) . [Replacement] ::= Replacement ";" [Replacement] ;
@@ -127,40 +199,23 @@ Rule . Def ::= Label "." Cat "::=" [Item] ;
 -- Items
 Terminal         . Item ::= String ;
 NTerminal        . Item ::= Cat ;
-
--- BindTerminal Item
-BindTerminal . Item ::= "(" "Bind" Ident IntList ")" ;
--- Ident defines the category C of the variable; a new rule
---   IdC . C ::= Ident
--- Error if Ident is already the RHS of a rule for C.
--- IntList specifies where in the term the variable is bound.
---    Lam. T ::= "λ" (Bind T [1]) "." T                             -- bound in body
---    For. P ::= "for" "(" (Bind Name [2]) "<-" Ident ")" "{" P "}" -- not bound in channel name
--- Can bind the variable in subterms appearing before the binder.
---    Foo. P ::= "foo" P "bar" (Bind P [0, 3]) "baz" P ":" P        -- not bound in slot 2
--- Error if the list is empty, contains its own slot, or contains
---    a number greater than or equal to the number of slots.
--- Effectively adds Ident as RHS of new rule.
--- Parser generated from GSLT accepts Ident in this position.
-
+AbsNTerminal     . Item ::= "(" Ident ")" Item ;
+BindNTerminal    . Item ::= "(" "Bind" Ident Cat ")" ;
 
 -- Categories
-ListCat     . Cat ::= "[" Cat "]" ;
+ListOfCat   . Cat ::= "[" Cat "]" ;
 IdCat       . Cat ::= Ident ;
-ImportedCat . Cat ::= Ident "." Ident;
+ArrowCat    . Cat ::= "(" Cat "->" Cat ")" ;
 
--- labels with or without profiles
-LabNoP   . Label ::= LabelId ;
-LabP     . Label ::= LabelId [ProfItem] ;
-LabPF    . Label ::= LabelId LabelId [ProfItem] ;
-LabF     . Label ::= LabelId LabelId ;
+[] . [Cat] ::= ;
+(:) . [Cat] ::= Cat ";" [Cat] ;
 
 -- functional labels
-Id       . LabelId ::= Ident ;
-Wild     . LabelId ::= "_" ;
-ListE    . LabelId ::= "[" "]" ;
-ListCons . LabelId ::= "(" ":" ")" ;
-ListOne  . LabelId ::= "(" ":" "[" "]" ")" ;
+Id       . Label ::= Ident ;
+Wild     . Label ::= "_" ;
+ListE    . Label ::= "[" "]" "{" Cat "}" ;
+ListCons . Label ::= "(" ":" ")" "{" Cat "}" ;
+ListOne  . Label ::= "(" ":" "[" "]" ")" "{" Cat "}" ;
 
 -- profiles (= permutation and binding patterns)
 ProfIt   . ProfItem ::= "(" "[" [IntList] "]" "," "[" [Integer] "]" ")" ;
@@ -230,7 +285,8 @@ _. Reg3 ::= "(" Reg ")" ;
 
 EquationFresh . Equation ::= "if" Ident "#" Ident "then" Equation ;
 EquationImpl . Equation ::= AST "==" AST ;
-separator Equation ";" ;
+[]  . [Equation] ::= ;
+(:) . [Equation] ::= Equation ";" [Equation] ;
 
 -- Rewrites
 
@@ -242,7 +298,7 @@ RewriteContext . Rewrite ::= "let" Hypothesis "in" Rewrite ;
 
 ASTSubst . AST ::= "(" "Subst" AST AST Ident ")";
 ASTVar   . AST ::= Ident ;
-ASTSExp  . AST ::= "(" Ident [AST] ")" ;
+ASTSExp  . AST ::= "(" Label [AST] ")" ;
 
 []  . [AST] ::= ;
 (:) . [AST] ::= AST [AST] ;

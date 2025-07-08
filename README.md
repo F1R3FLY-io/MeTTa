@@ -8,4 +8,4 @@ bnfc, ghc, alex, happy
 ./build
 
 # Run
-`java -jar MeTTaIL/target/scala-3.4.1/mettail_assembly.jar GSLT/src/test/module/Product.module`
+`java -jar MeTTaIL/target/scala-3.4.1/mettail_assembly.jar GSLT/src/test/module/Rholang.module`

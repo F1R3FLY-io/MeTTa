@@ -260,49 +260,49 @@ as "for each way that A₁ relates to B₁ in the context Γ, ..., and Aₙ rela
       Γ ⊢ ||^s(||^s(A, B), C) = ||^s(A, ||^s(B, C))
 
 
-      |^s: P x P x P x P -> P
-
-      Γ ⊢ A: s^P  Γ ⊢ B: s^P  Γ ⊢ C: A  Γ ⊢ D: B
-      ——————————————————————————————————————————z
-      ⊢ |^s(A, B, C, D): ||^s(A, B)
-
-      Γ ⊢ A: s^P  Γ ⊢ C: A
-      ————————————————————————————
-      Γ ⊢ |^s(A, 00^s, C, 0^s) = C
+      |^s: P x P -> P
 
       Γ ⊢ A: s^P  Γ ⊢ B: s^P  Γ ⊢ C: A  Γ ⊢ D: B
       ——————————————————————————————————————————
-      Γ ⊢ |^s(A, B, C, D) = |(B, A, D, C)
+      ⊢ |^s(C, D): ||^s(A, B)
+
+      Γ ⊢ A: s^P  Γ ⊢ C: A
+      ————————————————————————————
+      Γ ⊢ |^s(C, 0^s) = C
+
+      Γ ⊢ A: s^P  Γ ⊢ B: s^P  Γ ⊢ C: A  Γ ⊢ D: B
+      ——————————————————————————————————————————
+      Γ ⊢ |^s(C, D) = |^s(D, C)
 
       Γ ⊢ A: s^P  Γ ⊢ B: s^P  Γ ⊢ C: s^P  Γ ⊢ D: A  Γ ⊢ E: B  Γ ⊢ F: C
       ———————————————————————————————————————————————————————————————————————————————————
-      Γ ⊢ |^s(||^s(A, B), C, |^s(A, B, D, E), F) = |^s(A, ||^s(B, C), D, |^s(B, C, E, F))
+      Γ ⊢ |^s(|^s(D, E), F) = |^s(D, |^s(E, F))
 
 
-      !!^{s₁, s₂}: N x P -> P
+      !!^{s₁, s₂}: N x P x N -> P
 
       Γ ⊢ A: s₁^N  Γ ⊢ B: s₂^P
       ———————————————————————————
       Γ ⊢ !!^{s₁, s₂}(A, B): s₁^P
 
-      !^{s₁, s₂}: N x P x N x P -> P
+      !^{s₁, s₂}: N x P -> P
 
       Γ ⊢ A: s₁^N  Γ ⊢ B: s₂^P  Γ ⊢ x: A  Γ ⊢ Q: B
       ——————————————————————————————————————————————
-      ⊢ !^{s₁, s₂}(A, B, x, Q): !!^{s₁, s₂}(A, B, x)
+      ⊢ !^{s₁, s₂}(x, Q): !!^{s₁, s₂}(A, B, x)
 
       
       forfor^{s₁, s₂, s₃}: N x N x (N -> P) x N -> P
 
       Γ ⊢ A: s₁^N  Γ ⊢ B: s₂^N  Γ, y: B ⊢ C: s₃^P  Γ ⊢ x: A
       —————————————————————————————————————————————————————
-      Γ ⊢ forfor^{s₁, s₂, s₃}(A, B, λy.C, x): s₃^P <--- how is this forced?
+      Γ ⊢ forfor^{s₁, s₂, s₃}(A, B, λy.C, x): s₃^P
 
-      for^{s₁, s₂, s₃}: N x N x (N -> P) x N x (N -> P) -> P
+      for^{s₁, s₂, s₃}: N x (N -> P) -> P
 
       Γ ⊢ A: s₁^N  Γ ⊢ B: s₂^N  Γ, y: B ⊢ C: s₃^P  Γ ⊢ x: A  Γ, y: B ⊢ D: C
       ——————————————————————————————————————————————————————————————————————————————
-      Γ ⊢ for^{s₁, s₂, s₃}(A, B, λy.C, x, λy. D): forfor^{s₁, s₂, s₃}(A, B, λy.C, x)
+      Γ ⊢ for^{s₁, s₂, s₃}(x, λy. D): forfor^{s₁, s₂, s₃}(A, B, λy.C, x)
 
 
       @@^s: P -> N
@@ -311,11 +311,11 @@ as "for each way that A₁ relates to B₁ in the context Γ, ..., and Aₙ rela
       ————————————————
       Γ ⊢ @@^s(A): s^N
 
-      @^s: P x P -> N
+      @^s: P -> N
 
       Γ ⊢ A: s^P  Γ ⊢ B: A
       ——————————————————————
-      Γ ⊢ @^s(A, B): @@^s(A)
+      Γ ⊢ @^s(B): @@^s(A)
 
       **^s: N -> P
 
@@ -323,11 +323,11 @@ as "for each way that A₁ relates to B₁ in the context Γ, ..., and Aₙ rela
       ————————————————
       Γ ⊢ **^s(A): s^P
 
-      *^s: N x N -> P
+      *^s: N -> P
 
       Γ ⊢ A: s^N  Γ ⊢ x: A
       ————————————————————
-      ⊢ *^s(A, x): **^s(A)
+      ⊢ *^s(x): **^s(A)
 
       Γ ⊢ A: s^P
       —————————————————————
@@ -339,11 +339,11 @@ as "for each way that A₁ relates to B₁ in the context Γ, ..., and Aₙ rela
 
       Γ ⊢ A: s^P  Γ ⊢ B: A
       ———————————————————————————————
-      Γ ⊢ *^s(@@^s(A), @^s(A, B)) = B
+      Γ ⊢ *^s(@^s(B)) = B
 
       Γ ⊢ A: s^N  Γ ⊢ B: A
       ———————————————————————————————
-      Γ ⊢ @^s(**^s(A), *^s(A, B)) = B
+      Γ ⊢ @^s(*^s(B)) = B
 
 
       // Rewrites
@@ -354,11 +354,11 @@ as "for each way that A₁ relates to B₁ in the context Γ, ..., and Aₙ rela
       —————————————————————————————————
       Γ ⊢ srcsrc^s(A), tgttgt^s(A): s^P
 
-      src, tgt: R x R -> P
+      src, tgt: R -> P
 
       Γ ⊢ A: s^R  Γ ⊢ r: A
       ————————————————————————————————————————————————————
-      ⊢ src^s(A, r), tgt^s(A, r): srcsrc^s(A), tgttgt^s(A)
+      ⊢ src^s(r), tgt^s(r): srcsrc^s(A), tgttgt^s(A)
 
       // Non-dependent
 
@@ -368,11 +368,11 @@ as "for each way that A₁ relates to B₁ in the context Γ, ..., and Aₙ rela
       ——————————————————————————————————————————————— y # C
       Γ ⊢ commcomm^{s₁, s₂}(A, @@B, λy.C, x): s₁^R
 
-      comm: N x N x (N -> P) x N, (N -> P) x P -> R
+      comm: N x (N -> P) x P -> R
 
       Γ ⊢ A: s₁^N  Γ ⊢ B: s₂^P  Γ ⊢ C: s₁^P  Γ ⊢ x: A  Γ, y: @@(B) ⊢ L: C  Γ ⊢ Q: B
       ——————————————————————————————————————————————————————————————————————————————— y # C
-      Γ ⊢ comm^{s₁, s₂}(A, @@B, λy.C, x, λy.L, Q): commcomm^{s₁, s₂}(A, @@B, λy.C, x)
+      Γ ⊢ comm^{s₁, s₂}(x, λy.L, Q): commcomm^{s₁, s₂}(A, @@B, λy.C, x)
 
       // Dependent
 
@@ -382,7 +382,7 @@ as "for each way that A₁ relates to B₁ in the context Γ, ..., and Aₙ rela
 
       Γ ⊢ A: s₁^N  Γ ⊢ B: s₂^P  Γ, y: @@(B)⊢ C: s₁^P  Γ ⊢ x: A  Γ, y: @@(B) ⊢ L: C  Γ ⊢ Q: B
       ——————————————————————————————————————————————————————————————————————————————————————
-      Γ ⊢ comm^{s₁, s₂}(A, @@B, λy.C, x, λy.L, Q): commcomm^{s₁, s₂}(A, @@B, λy.C, x)
+      Γ ⊢ comm^{s₁, s₂}(x, λy.L, Q): commcomm^{s₁, s₂}(A, @@B, λy.C, x)
 
 
       par1par1^s: R x P -> R
@@ -395,7 +395,7 @@ as "for each way that A₁ relates to B₁ in the context Γ, ..., and Aₙ rela
 
       Γ ⊢ A: s^R  Γ ⊢ B: s^P  Γ ⊢ r: A  Γ ⊢ Q: B
       ——————————————————————————————————————————
-      Γ ⊢ par1^s(A, B, r, Q): par1par1^s(A, B)
+      Γ ⊢ par1^s(r, Q): par1par1^s(A, B)
 
       par2par2^s: R x R -> R
 
@@ -405,50 +405,54 @@ as "for each way that A₁ relates to B₁ in the context Γ, ..., and Aₙ rela
 
       Γ ⊢ A: s^R  Γ ⊢ B: s^R  Γ ⊢ r1: A  Γ ⊢ r2: B
       ————————————————————————————————————————————
-      Γ ⊢ par2^s(A, B, r1, r2): par2par2^s(A, B)
+      Γ ⊢ par2^s(r1, r2): par2par2^s(A, B)
 
 
 
       ////////////// Non-dependent continuation type //////////
 
       Γ ⊢ A: s₁^N  Γ ⊢ B: s₂^P  Γ ⊢ C: s₁^P  Γ ⊢ x: A
-      ——————————————————————————————————————————————————————————————— y # C
+      ————————————————————————————————————————————————— y # C
       Γ ⊢ srcsrc^s₁(commcomm^{s₁, s₂}(A, @@B, λy.C, x))
       .   ==
       .   ||^s₁(!!^s₁(A, B, x), forfor^{s₁, s₂, s₁}(A, @@B, λy.C, x))  // Is s₁ s₂ s₁ correct?
 
       Γ ⊢ A: s₁^N  Γ ⊢ B: s₂^P  Γ ⊢ C: s₁^P  Γ ⊢ x: A  Γ, y:@@(B) ⊢ L: C  Γ ⊢ Q: B
-      ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————— y # C
-      Γ ⊢ src(commcomm(A, @@B, λy.C, x), comm(A, @@B, λy.C, x, λy.L, Q)): srcsrc(commcomm(A, @@B, λy.C, x))
+      ————————————————————————————————————————————————————————————————————————————— y # C
+      Γ ⊢ src(comm(x, λy.L, Q)): srcsrc(commcomm(A, @@B, λy.C, x))
       .   ==
-      .   |(!!(A, B, x), forfor(A, @@B, λy.C, x), !(A, B, x, Q), for(A, @@B, λy.C, x, λy.L)): ||(!!(A, B, x), forfor(A, @@B, λy.C, x))
+      .   |(!(x, Q), for(x, λy.L)): ||(!!(A, B, x), forfor(A, @@B, λy.C, x))
 
       Γ ⊢ A: s₁^N  Γ ⊢ B: s₂^P  Γ ⊢ C: s₁^P  Γ ⊢ x: A
       ———————————————————————————————————————————————— y # C
       Γ ⊢ tgttgt(commcomm(A, @@B, λy.C, x))
       .   ==
+      .   ((λy.C) @(Q))
+      .   ==
       .   C
 
       Γ ⊢ A: s₁^N  Γ ⊢ B: s₂^P  Γ ⊢ C: s₁^P  Γ ⊢ x: A  Γ, y:@@(B) ⊢ L: C  Γ ⊢ Q: B
-      ————————————————————————————————————————————————————————————————————————————————————————————————————— y # C
-      Γ ⊢ tgt(commcomm(A, @@B, λy.C, x), comm(A, @@B, λy.C, x, λy.L, Q)): tgttgt(commcomm(A, @@B, λy.C, x))
+      ———————————————————————————————————————————————————————————————————————————— y # C
+      Γ ⊢ tgt(comm(x, λy.L, Q)): tgttgt(commcomm(A, @@B, λy.C, x))
       .   ==
-      .   ((λy.L) @(B, Q)): C
+      .   ((λy.L) @(Q)): ((λy.C) @(Q)) 
+      .   ==
+      .   ((λy.L) @(Q)): C
 
 
       ////////////// Dependent continuation type: no type equations //////////
 
       Γ ⊢ A: s₁^N  Γ ⊢ B: s₂^P  Γ, y: @@(B) ⊢ C: s₁^P  Γ ⊢ x: A  Γ, y: @@(B) ⊢ L: C  Γ ⊢ Q: B
-      ————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
-      Γ ⊢ src(commcomm(A, @@B, λy.C, x), comm(A, @@B, λy.C, x, λy.L, Q)): srcsrc(commcomm(A, @@B, λy.C, x))
+      ———————————————————————————————————————————————————————————————————————————————————————
+      Γ ⊢ src(comm(x, λy.L, Q)): srcsrc(commcomm(A, @@B, λy.C, x))
       .   ==
-      .   |(!!(A, B, x), forfor(A, @@B, λy.C, x), !(A, B, x, Q), for(A, @@B, λy.C, x, λy.L)): ||(!!(A, B, x), forfor(A, @@B, λy.C, x))
+      .   |(!(x, Q), for(x, λy.L)): ||(!!(A, B, x), forfor(A, @@B, λy.C, x))
 
       Γ ⊢ A: s₁^N  Γ ⊢ B: s₂^P  Γ, y: @@(B) ⊢ C: s₁^P  Γ ⊢ x: A  Γ, y: @@(B) ⊢ L: C  Γ ⊢ Q: B
       ————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
-      Γ ⊢ tgt(commcomm(A, @@B, λy.C, x), comm(A, @@B, λy.C, x, λy.L, Q)): tgttgt(commcomm(A, @@B, λy.C, x))
+      Γ ⊢ tgt(comm(x, λy.L, Q)): tgttgt(commcomm(A, @@B, λy.C, x))
       .   ==
-      .   ((λy.L) @(B, Q)): ((λy.C) @(B, Q))
+      .   ((λy.L) @(Q)): ((λy.C) @(Q))
 
 
       ////////////// Context rules //////////
@@ -461,9 +465,9 @@ as "for each way that A₁ relates to B₁ in the context Γ, ..., and Aₙ rela
 
       Γ ⊢ A: s^R  Γ ⊢ B: s^P  Γ ⊢ C: A  Γ ⊢ D: B
       —————————————————————————————————————————————————————————————————
-      Γ ⊢ src(par1par1(A, B), par1(A, B, C, D)): srcsrc(par1par1(A, B))
+      Γ ⊢ src(par1(C, D)): srcsrc(par1par1(A, B))
       .   ==
-      .   |(srcsrc(A), B, src(A, C), D): ||(srcsrc(A), B)
+      .   |(src(C), D): ||(srcsrc(A), B)
 
       Γ ⊢ A: s^R  Γ ⊢ B: s^P
       ——————————————————————————
@@ -473,9 +477,9 @@ as "for each way that A₁ relates to B₁ in the context Γ, ..., and Aₙ rela
 
       Γ ⊢ A: s^R  Γ ⊢ B: s^P  Γ ⊢ C: A  Γ ⊢ D: B
       —————————————————————————————————————————————————————————————————
-      Γ ⊢ tgt(par1par1(A, B), par1(A, B, C, D)): tgttgt(par1par1(A, B))
+      Γ ⊢ tgt(par1(C, D)): tgttgt(par1par1(A, B))
       .   ==
-      .   |(tgttgt(A), B, tgt(A, C), D): ||(tgttgt(A), B)
+      .   |(tgt(C), D): ||(tgttgt(A), B)
 
       // Reduction context distributes over modality
 

@@ -536,8 +536,9 @@ as "for each way that A₁ relates to B₁ in the context Γ, ..., and Aₙ rela
   Also laws based on context rewrites.
 
   Γ ⊢ <K(-)>B: □
-  ————————————————————
-  Γ ⊢ K(<K(-)>B) = ◊B
+  ————————————————————————————————————————
+  Γ ⊢ K(<K(-)>B) = ◊B // independent
+  Γ ⊢ K(<K(-)>(A:B)) = ◊(A:B) // dependent
 
   Γ ⊢ A: B
   ——————————————
@@ -547,8 +548,9 @@ as "for each way that A₁ relates to B₁ in the context Γ, ..., and Aₙ rela
                                `A   B   C`
 
     Γ ⊢ A: s^P    Γ ⊢ x: A    Γ ⊢ B: s^P    Γ ⊢ y: B    Γ ⊢ C: s^P
-    ——————————————————————————————————————————————————————————————
-    Γ ⊢ App(App(S, x), y): <App(-, z: C)>App(App(A, C), App(B, C)) // Do we need a freshness assertion for z?
+    ———————————————————————————————————————————————————————————————————————————————————————————
+    Γ ⊢ App(App(S, x), y): <App(-, z: C)>App(App(A, C), App(B, C)) // independent
+    Γ ⊢ App(App(S, x), y): <App(-, z: C)>(App(App(x, z), App(y, z)): App(App(A, C), App(B, C))) // dependent
 
     Γ ⊢ A: s^P    Γ ⊢ x: A    Γ ⊢ B: s^P    Γ ⊢ C: s^P
     —————————————————————————————————————————————————————————————————
@@ -612,7 +614,7 @@ as "for each way that A₁ relates to B₁ in the context Γ, ..., and Aₙ rela
     ——————————————————————————————————————————————————————————————————————————————————————
     Γ ⊢ S: <(n: B)[ in (m: A).(Q: C) | (R: D) ] | (m: A)[ - ]>(m: A)[(n: B)[ C | D ] | E ]
 
-  - What about ones where there's an exponential in the context?  E.g. Lambda `β: App(Lam(λx.C), D) ~> ev(λx.C, D)`.  Here we can put x into the context for B and C.  For example, suppose that A is bool, B is `[true, int] + [false, string]` (existential type).  Then ev(λx.B, D) will be either int or string.  But bool might be a subset of the values that we could put in the second slot to get one of those results, so the inference rule ends up weakening the type of D.  That seems OK.
+  - What about ones where there's an exponential in the context?  E.g. Lambda `β: App(Lam(λx.C), D) ~> ev(λx.C, D)`.  Here we can put x into the context for C and D.  For example, suppose that D is bool, C is `[true, int] + [false, string]` (existential type).  Then ev(λx.C, D) will be either int or string.  But bool might be a subset of the values that we could put in the second slot to get one of those results, so the inference rule ends up weakening the type of D.  That seems OK.
 
     Γ ⊢ A: s^P    Γ, x: A ⊢ B: s^P    Γ, x: A ⊢ C: B    Γ ⊢ D: A
     ————————————————————————————————————————————————————————————

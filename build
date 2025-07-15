@@ -35,10 +35,20 @@ mkdir -p "$CLASS_DIR" "$MANIFEST_DIR" "${CLASS_DIR}/lib"
 
 #------------------------------------------------------------------------------
 # Update Makefile for Compiling Classes to the Specified Directory
-# Note: The sed -i '' syntax is for BSD/MacOS. Adjust if needed for Linux.
 #------------------------------------------------------------------------------
-sed -i '' 's|JAVAC_FLAGS=-sourcepath .|JAVAC_FLAGS=-d bin -sourcepath .|' Makefile
-sed -i '' 's|\t\${JAVAC} \${JAVAC_FLAGS} \$\^|\t\${JAVAC} \${JAVAC_FLAGS} -d bin \$\^|' Makefile
+# Detect OS for sed’s in‑place flag
+OS="$(uname -s)"
+case "$OS" in
+  Darwin)
+    SED_INPLACE="sed -i ''"
+    ;;
+  *)
+    # Linux, WSL, BSD (other than macOS), etc.
+    SED_INPLACE="sed -i"
+    ;;
+esac
+$SED_INPLACE 's|JAVAC_FLAGS=-sourcepath .|JAVAC_FLAGS=-d bin -sourcepath .|' Makefile
+$SED_INPLACE 's|\t\${JAVAC} \${JAVAC_FLAGS} \$\^|\t\${JAVAC} \${JAVAC_FLAGS} -d bin \$\^|' Makefile
 
 #------------------------------------------------------------------------------
 # Create the Manifest File with the Main-Class Entry

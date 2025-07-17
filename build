@@ -1,5 +1,18 @@
 #!/bin/sh
-set -euo pipefail
+
+# Detect OS for sed's in-place flag
+OS="$(uname -s)"
+
+case "$OS" in
+  Darwin)
+    set -euo pipefail
+    SED_INPLACE="sed -i ''"
+    ;;
+  *)
+    # Linux, WSL, BSD (other than macOS), etc.
+    SED_INPLACE="sed -i"
+    ;;
+esac
 
 #------------------------------------------------------------------------------
 # Configuration and Directory Definitions
@@ -36,17 +49,6 @@ mkdir -p "$CLASS_DIR" "$MANIFEST_DIR" "${CLASS_DIR}/lib"
 #------------------------------------------------------------------------------
 # Update Makefile for Compiling Classes to the Specified Directory
 #------------------------------------------------------------------------------
-# Detect OS for sed’s in‑place flag
-OS="$(uname -s)"
-case "$OS" in
-  Darwin)
-    SED_INPLACE="sed -i ''"
-    ;;
-  *)
-    # Linux, WSL, BSD (other than macOS), etc.
-    SED_INPLACE="sed -i"
-    ;;
-esac
 $SED_INPLACE 's|JAVAC_FLAGS=-sourcepath .|JAVAC_FLAGS=-d bin -sourcepath .|' Makefile
 $SED_INPLACE 's|\t\${JAVAC} \${JAVAC_FLAGS} \$\^|\t\${JAVAC} \${JAVAC_FLAGS} -d bin \$\^|' Makefile
 

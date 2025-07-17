@@ -1,0 +1,58 @@
+// To start WSL under Windows 10/11, run 'cmd' in the Administrator mode, then:
+wsl --install Ubuntu-24.04
+// More information about installing WSL (the Windows System for Linux) is avaiable at:
+// https://learn.microsoft.com/en-us/windows/wsl/install
+
+// Important:
+// Type exit, and then again 'wsl.exe' after each step.
+// '#' stands for non-obligatory checkpoints; // - for comments.
+
+sudo apt update
+exit // do not forget to exit from and re-enter to wsl.exe after this and subsequent steps as it has been outlined above
+sudo apt upgrade
+exit
+sudo apt install unzip
+sudo apt install zip
+sudo apt install gcc
+sudo apt install g++
+exit
+sudo apt install build-essential curl libffi-dev libffi8 libgmp-dev libgmp10 libncurses-dev pkg-config
+exit
+curl -s "https://get.sdkman.io" | bash
+exit
+sdk install java 21.0.7-tem
+exit
+# $java --version // output -> 21.0.7
+sdk install scala 3.4.1
+exit
+# $scala --version // 3.4.1
+sdk install sbt 1.11.3
+exit
+# $sbt --version // 1.11.3
+curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | sh // press <Enter> for all options
+exit
+# ghcup tui // install the recommended versions of stack, cabal, and ghc from the GUI interface that appears, finally press 'q'
+# exit
+# $cabal --version // 3.12.1.0
+cabal install BNFC
+exit
+# $bnfc --version // 2.9.5
+# $ghc --version // 9.6.7
+cabal install alex
+exit
+# $alex --version // 3.5.3.0
+cabal install happy
+exit
+# $happy --version // 2.1.5
+sudo apt install dos2unix
+exit
+
+// Now you can build the Metta project;
+// you do not longer have to re-run WSL after each step:
+cd Metta
+dos2unix ./build
+dos2unix ./clean
+chmod +x ./build
+chmod +x ./clean
+./clean
+./build

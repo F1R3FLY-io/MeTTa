@@ -9,6 +9,8 @@ MeTTaIL: Meta Type Talk Intermediate Language
 - alex (https://haskell-alex.readthedocs.io/en/latest/)
 - happy (https://haskell-happy.readthedocs.io/en/latest/)
 
+See also: installing prerequisites under WSL or Ubuntu, in the file "WSL.txt".
+
 # Build
 ./build
 

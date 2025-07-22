@@ -148,6 +148,41 @@ PSendSynch.   Proc1 ::= Name "!?" "(" [Proc] ")" SynchSendCont ;
 PPar.         Proc  ::= Proc "|" Proc1 ;
 -- *** End of place for inserting arithmetics ***
 
+-- *** Arithmetics dependencies ***
+-- Select Branches
+BranchImpl. Branch ::= ReceiptLinearImpl "=>" Proc3 ;
+separator nonempty Branch "" ;
+
+-- Match Cases
+CaseImpl. Case ::= Proc13 "=>" Proc3 ;
+separator nonempty Case "" ;
+
+-- Let declarations
+DeclImpl.    Decl ::= [Name] NameRemainder "<-" [Proc] ;
+
+LinearDeclImpl.    LinearDecl ::= Decl ;
+separator nonempty LinearDecl ";" ;
+
+ConcDeclImpl.    ConcDecl ::= Decl ;
+separator nonempty ConcDecl "&" ;
+
+EmptyDeclImpl.      Decls ::= ;
+LinearDeclsImpl.    Decls ::= ";" [LinearDecl] ;
+ConcDeclsImpl.      Decls ::= "&" [ConcDecl] ;
+
+-- Name Declarations.
+NameDeclSimpl. NameDecl ::= Var ;
+NameDeclUrn. NameDecl ::= Var "(" UriLiteral ")" ;
+separator nonempty NameDecl "," ;
+
+-- *** End of Arithmetics dependencies ***
+
+-- Bundle
+BundleWrite.    Bundle ::= "bundle+" ;
+BundleRead.     Bundle ::= "bundle-" ;
+BundleEquiv.    Bundle ::= "bundle0" ;
+BundleReadWrite. Bundle ::= "bundle" ;
+
 -- Receipt
 ReceiptLinear.        Receipt ::= ReceiptLinearImpl ;
 ReceiptRepeated.      Receipt ::= ReceiptRepeatedImpl ;

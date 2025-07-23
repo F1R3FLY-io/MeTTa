@@ -175,13 +175,13 @@ NameDeclSimpl. NameDecl ::= Var ;
 NameDeclUrn. NameDecl ::= Var "(" UriLiteral ")" ;
 separator nonempty NameDecl "," ;
 
--- *** End of Arithmetics dependencies ***
-
 -- Bundle
 BundleWrite.    Bundle ::= "bundle+" ;
 BundleRead.     Bundle ::= "bundle-" ;
 BundleEquiv.    Bundle ::= "bundle0" ;
 BundleReadWrite. Bundle ::= "bundle" ;
+
+-- *** End of Arithmetics dependencies ***
 
 -- Receipt
 ReceiptLinear.        Receipt ::= ReceiptLinearImpl ;

@@ -111,7 +111,7 @@ Equations os(t1, ..., tn) = ot(t1, ..., tn) are sugar for
       0: 1 -> P
       |: P x P -> P
       !: P -> P
-      []: N x P -> P
+      []: N x P -> P  // x[Q1|Q2|...]
       .: M x P -> P
       in, out, open: N -> M
 
@@ -126,9 +126,6 @@ Equations os(t1, ..., tn) = ot(t1, ..., tn) are sugar for
       expand: P -> R
       expand: !Q ~> Q | !Q
 
-      ambient: N x R -> R
-      ambient: n[s(E)] ~> n[t(E)]
-
       in: N x N x P x P x P -> R
       in: n[in m.Q | R] | m[S] ~> m[n[Q | R] | S]
 
@@ -137,6 +134,17 @@ Equations os(t1, ..., tn) = ot(t1, ..., tn) are sugar for
 
       open: N x P x P -> R
       open: open m.P | m[Q] ~> P | Q
+
+      ambient: N x R -> R
+      ambient: n[s(E)] ~> n[t(E)]
+
+      par1: R x P -> R
+      par1: s(E) | Q ~> t(E) | Q
+      p ~> p' => p ~[]|q~> p' | q
+
+      par2: R x R -> R
+      par2: s(E1) | s(E2) ~> t(E1) | t(E2)
+      p1 ~> p1' ∧ p2 ~> p2' => p1 | p2 ~[]|q~> p1' | p2' | q
 
   - E.g. Rule 110?
 

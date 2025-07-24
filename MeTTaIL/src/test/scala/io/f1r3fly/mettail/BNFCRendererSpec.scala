@@ -3,53 +3,63 @@ package io.f1r3fly.mettail
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import metta_venus.Absyn._
-import metta_venus.PrettyPrinter
 import scala.jdk.CollectionConverters._
 
 class BNFCRendererSpec extends AnyFlatSpec with Matchers {
+  "BNFCRenderer.render" should "mangle ArrowCat and ProdCat correctly and add constructor rules" in {
+    val catA = new IdCat("A")
+    val catB = new IdCat("B")
+    val arrowCat = new ArrowCat(catA, catB)
+    val prodCat = new ProdCat({
+      val list = new ListCat()
+      list.add(catA)
+      list.add(catB)
+      list
+    })
 
-  "addDesugaredLambdas" should "add a desugared arrow rule for a binder pattern" in {
-    // Create the rule: Foo . T ::= "foo" (Bind x U) "." (x)V;
+    val arrowRule = new Rule(
+      new Id("arrowRule"),
+      arrowCat,
+      {
+        val list = new ListItem()
+        list.add(new Terminal("some"))
+        list
+      }
+    )
 
-    val label = new Id("Foo")
-    val catT = new IdCat("T")
-    val catU = new IdCat("U")
-    val catV = new IdCat("V")
-    val x = "x"
+    val prodRule = new Rule(
+      new Id("prodRule"),
+      prodCat,
+      {
+        val list = new ListItem()
+        list.add(new Terminal("other"))
+        list
+      }
+    )
 
-    val items = new ListItem()
-    items.addLast(new Terminal("foo"))
-    items.addLast(new BindNTerminal(x, catU))
-    items.addLast(new Terminal("."))
-    items.addLast(new AbsNTerminal(x, new NTerminal(catV)))
+    val defs = new ListDef()
+    defs.add(arrowRule)
+    defs.add(prodRule)
 
-    val originalRule = new Rule(label, catT, items)
-    val inputDefs = new ListDef()
-    inputDefs.addLast(originalRule)
+    val basePres = new BasePres(new ListCat(), defs, new ListEquation(), new ListRewriteDecl())
 
-    // Apply transformation
-    val resultDefs = BNFCRenderer.addDesugaredLambdas(inputDefs)
+    val result = BNFCRenderer.render(basePres)
 
-    // It should add exactly one new rule
-    resultDefs.size() shouldBe 2
+    val labels = result.asScala.collect {
+      case r: Rule => r.label_ match {
+        case id: Id => id.ident_
+        case _ => "<unknown>"
+      }
+    }.toSet
 
-    val desugaredRule = resultDefs.get(1).asInstanceOf[Rule]
+    val expectedAppName = s"AppCC${catA.ident_}_${catB.ident_}DD"
+    val expectedLamName = s"LamCC${catA.ident_}_${catB.ident_}DD"
+    val expectedIdentArrow = s"IdentCC${catA.ident_}_${catB.ident_}DD"
+    val expectedMakeProd = s"MakeProdCC${catA.ident_}_${catB.ident_}DD"
 
-    // Check label: FooToArrow
-    desugaredRule.label_ shouldBe a[Id]
-    desugaredRule.label_.asInstanceOf[Id].ident_ shouldBe "FooToArrow"
-
-    // First item: Terminal("FooToArrow")
-    val itemsOut = desugaredRule.listitem_
-    itemsOut.get(0) shouldBe a[Terminal]
-    itemsOut.get(0).asInstanceOf[Terminal].string_ shouldBe "FooToArrow"
-
-    // Second item: NTerminal(ArrowCat(U, V))
-    itemsOut.get(1) shouldBe a[NTerminal]
-    val arrowCat = itemsOut.get(1).asInstanceOf[NTerminal].cat_
-    arrowCat shouldBe a[ArrowCat]
-    val ac = arrowCat.asInstanceOf[ArrowCat]
-    ac.cat_1 shouldBe catU
-    ac.cat_2 shouldBe catV
+    labels should contain(expectedAppName)
+    labels should contain(expectedLamName)
+    labels should contain(expectedIdentArrow)
+    labels should contain(expectedMakeProd)
   }
 }

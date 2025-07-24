@@ -154,9 +154,9 @@ Let a *base reduction* be a function symbol whose input arity does not use R and
      3. ?(T, U) in the context |(!(T, V), []), giving rise to the modal types ctxsend_i and ctxsend_d
      
      I chose names for the modal type function symbols based on my knowledge of the semantics of the comm rule, but a formal transformation should choose names based on the location of the subtree instead.
-     
 
-Finally, we add the function symbols ctxposs_i: P -> P and ctxposs_d: P -> P.
+
+Finally, we add the function symbols ctxposs_i: P -> P and ctxposs_d: P x P -> P.
 
 
 

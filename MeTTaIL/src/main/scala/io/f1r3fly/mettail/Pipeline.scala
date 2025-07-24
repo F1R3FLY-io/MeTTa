@@ -24,7 +24,6 @@ case class Context(
   linearized:  Seq[(String, String)]         = Nil,
   finalInst:   Option[TheoryInst]            = None,
   presentation: Option[BasePres]             = None,
-  bnfcGrammar: Option[Grammar]               = None
 )
 
 object LoadModules extends Pass[Context] {
@@ -91,13 +90,41 @@ object Interpret extends Pass[Context] {
   }
 }
 
+object DesugarBinders extends Pass[Context] {
+  val name = "Desugar Binds"
+  def run(ctx: Context) = {
+    val newPres: BasePres = ctx.presentation.map(DesugarBinds.transform)
+                              .getOrElse(sys.error("No presentation"))
+    println("\n[Desugared Presentation]\n")
+    println(PrettyPrinter.print(newPres))
+    ctx.copy(presentation = Some(newPres))
+  }
+}
+
+object HypercubePass extends Pass[Context] {
+  val name = "Hypercube"
+  def run(ctx: Context) = {
+    val newPres: BasePres = ctx.presentation.map(Hypercube.transform)
+                              .getOrElse(sys.error("No presentation"))
+    println("\n[Hypercubed Presentation]\n")
+    println(PrettyPrinter.print(newPres))
+    ctx.copy(presentation = Some(newPres))
+  }
+}
+
 object GenerateBNFC extends Pass[Context] {
   val name = "Generate BNFC"
   def run(ctx: Context) = {
-    val grammar = ctx.presentation.map(BNFCRenderer.render)
+    val listDef = ctx.presentation.map(BNFCRenderer.render)
                         .getOrElse(sys.error("No presentation"))
     println("\n[Generated BNFC]\n")
-    println(PrettyPrinter.print(grammar))
-    ctx.copy(bnfcGrammar = Some(grammar))
+    println(PrettyPrinter.print(listDef))
+    
+    ctx.copy(presentation = ctx.presentation.map((pres: BasePres) => new BasePres(
+      pres.listcat_,
+      listDef,
+      pres.listequation_,
+      pres.listrewritedecl_
+    )))
   }
 }

@@ -7,20 +7,38 @@ import scala.jdk.CollectionConverters._
 
 object Main {
   def main(args: Array[String]): Unit = {
-    if (args.isEmpty) sys.error("Usage: Main <path-to-module>")
-    val entry = new File(args(0)).getCanonicalPath
+    if (args.isEmpty) sys.error("Usage: Main <path-to-module> [--hypercube]")
 
-    val pipeline = new Pipeline[Context](Seq(
+    // Detect --hypercube flag anywhere in the arguments
+    val hypercubeEnabled = args.contains("--hypercube")
+
+    // Extract the module path (first non-flag argument)
+    val moduleArgs = args.filterNot(_.startsWith("--"))
+    if (moduleArgs.isEmpty) sys.error("Usage: Main <path-to-module> [--hypercube]")
+    val entryPath = new File(moduleArgs(0)).getCanonicalPath
+
+    // Build the pipeline sequence, optionally inserting HypercubePass
+    val basePasses = Seq(
       LoadModules,
       DumpASTs,
       DumpLinear,
       FindFinalInst,
       Interpret,
-      GenerateBNFC
-    ))
+      DesugarBinders
+    )
 
-    val entryFile = new File(args(0))
-    val entryPath = entryFile.getCanonicalPath
+    val allPasses =
+      if (hypercubeEnabled) {
+        println("Enabling hypercube pass.")
+        basePasses :+ HypercubePass :+ GenerateBNFC
+
+      } else {
+        basePasses :+ GenerateBNFC
+      }
+
+    val pipeline = new Pipeline[Context](allPasses)
+
+    // Execute
     pipeline.execute(Context(entryPath))
   }
 }

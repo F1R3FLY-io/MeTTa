@@ -111,7 +111,7 @@ Equations os(t1, ..., tn) = ot(t1, ..., tn) are sugar for
       0: 1 -> P
       |: P x P -> P
       !: P -> P
-      []: N x P -> P
+      []: N x P -> P  // x[Q1|Q2|...]
       .: M x P -> P
       in, out, open: N -> M
 
@@ -126,9 +126,6 @@ Equations os(t1, ..., tn) = ot(t1, ..., tn) are sugar for
       expand: P -> R
       expand: !Q ~> Q | !Q
 
-      ambient: N x R -> R
-      ambient: n[s(E)] ~> n[t(E)]
-
       in: N x N x P x P x P -> R
       in: n[in m.Q | R] | m[S] ~> m[n[Q | R] | S]
 
@@ -137,6 +134,17 @@ Equations os(t1, ..., tn) = ot(t1, ..., tn) are sugar for
 
       open: N x P x P -> R
       open: open m.P | m[Q] ~> P | Q
+
+      ambient: N x R -> R
+      ambient: n[s(E)] ~> n[t(E)]
+
+      par1: R x P -> R
+      par1: s(E) | Q ~> t(E) | Q
+      p ~> p' => p ~[]|q~> p' | q
+
+      par2: R x R -> R
+      par2: s(E1) | s(E2) ~> t(E1) | t(E2)
+      p1 ~> p1' ∧ p2 ~> p2' => p1 | p2 ~[]|q~> p1' | p2' | q
 
   - E.g. Rule 110?
 
@@ -536,8 +544,9 @@ as "for each way that A₁ relates to B₁ in the context Γ, ..., and Aₙ rela
   Also laws based on context rewrites.
 
   Γ ⊢ <K(-)>B: □
-  ————————————————————
-  Γ ⊢ K(<K(-)>B) = ◊B
+  ————————————————————————————————————————
+  Γ ⊢ K(<K(-)>B) = ◊B // independent
+  Γ ⊢ K(<K(-)>(A:B)) = ◊(A:B) // dependent
 
   Γ ⊢ A: B
   ——————————————
@@ -547,8 +556,9 @@ as "for each way that A₁ relates to B₁ in the context Γ, ..., and Aₙ rela
                                `A   B   C`
 
     Γ ⊢ A: s^P    Γ ⊢ x: A    Γ ⊢ B: s^P    Γ ⊢ y: B    Γ ⊢ C: s^P
-    ——————————————————————————————————————————————————————————————
-    Γ ⊢ App(App(S, x), y): <App(-, z: C)>App(App(A, C), App(B, C)) // Do we need a freshness assertion for z?
+    ———————————————————————————————————————————————————————————————————————————————————————————
+    Γ ⊢ App(App(S, x), y): <App(-, z: C)>App(App(A, C), App(B, C)) // independent
+    Γ ⊢ App(App(S, x), y): <App(-, z: C)>(App(App(x, z), App(y, z)): App(App(A, C), App(B, C))) // dependent
 
     Γ ⊢ A: s^P    Γ ⊢ x: A    Γ ⊢ B: s^P    Γ ⊢ C: s^P
     —————————————————————————————————————————————————————————————————
@@ -612,7 +622,7 @@ as "for each way that A₁ relates to B₁ in the context Γ, ..., and Aₙ rela
     ——————————————————————————————————————————————————————————————————————————————————————
     Γ ⊢ S: <(n: B)[ in (m: A).(Q: C) | (R: D) ] | (m: A)[ - ]>(m: A)[(n: B)[ C | D ] | E ]
 
-  - What about ones where there's an exponential in the context?  E.g. Lambda `β: App(Lam(λx.C), D) ~> ev(λx.C, D)`.  Here we can put x into the context for B and C.  For example, suppose that A is bool, B is `[true, int] + [false, string]` (existential type).  Then ev(λx.B, D) will be either int or string.  But bool might be a subset of the values that we could put in the second slot to get one of those results, so the inference rule ends up weakening the type of D.  That seems OK.
+  - What about ones where there's an exponential in the context?  E.g. Lambda `β: App(Lam(λx.C), D) ~> ev(λx.C, D)`.  Here we can put x into the context for C and D.  For example, suppose that D is bool, C is `[true, int] + [false, string]` (existential type).  Then ev(λx.C, D) will be either int or string.  But bool might be a subset of the values that we could put in the second slot to get one of those results, so the inference rule ends up weakening the type of D.  That seems OK.
 
     Γ ⊢ A: s^P    Γ, x: A ⊢ B: s^P    Γ, x: A ⊢ C: B    Γ ⊢ D: A
     ————————————————————————————————————————————————————————————

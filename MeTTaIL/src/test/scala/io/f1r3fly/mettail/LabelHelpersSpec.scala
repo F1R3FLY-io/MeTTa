@@ -32,7 +32,7 @@ class LabelHelpersSpec extends AnyFlatSpec with Matchers {
     labels.size shouldEqual 2
   }
 
- "labelsInRewrite" should "extract labels from a RewriteBase" in {
+  "labelsInRewrite" should "extract labels from a RewriteBase" in {
     val emptyListAST = new ListAST()
     val ast1 = new ASTSExp(new Id("baz"), emptyListAST)
     val ast2 = new ASTSExp(new ListOne(new IdCat("qux")), emptyListAST)

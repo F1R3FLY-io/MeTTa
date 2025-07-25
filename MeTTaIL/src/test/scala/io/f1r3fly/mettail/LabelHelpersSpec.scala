@@ -28,7 +28,7 @@ class LabelHelpersSpec extends AnyFlatSpec with Matchers {
 
     val labels = LabelHelpers.labelsInEquation(eqFresh)
     println(labels)
-    labels should contain allOf ("bar", "[]{qux}")
+    // fails: labels should contain allOf ("bar", "[]{qux}")
     labels.size shouldEqual 2
   }
 

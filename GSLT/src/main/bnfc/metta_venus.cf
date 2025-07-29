@@ -5,6 +5,26 @@
 -- A module is a collection of decls and instances
 -- and communications between instances.
 
+-- A program is just a process. We put the coercions first, because that's what
+-- bnfc uses to determine the starting production.
+-- _. Proc  ::= Proc1 ;
+-- _. Proc1 ::= Proc2 ;
+-- _. Proc2 ::= Proc3 ;
+-- _. Proc3 ::= Proc4 ;
+-- _. Proc4 ::= Proc5 ;
+-- _. Proc5 ::= Proc6 ;
+-- _. Proc6 ::= Proc7 ;
+-- _. Proc7 ::= Proc8 ;
+-- _. Proc8 ::= Proc9 ;
+-- _. Proc9 ::= Proc10 ;
+-- _. Proc10 ::= Proc11 ;
+-- _. Proc11 ::= Proc12 ;
+-- _. Proc12 ::= Proc13 ;
+-- _. Proc13 ::= Proc14 ;
+-- _. Proc14 ::= Proc15 ;
+-- _. Proc15 ::= Proc16 ;
+-- _. Proc16 ::= "{" Proc "}" ;
+
 ModuleImpl . Module ::= [Import] "Module" Name "{" [Prog] "}" ;
 
 ImportModuleAs . Import ::= "import" String "as" Ident ;
@@ -100,6 +120,12 @@ PSendEmtpy.      FactComprehension ::= Name Send "(" ")" ;
 PSendSynch.      FactComprehension ::= Name "!?" "(" [Fact] ")" SynchSendCont ;
 PSendSynchEmpty. FactComprehension ::= Name "!?" "(" ")" SynchSendCont ;
 separator FactComprehension "," ;
+
+-- *** This is place for inserting arithmetics ***
+-- *** End of place for inserting arithmetics ***
+
+-- *** Arithmetics dependencies ***
+-- *** End of Arithmetics dependencies ***
 
 -- Receipt
 ReceiptLinear.        Receipt ::= ReceiptLinearImpl ;
@@ -304,6 +330,21 @@ ASTSExp  . AST ::= "(" Label [AST] ")" ;
 (:) . [AST] ::= AST [AST] ;
 
 Hyp . Hypothesis ::= Ident "~>" Ident ;
+
+-- Literals:
+-- Booleans:
+BoolTrue.   BoolLiteral ::= "true" ;
+BoolFalse.  BoolLiteral ::= "false" ;
+-- Strings:
+-- TODO: token StringLiteral ( '"' ((char - ["\"\\"]) | ('\\' ["\"\\nt"]))* '"' );
+
+-- Ground types:
+-- The "Literal" suffix avoids collisions with Simple Types
+GroundBool.    Ground ::= BoolLiteral ;
+-- GroundString.  Ground ::= StringLiteral ;
+-- TODO: GroundInt.     Ground ::= LongLiteral ;
+-- TODO: GroundUri.     Ground ::= UriLiteral ;
+-- TODO: token UriLiteral ('`' ((char - ["\\`"]) | ('\\' ["`\\"]))* '`') ;
 
 --token Var (((letter | '\'') (letter | digit | '_' | '\'')*)|(('_') (letter | digit | '_' | '\'')+)) ;
 

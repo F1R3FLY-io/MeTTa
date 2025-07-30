@@ -342,8 +342,8 @@ GroundBool.    Ground ::= BoolLiteral ;
 GroundString.  Ground ::= String ;
 GroundInt.     Ground ::= Integer ;
 GroundDouble.  Ground ::= Double ;
--- GroundUri.     Ground ::= UriLiteral ;
--- TODO: token UriLiteral ('`' ((char - ["\\`"]) | ('\\' ["`\\"]))* '`') ;
+GroundUri.     Ground ::= UriLiteral ;
+token UriLiteral ('`' ((char - ["\\`"]) | ('\\' ["`\\"]))* '`') ;
 
 --token Var (((letter | '\'') (letter | digit | '_' | '\'')*)|(('_') (letter | digit | '_' | '\'')+)) ;
 

@@ -336,12 +336,12 @@ Hyp . Hypothesis ::= Ident "~>" Ident ;
 BoolTrue.   BoolLiteral ::= "true" ;
 BoolFalse.  BoolLiteral ::= "false" ;
 -- Strings:
--- TODO: token StringLiteral ( '"' ((char - ["\"\\"]) | ('\\' ["\"\\nt"]))* '"' );
+-- token String ( '"' ((char - ["\"\\"]) | ('\\' ["\"\\nt"]))* '"' ) ;
 
 -- Ground types:
 -- The "Literal" suffix avoids collisions with Simple Types
 GroundBool.    Ground ::= BoolLiteral ;
--- GroundString.  Ground ::= StringLiteral ;
+GroundString.  Ground ::= String ;
 -- TODO: GroundInt.     Ground ::= LongLiteral ;
 -- TODO: GroundUri.     Ground ::= UriLiteral ;
 -- TODO: token UriLiteral ('`' ((char - ["\\`"]) | ('\\' ["`\\"]))* '`') ;

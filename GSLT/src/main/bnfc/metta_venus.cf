@@ -342,7 +342,7 @@ BoolFalse.  BoolLiteral ::= "false" ;
 -- The "Literal" suffix avoids collisions with Simple Types
 GroundBool.    Ground ::= BoolLiteral ;
 GroundString.  Ground ::= String ;
--- TODO: GroundInt.     Ground ::= LongLiteral ;
+GroundInt.     Ground ::= Integer ;
 -- TODO: GroundUri.     Ground ::= UriLiteral ;
 -- TODO: token UriLiteral ('`' ((char - ["\\`"]) | ('\\' ["`\\"]))* '`') ;
 

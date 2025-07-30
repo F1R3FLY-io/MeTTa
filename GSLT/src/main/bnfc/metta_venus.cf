@@ -333,17 +333,16 @@ Hyp . Hypothesis ::= Ident "~>" Ident ;
 
 -- Literals:
 -- Booleans:
+-- The "Literal" suffix avoids collisions with Simple Types
 BoolTrue.   BoolLiteral ::= "true" ;
 BoolFalse.  BoolLiteral ::= "false" ;
--- Strings:
--- token String ( '"' ((char - ["\"\\"]) | ('\\' ["\"\\nt"]))* '"' ) ;
 
 -- Ground types:
--- The "Literal" suffix avoids collisions with Simple Types
 GroundBool.    Ground ::= BoolLiteral ;
 GroundString.  Ground ::= String ;
 GroundInt.     Ground ::= Integer ;
--- TODO: GroundUri.     Ground ::= UriLiteral ;
+GroundDouble.  Ground ::= Double ;
+-- GroundUri.     Ground ::= UriLiteral ;
 -- TODO: token UriLiteral ('`' ((char - ["\\`"]) | ('\\' ["`\\"]))* '`') ;
 
 --token Var (((letter | '\'') (letter | digit | '_' | '\'')*)|(('_') (letter | digit | '_' | '\'')+)) ;

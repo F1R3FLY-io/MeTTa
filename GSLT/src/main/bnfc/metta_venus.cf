@@ -80,6 +80,7 @@ VarDecl . VariableDecl ::= Ident ":" DottedPath ;
 separator VariableDecl "," ;
 
 BaseDottedPath . DottedPath ::= Ident ;
+SetDottedPath . DottedPath ::= "Set" ;
 QualifiedDottedPath . DottedPath ::= Ident "." DottedPath ;
 
 -- Names
@@ -345,11 +346,15 @@ PCollect.        Proc16 ::= Collection ;
 -- Collections:
 CollectList.   Collection ::= "[" [Proc] ProcRemainder "]" ;
 CollectTuple.  Collection ::= Tuple;
--- TODO: CollectSet.    Collection ::= "Set" "(" [Proc] ProcRemainder")" ;
--- TODO: CollectMap.    Collection ::= "{" [KeyValuePair] ProcRemainder"}" ;
+CollectSet.    Collection ::= "Set" "(" [Proc] ProcRemainder")" ;
+CollectMap.    Collection ::= "{" [KeyValuePair] ProcRemainder"}" ;
 
 TupleSingle.    Tuple ::= "(" Proc ",)" ;
 TupleMultiple.  Tuple ::= "(" Proc "," [Proc] ")" ;
+
+-- Key-Value Pair for Maps
+KeyValuePairImpl. KeyValuePair ::= Proc ":" Proc ;
+separator KeyValuePair "," ;
 
 --token Var (((letter | '\'') (letter | digit | '_' | '\'')*)|(('_') (letter | digit | '_' | '\'')+)) ;
 

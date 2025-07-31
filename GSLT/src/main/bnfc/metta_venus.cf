@@ -91,6 +91,12 @@ separator Name "," ;
 NameRemainderVar.   NameRemainder ::= "..." "@" Ident ;
 NameRemainderEmpty. NameRemainder ::= "" ;
 
+-- Process Variables
+ProcVarImpl.        ProcVar ::= Ident ;
+
+ProcRemainderVar.   ProcRemainder ::= "..." ProcVar ;
+ProcRemainderEmpty. ProcRemainder ::= "" ;
+
 FactImpl . Fact ::= Item ;
 separator nonempty Fact ";" ;
 
@@ -337,7 +343,7 @@ PCollect.        Proc16 ::= Collection ;
 -- PMethod.         Proc11 ::= Proc11 "." Var "(" [Proc] ")" ;
 
 -- Collections:
--- TODO: CollectList.   Collection ::= "[" [Proc] ProcRemainder "]" ;
+CollectList.   Collection ::= "[" [Proc] ProcRemainder "]" ;
 CollectTuple.  Collection ::= Tuple;
 -- TODO: CollectSet.    Collection ::= "Set" "(" [Proc] ProcRemainder")" ;
 -- TODO: CollectMap.    Collection ::= "{" [KeyValuePair] ProcRemainder"}" ;

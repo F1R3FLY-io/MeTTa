@@ -5,26 +5,6 @@
 -- A module is a collection of decls and instances
 -- and communications between instances.
 
--- A program is just a process. We put the coercions first, because that's what
--- bnfc uses to determine the starting production.
--- _. Proc  ::= Proc1 ;
--- _. Proc1 ::= Proc2 ;
--- _. Proc2 ::= Proc3 ;
--- _. Proc3 ::= Proc4 ;
--- _. Proc4 ::= Proc5 ;
--- _. Proc5 ::= Proc6 ;
--- _. Proc6 ::= Proc7 ;
--- _. Proc7 ::= Proc8 ;
--- _. Proc8 ::= Proc9 ;
--- _. Proc9 ::= Proc10 ;
--- _. Proc10 ::= Proc11 ;
--- _. Proc11 ::= Proc12 ;
--- _. Proc12 ::= Proc13 ;
--- _. Proc13 ::= Proc14 ;
--- _. Proc14 ::= Proc15 ;
--- _. Proc15 ::= Proc16 ;
--- _. Proc16 ::= "{" Proc "}" ;
-
 ModuleImpl . Module ::= [Import] "Module" Name "{" [Prog] "}" ;
 
 ImportModuleAs . Import ::= "import" String "as" Ident ;
@@ -346,9 +326,15 @@ GroundUri.     Ground ::= UriLiteral ;
 token UriLiteral ('`' ((char - ["\\`"]) | ('\\' ["`\\"]))* '`') ;
 
 coercions Proc 16 ;
+separator Proc "," ;
 
+-- Processes
+-- In general the expression style processes are higher precedence.
+-- Expression style is anything that necessary resolves to a single ground value
+-- or a collection.
 PGround.         Proc16 ::= Ground ;
 PCollect.        Proc16 ::= Collection ;
+-- PMethod.         Proc11 ::= Proc11 "." Var "(" [Proc] ")" ;
 
 -- Collections:
 -- TODO: CollectList.   Collection ::= "[" [Proc] ProcRemainder "]" ;
@@ -357,7 +343,7 @@ CollectTuple.  Collection ::= Tuple;
 -- TODO: CollectMap.    Collection ::= "{" [KeyValuePair] ProcRemainder"}" ;
 
 TupleSingle.    Tuple ::= "(" Proc ",)" ;
--- TupleMultiple.  Tuple ::= "(" Proc "," [Proc] ")" ;
+TupleMultiple.  Tuple ::= "(" Proc "," [Proc] ")" ;
 
 --token Var (((letter | '\'') (letter | digit | '_' | '\'')*)|(('_') (letter | digit | '_' | '\'')+)) ;
 

@@ -351,6 +351,25 @@ PDisjunction.    Proc13 ::= Proc13 "\\/" Proc14 ;
 PEval.           Proc12 ::= "*" Name ;
 -- PMethod.         Proc11 ::= Proc11 "." Var "(" [Proc] ")" ;
 PExprs.          Proc11 ::= "(" Proc4 ")" ;
+PNot.            Proc10 ::= "not" Proc10 ;
+PNeg.            Proc10 ::= "-" Proc10 ;
+PMult.           Proc9  ::= Proc9 "*" Proc10 ;
+PDiv.            Proc9  ::= Proc9 "/" Proc10 ;
+PMod.            Proc9  ::= Proc9 "%" Proc10 ;
+PPercentPercent. Proc9  ::= Proc9 "%%" Proc10 ;
+PAdd.            Proc8  ::= Proc8 "+" Proc9 ;
+PMinus.          Proc8  ::= Proc8 "-" Proc9 ;
+PPlusPlus.       Proc8  ::= Proc8 "++" Proc9 ;
+PMinusMinus.     Proc8  ::= Proc8 "--" Proc9 ;
+PLt.             Proc7  ::= Proc7 "<" Proc8 ;
+PLte.            Proc7  ::= Proc7 "<=" Proc8 ;
+PGt.             Proc7  ::= Proc7 ">" Proc8 ;
+PGte.            Proc7  ::= Proc7 ">=" Proc8 ;
+PMatches.        Proc6  ::= Proc7 "matches" Proc7 ;
+PEq.             Proc6  ::= Proc6 "==" Proc7 ;
+PNeq.            Proc6  ::= Proc6 "!=" Proc7 ;
+PAnd.            Proc5  ::= Proc5 "and" Proc6 ;
+POr.             Proc4  ::= Proc4 "or" Proc5 ;
 
 -- Collections:
 CollectList.   Collection ::= "[" [Proc] ProcRemainder "]" ;

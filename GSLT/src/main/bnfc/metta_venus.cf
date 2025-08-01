@@ -341,6 +341,7 @@ separator Proc "," ;
 -- or a collection.
 PGround.         Proc16 ::= Ground ;
 PCollect.        Proc16 ::= Collection ;
+PVar.            Proc16 ::= ProcVar ;
 -- PMethod.         Proc11 ::= Proc11 "." Var "(" [Proc] ")" ;
 
 -- Collections:

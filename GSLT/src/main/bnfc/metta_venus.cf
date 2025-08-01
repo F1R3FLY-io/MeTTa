@@ -370,6 +370,8 @@ PEq.             Proc6  ::= Proc6 "==" Proc7 ;
 PNeq.            Proc6  ::= Proc6 "!=" Proc7 ;
 PAnd.            Proc5  ::= Proc5 "and" Proc6 ;
 POr.             Proc4  ::= Proc4 "or" Proc5 ;
+PSendProc.       Proc3  ::= Name Send "(" [Proc] ")" ;
+PContr.          Proc2  ::= "contract" Name "(" [Name] NameRemainder")" "=" "{" Proc "}" ;
 
 -- Collections:
 CollectList.   Collection ::= "[" [Proc] ProcRemainder "]" ;

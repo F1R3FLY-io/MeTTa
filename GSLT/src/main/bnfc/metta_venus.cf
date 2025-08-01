@@ -344,6 +344,7 @@ PCollect.        Proc16 ::= Collection ;
 PVar.            Proc16 ::= ProcVar ;
 PVarRef.         Proc13 ::= VarRefKind Ident ;
 PNil.            Proc16 ::= "Nil" ;
+PSimpleType.     Proc16 ::= SimpleType ;
 -- PMethod.         Proc11 ::= Proc11 "." Var "(" [Proc] ")" ;
 
 -- Collections:
@@ -362,6 +363,14 @@ separator KeyValuePair "," ;
 -- VarRefKind:
 VarRefKindProc. VarRefKind ::= "=" ;
 VarRefKindName. VarRefKind ::= "=" "*" ;
+
+-- Simple Types:
+SimpleTypeBool. SimpleType ::= "Bool" ;
+SimpleTypeInt. SimpleType ::= "Int" ;
+SimpleTypeString. SimpleType ::= "String" ;
+SimpleTypeUri. SimpleType ::= "Uri" ;
+SimpleTypeByteArray. SimpleType ::= "ByteArray" ;
+SimpleTypeDouble. SimpleType ::= "Double" ;
 
 --token Var (((letter | '\'') (letter | digit | '_' | '\'')*)|(('_') (letter | digit | '_' | '\'')+)) ;
 

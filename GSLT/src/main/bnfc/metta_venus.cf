@@ -108,12 +108,6 @@ PSendSynch.      FactComprehension ::= Name "!?" "(" [Fact] ")" SynchSendCont ;
 PSendSynchEmpty. FactComprehension ::= Name "!?" "(" ")" SynchSendCont ;
 separator FactComprehension "," ;
 
--- *** This is place for inserting arithmetics ***
--- *** End of place for inserting arithmetics ***
-
--- *** Arithmetics dependencies ***
--- *** End of Arithmetics dependencies ***
-
 -- Receipt
 ReceiptLinear.        Receipt ::= ReceiptLinearImpl ;
 ReceiptRepeated.      Receipt ::= ReceiptRepeatedImpl ;
@@ -373,6 +367,10 @@ POr.             Proc4  ::= Proc4 "or" Proc5 ;
 PSendProc.       Proc3  ::= Name Send "(" [Proc] ")" ;
 PContr.          Proc2  ::= "contract" Name "(" [Name] NameRemainder")" "=" "{" Proc "}" ;
 PInput.          Proc2  ::= "for" "(" [Receipt] ")" "{" Proc "}" ;
+PChoice.         Proc2  ::= "select" "{" [Branch] "}" ;
+PMatch.          Proc2  ::= "match" Proc4 "{" [Case] "}" ;
+PBundle.         Proc2  ::= Bundle "{" Proc "}" ;
+-- TODO: PLet.            Proc2  ::= "let" Decl Decls "in" "{" Proc "}" ;
 
 -- Collections:
 CollectList.   Collection ::= "[" [Proc] ProcRemainder "]" ;
@@ -398,6 +396,27 @@ SimpleTypeString. SimpleType ::= "String" ;
 SimpleTypeUri. SimpleType ::= "Uri" ;
 SimpleTypeByteArray. SimpleType ::= "ByteArray" ;
 SimpleTypeDouble. SimpleType ::= "Double" ;
+
+-- Branch for select statements
+BranchImpl.      Branch ::= ReceiptLinearImpl "=>" Proc3 ;
+separator nonempty Branch "" ;
+
+-- Case for match statements
+CaseImpl.        Case ::= Proc13 "=>" Proc3 ;
+separator nonempty Case "" ;
+
+-- Bundle for process grouping
+BundleRead.      Bundle ::= "bundle+" ;
+BundleWrite.     Bundle ::= "bundle-" ;
+BundleReadWrite. Bundle ::= "bundle" ;
+-- TODO: discuss it: BundleEquiv.     Bundle ::= "bundle0" ;
+
+-- Declaration for let bindings
+-- TODO: DeclImpl.        Decl ::= Ident "=" Proc ;
+-- TODO: separator Decl ";" ;
+
+-- List of declarations
+-- TODO: DeclsImpl.       Decls ::= [Decl] ;
 
 --token Var (((letter | '\'') (letter | digit | '_' | '\'')*)|(('_') (letter | digit | '_' | '\'')+)) ;
 

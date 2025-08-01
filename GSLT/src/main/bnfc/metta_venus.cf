@@ -342,6 +342,7 @@ separator Proc "," ;
 PGround.         Proc16 ::= Ground ;
 PCollect.        Proc16 ::= Collection ;
 PVar.            Proc16 ::= ProcVar ;
+PVarRef.         Proc13 ::= VarRefKind Ident ;
 -- PMethod.         Proc11 ::= Proc11 "." Var "(" [Proc] ")" ;
 
 -- Collections:
@@ -356,6 +357,10 @@ TupleMultiple.  Tuple ::= "(" Proc "," [Proc] ")" ;
 -- Key-Value Pair for Maps
 KeyValuePairImpl. KeyValuePair ::= Proc ":" Proc ;
 separator KeyValuePair "," ;
+
+-- VarRefKind:
+VarRefKindProc. VarRefKind ::= "=" ;
+VarRefKindName. VarRefKind ::= "=" "*" ;
 
 --token Var (((letter | '\'') (letter | digit | '_' | '\'')*)|(('_') (letter | digit | '_' | '\'')+)) ;
 

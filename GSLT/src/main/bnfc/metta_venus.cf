@@ -374,7 +374,7 @@ PLet.            Proc2  ::= "let" Decl Decls "in" "{" Proc "}" ;
 
 -- Use precedence to force braces around an interior if.
 PIfElse.      Proc1 ::= "if" "(" Proc ")" Proc2 "else" Proc1 ;
--- TODO: PNew.         Proc1 ::= "new" [NameDecl] "in" Proc1 ;
+PNew.         Proc1 ::= "new" [NameDecl] "in" Proc1 ;
 -- TODO: PSendSynch.   Proc1 ::= Name "!?" "(" [Proc] ")" SynchSendCont ;
 -- TODO: PPar.         Proc  ::= Proc "|" Proc1 ;
 
@@ -423,6 +423,11 @@ separator Decl ";" ;
 
 -- List of declarations
 DeclsImpl.       Decls ::= [Decl] ;
+
+-- Name Declarations.
+NameDeclSimpl. NameDecl ::= Ident ;
+NameDeclUrn. NameDecl ::= Ident "(" UriLiteral ")" ;
+separator nonempty NameDecl "," ;
 
 --token Var (((letter | '\'') (letter | digit | '_' | '\'')*)|(('_') (letter | digit | '_' | '\'')+)) ;
 

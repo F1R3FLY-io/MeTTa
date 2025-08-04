@@ -372,6 +372,12 @@ PMatch.          Proc2  ::= "match" Proc4 "{" [Case] "}" ;
 PBundle.         Proc2  ::= Bundle "{" Proc "}" ;
 PLet.            Proc2  ::= "let" Decl Decls "in" "{" Proc "}" ;
 
+-- Use precedence to force braces around an interior if.
+PIfElse.      Proc1 ::= "if" "(" Proc ")" Proc2 "else" Proc1 ;
+-- TODO: PNew.         Proc1 ::= "new" [NameDecl] "in" Proc1 ;
+-- TODO: PSendSynch.   Proc1 ::= Name "!?" "(" [Proc] ")" SynchSendCont ;
+-- TODO: PPar.         Proc  ::= Proc "|" Proc1 ;
+
 -- Collections:
 CollectList.   Collection ::= "[" [Proc] ProcRemainder "]" ;
 CollectTuple.  Collection ::= Tuple;

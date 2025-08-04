@@ -370,7 +370,7 @@ PInput.          Proc2  ::= "for" "(" [Receipt] ")" "{" Proc "}" ;
 PChoice.         Proc2  ::= "select" "{" [Branch] "}" ;
 PMatch.          Proc2  ::= "match" Proc4 "{" [Case] "}" ;
 PBundle.         Proc2  ::= Bundle "{" Proc "}" ;
--- TODO: PLet.            Proc2  ::= "let" Decl Decls "in" "{" Proc "}" ;
+PLet.            Proc2  ::= "let" Decl Decls "in" "{" Proc "}" ;
 
 -- Collections:
 CollectList.   Collection ::= "[" [Proc] ProcRemainder "]" ;
@@ -412,11 +412,11 @@ BundleReadWrite. Bundle ::= "bundle" ;
 -- TODO: discuss it: BundleEquiv.     Bundle ::= "bundle0" ;
 
 -- Declaration for let bindings
--- TODO: DeclImpl.        Decl ::= Ident "=" Proc ;
--- TODO: separator Decl ";" ;
+DeclImpl.        Decl ::= Ident "=" Proc ;
+separator Decl ";" ;
 
 -- List of declarations
--- TODO: DeclsImpl.       Decls ::= [Decl] ;
+DeclsImpl.       Decls ::= [Decl] ;
 
 --token Var (((letter | '\'') (letter | digit | '_' | '\'')*)|(('_') (letter | digit | '_' | '\'')+)) ;
 

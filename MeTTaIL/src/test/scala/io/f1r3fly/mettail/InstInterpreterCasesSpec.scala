@@ -107,11 +107,9 @@ class InstInterpreterCasesSpec extends AnyFunSuite {
 
     val res = handleAddTerms(interp, Nil, inst)
     assert(res.isLeft)
-    /* fails:
     assert(res.left.get.contains(
       "Error: Def in addTerms mentions unknown categories: Set(C)"
     ))
-    */
   }
 
   // --- handleAddTerms: known categories ---

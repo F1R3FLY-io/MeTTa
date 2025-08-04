@@ -39,7 +39,7 @@ class LabelHelpersSpec extends AnyFlatSpec with Matchers {
     val rwBase = new RewriteBase(ast1, ast2)
 
     val labels = LabelHelpers.labelsInRewrite(rwBase)
-    // fails: labels should contain allOf ("baz", "(:[]){qux}")
+    labels should contain allOf ("baz", "(:[]){qux}")
     labels.size shouldEqual 2
   }
 

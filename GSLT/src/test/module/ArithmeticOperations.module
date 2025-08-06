@@ -1,5 +1,5 @@
-Module ArrowCats {
-  Theory Arrows() {
+Module ArithmeticOps {
+  Theory LetStatements() {
     Empty
       Exports { T1; T2; T3; T4; (T1 -> T2); }
       Terms {
@@ -17,33 +17,5 @@ Module ArrowCats {
       }
   }
 
-  theory Arrows()
+  theory LetStatements()
 }
-
--- // In Foo and Bee,
--- //   (T1 -> T2)
--- // is used as a category, so we generate
--- //   AppT1T2 . T2 ::= "α" "{" (T1 -> T2) "," T1 "}" ;
--- //   IdentT1T2 . (T1 -> T2) ::= Ident ;
--- //   LamT1T2 . (T1 -> T2) ::= "λ" "{" Ident "," T2 "}" ;
--- //   IdentT1 . T1 ::= Ident ;
--- // The IdentTX productions are the same as the one for Bind.
---
--- // foo(bar)
--- // ⇓ η
--- // foo(λf.bar(f))
--- // ⇓ η
--- // foo(λf.bar(λx.f(x)))
--- foo f . bar x . α{f, x}
---
--- // foo(λf.baz(f(qux)))
--- foo f . baz α{f, qux}
---
--- // bar(λx.quux)
--- bar x quux
---
--- // bee(λx.quux)
--- bee λ{x, quux}
---
--- // bee(λx.bar(λy.quux))
--- bee λ{x, bar y quux}

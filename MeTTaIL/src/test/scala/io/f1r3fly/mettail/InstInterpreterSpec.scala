@@ -48,10 +48,10 @@ class InstInterpreterSpec extends AnyFlatSpec with Matchers {
       |}
       |Equations
       |{
-      |  (Mult (Mult x y) z) == (Mult x (Mult y z));
-      |  (Mult x (One)) == x;
-      |  (Mult (One) x) == x;
-      |  (Plus x y) == (Plus y x);
+      |  (PPar (PPar x y) z) == (PPar x (PPar y z));
+      |  (PPar x (PZero)) == x;
+      |  (PPar (PZero) x) == x;
+      |  (PPar x y) == (PPar y x);
       |  if x # Q then (PPar (PNew x P) Q) == (PNew x (PPar P Q));
       |  (PNew x (PNew x P)) == (PNew x P);
       |  (PNew x (PNew y P)) == (PNew y (PNew x P));

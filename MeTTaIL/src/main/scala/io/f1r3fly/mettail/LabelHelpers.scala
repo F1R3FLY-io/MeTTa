@@ -4,7 +4,7 @@ import metta_venus.Absyn._
 import metta_venus.PrettyPrinter
 
 object LabelHelpers {
-  private def labelToString(l: Label): String = l match {
+  def labelToString(l: Label): String = l match {
     case id: Id => id.ident_
     case _: Wild => "_"
     case l: ListE => s"[]{${PrettyPrinter.print(l.cat_)}}"

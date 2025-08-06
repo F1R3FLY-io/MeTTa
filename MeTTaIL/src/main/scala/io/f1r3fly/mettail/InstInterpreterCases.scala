@@ -60,7 +60,7 @@ object InstInterpreterCases {
       }
 
       allowedLabels = filteredTerms.collect {
-        case rule: Rule => rule.label_.toString
+        case rule: Rule => labelToString(rule.label_)
       }
 
       commonEquations = presA.listequation_.asScala.toSet intersect presB.listequation_.asScala.toSet
@@ -101,7 +101,7 @@ object InstInterpreterCases {
         })
       }
       // Allowed labels are taken from the surviving Rule definitions.
-      allowedLabels = diffDefs.collect { case rule: Rule => rule.label_.toString }
+      allowedLabels = diffDefs.collect { case rule: Rule => labelToString(rule.label_) }
       // For equations, only keep those not in bp2 and whose mentioned labels are among allowedLabels.
       diffEquations = bp1.listequation_.asScala.toSet.filter { eq =>
         !bp2.listequation_.asScala.toSet.contains(eq) &&
@@ -167,7 +167,7 @@ object InstInterpreterCases {
           // Find the Rule in currentPres whose label matches s.label_.
           val ruleOpt: Option[Rule] =
             currentPres.listdef_.asScala.collect { case r: Rule => r }
-              .find(r => r.label_.toString == s.label_.toString)
+              .find(r => labelToString(r.label_) == labelToString(s.label_))
 
           ruleOpt match {
             case None =>
@@ -218,12 +218,55 @@ object InstInterpreterCases {
                               s"for label ${PrettyPrinter.print(s.label_)}."
                             )
                           else {
-                            // All OK: install the new rule
                             val newDefs = currentPres.listdef_.asScala.toList.map {
-                              case r: Rule if r.label_.toString == s.label_.toString => replRule
-                              case other                                             => other
+                              case r: Rule if labelToString(r.label_) == labelToString(s.label_) => replRule
+                              case other => other
                             }
-                            Right(copyPres(currentPres, listdef = Some(newDefs)))
+
+                            def updateEquationImpl(ei: EquationImpl): EquationImpl = {
+                              def updateAST(ast: AST): AST = ast match {
+                                case sexp: ASTSExp => {
+                                  // first recurse on args
+                                  val newArgs = sexp.listast_.asScala.map(updateAST).toList
+                                  // then if the labels match, permute and replace label
+                                  if (labelToString(sexp.label_) == labelToString(s.label_)) {
+                                    val permuted = perm.map(newArgs(_))
+                                    val newListAST = new ListAST()
+                                    newListAST.addAll(permuted.asJava)
+                                    new ASTSExp(replRule.label_, newListAST)
+                                  } else {
+                                    val newListAST = new ListAST()
+                                    newListAST.addAll(newArgs.asJava)
+                                    new ASTSExp(sexp.label_, newListAST)
+                                  }
+                                }
+
+                                case sub: ASTSubst =>
+                                  new ASTSubst(updateAST(sub.ast_1), updateAST(sub.ast_2), sub.ident_)
+
+                                case other => other
+                              }
+
+                              new EquationImpl(updateAST(ei.ast_1), updateAST(ei.ast_2))
+                            }
+
+                            val newEquations = currentPres.listequation_.asScala.toList.map {
+                              case ef: EquationFresh =>
+                                new EquationFresh(
+                                  ef.ident_1,
+                                  ef.ident_2,
+                                  updateEquationImpl(ASTHelpers.equationImpl(ef))
+                                )
+
+                              case impl: EquationImpl => updateEquationImpl(impl)
+                            }
+
+                            // Return the updated BasePres with both definitions and equations replaced
+                            Right(BasePresOps.copyPres(
+                              currentPres,
+                              listdef      = Some(newDefs),
+                              listequation = Some(newEquations)
+                            ))
                           }
                         }
                       }

@@ -16,6 +16,7 @@ ProgSpaceDecl . Prog ::= SpaceDecl ;
 ProgTheoryDecl . Prog ::= TheoryDecl ;
 ProgSpaceInst . Prog ::= "space" SpaceInst ;
 ProgTheoryInst . Prog ::= "theory" TheoryInst ;
+ProgProc . Prog ::= Proc ;
 
 ProgRecv . Prog ::= FactComprehension ;
 separator nonempty Prog "" ;

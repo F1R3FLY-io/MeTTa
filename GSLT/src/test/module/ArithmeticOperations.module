@@ -1,21 +1,3 @@
-Module ArithmeticOps {
-  Theory LetStatements() {
-    Empty
-      Exports { T1; T2; T3; T4; (T1 -> T2); }
-      Terms {
-        Qux  . T1 ::= "qux" ;
-        Quux . T2 ::= "quux" ;
-        -- Bar: (T1 -> T2) -> T3
-        Bar  . T3 ::= "bar" (Bind t1 T1) "." (t1)T2 ;
-        -- Baz: T2 -> T3
-        Baz  . T3 ::= "baz" T2 ;
-        -- Bee: (T1 -> T2) -> T3
-        Bee  . T3 ::= "bee" (T1 -> T2) ;
-        -- Foo: ((T1 -> T2) -> T3) -> T4
-        Foo  . T4 ::= "foo" (Bind t1t2 (T1 -> T2)) "." (t1t2)T3 ;
-        Deep . T1 ::= "deep" (Bind t (((T1 -> T1) -> (T1 -> T1)) -> T1)) "." (t)T1 ;
-      }
-  }
-
-  theory LetStatements()
+Module ArithmeticOperations {
+  1 + 2
 }

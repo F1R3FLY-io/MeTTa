@@ -108,6 +108,35 @@ class InstInterpreterSpec extends AnyFlatSpec with Matchers {
     actual.trim shouldEqual expected.trim
   }
 
+  it should "interpret the RenameRewrite module correctly" in {
+    val (interpreter, inst) = loadInterpreterFor("../GSLT/src/test/module/RenameRewrite.module")
+    val basePres = interpreter.interpret(Nil, inst)
+                       .getOrElse(fail("Interpretation of RenameRewrite.module failed"))
+    val actual   = PrettyPrinter.print(basePres)
+
+    val expected =
+      s"""
+      Presentation Exports
+      |{
+      |  T;
+      |}
+      |Terms
+      |{
+      |  C . T ::= "C";
+      |  D . T ::= "D";
+      |}
+      |Equations
+      |{
+      |}
+      |Rewrites
+      |{
+      |  Step : (C) ~> (D)
+      |}
+      """.stripMargin
+
+    actual.trim shouldEqual expected.trim
+  }
+
   it should "error when interpreting a module with duplicate term labels" in {
     val (interpreter, inst) = loadInterpreterFor("../GSLT/src/test/module/bad/RepeatLabel.module")
     val res = interpreter.interpret(Nil, inst)

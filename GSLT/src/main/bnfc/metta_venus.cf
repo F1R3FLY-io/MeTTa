@@ -80,6 +80,7 @@ VarDecl . VariableDecl ::= Ident ":" DottedPath ;
 separator VariableDecl "," ;
 
 BaseDottedPath . DottedPath ::= Ident ;
+SetDottedPath . DottedPath ::= "Set" ;
 QualifiedDottedPath . DottedPath ::= Ident "." DottedPath ;
 
 -- Names
@@ -90,6 +91,12 @@ separator Name "," ;
 
 NameRemainderVar.   NameRemainder ::= "..." "@" Ident ;
 NameRemainderEmpty. NameRemainder ::= "" ;
+
+-- Process Variables
+ProcVarImpl.        ProcVar ::= Ident ;
+
+ProcRemainderVar.   ProcRemainder ::= "..." ProcVar ;
+ProcRemainderEmpty. ProcRemainder ::= "" ;
 
 FactImpl . Fact ::= Item ;
 separator nonempty Fact ";" ;
@@ -305,6 +312,123 @@ ASTSExp  . AST ::= "(" Label [AST] ")" ;
 (:) . [AST] ::= AST [AST] ;
 
 Hyp . Hypothesis ::= Ident "~>" Ident ;
+
+-- Literals:
+-- Booleans:
+-- The "Literal" suffix avoids collisions with Simple Types
+BoolTrue.   BoolLiteral ::= "true" ;
+BoolFalse.  BoolLiteral ::= "false" ;
+
+-- Ground types:
+GroundBool.    Ground ::= BoolLiteral ;
+GroundString.  Ground ::= String ;
+GroundInt.     Ground ::= Integer ;
+GroundDouble.  Ground ::= Double ;
+GroundUri.     Ground ::= UriLiteral ;
+token UriLiteral ('`' ((char - ["\\`"]) | ('\\' ["`\\"]))* '`') ;
+
+coercions Proc 16 ;
+separator Proc "," ;
+
+-- Processes
+-- In general the expression style processes are higher precedence.
+-- Expression style is anything that necessary resolves to a single ground value
+-- or a collection.
+PGround.         Proc16 ::= Ground ;
+PCollect.        Proc16 ::= Collection ;
+PVar.            Proc16 ::= ProcVar ;
+PVarRef.         Proc13 ::= VarRefKind Ident ;
+PNil.            Proc16 ::= "Nil" ;
+PSimpleType.     Proc16 ::= SimpleType ;
+PNegation.       Proc15 ::= "~" Proc15 ;
+PConjunction.    Proc14 ::= Proc14 "/\\" Proc15 ;
+PDisjunction.    Proc13 ::= Proc13 "\\/" Proc14 ;
+PEval.           Proc12 ::= "*" Name ;
+PMethod.         Proc11 ::= Proc11 "." Ident "(" [Proc] ")" ;
+PExprs.          Proc11 ::= "(" Proc4 ")" ;
+PNot.            Proc10 ::= "not" Proc10 ;
+PNeg.            Proc10 ::= "-" Proc10 ;
+PMult.           Proc9  ::= Proc9 "*" Proc10 ;
+PDiv.            Proc9  ::= Proc9 "/" Proc10 ;
+PMod.            Proc9  ::= Proc9 "%" Proc10 ;
+PPercentPercent. Proc9  ::= Proc9 "%%" Proc10 ;
+PAdd.            Proc8  ::= Proc8 "+" Proc9 ;
+PMinus.          Proc8  ::= Proc8 "-" Proc9 ;
+PPlusPlus.       Proc8  ::= Proc8 "++" Proc9 ;
+PMinusMinus.     Proc8  ::= Proc8 "--" Proc9 ;
+PLt.             Proc7  ::= Proc7 "<" Proc8 ;
+PLte.            Proc7  ::= Proc7 "<=" Proc8 ;
+PGt.             Proc7  ::= Proc7 ">" Proc8 ;
+PGte.            Proc7  ::= Proc7 ">=" Proc8 ;
+PMatches.        Proc6  ::= Proc7 "matches" Proc7 ;
+PEq.             Proc6  ::= Proc6 "==" Proc7 ;
+PNeq.            Proc6  ::= Proc6 "!=" Proc7 ;
+PAnd.            Proc5  ::= Proc5 "and" Proc6 ;
+POr.             Proc4  ::= Proc4 "or" Proc5 ;
+PSendProc.       Proc3  ::= Name Send "(" [Proc] ")" ;
+PContr.          Proc2  ::= "contract" Name "(" [Name] NameRemainder")" "=" "{" Proc "}" ;
+PInput.          Proc2  ::= "for" "(" [Receipt] ")" "{" Proc "}" ;
+PChoice.         Proc2  ::= "select" "{" [Branch] "}" ;
+PMatch.          Proc2  ::= "match" Proc4 "{" [Case] "}" ;
+PBundle.         Proc2  ::= Bundle "{" Proc "}" ;
+PLet.            Proc2  ::= "let" Decl Decls "in" "{" Proc "}" ;
+
+-- Use precedence to force braces around an interior if.
+PIfElse.      Proc1 ::= "if" "(" Proc ")" Proc2 "else" Proc1 ;
+PNew.         Proc1 ::= "new" [NameDecl] "in" Proc1 ;
+PSendSynchProc. Proc1 ::= Name "!?" "(" [Proc] ")" SynchSendCont ;
+PPar.         Proc  ::= Proc "|" Proc1 ;
+
+-- Collections:
+CollectList.   Collection ::= "[" [Proc] ProcRemainder "]" ;
+CollectTuple.  Collection ::= Tuple;
+CollectSet.    Collection ::= "Set" "(" [Proc] ProcRemainder")" ;
+CollectMap.    Collection ::= "{" [KeyValuePair] ProcRemainder"}" ;
+
+TupleSingle.    Tuple ::= "(" Proc ",)" ;
+TupleMultiple.  Tuple ::= "(" Proc "," [Proc] ")" ;
+
+-- Key-Value Pair for Maps
+KeyValuePairImpl. KeyValuePair ::= Proc ":" Proc ;
+separator KeyValuePair "," ;
+
+-- VarRefKind:
+VarRefKindProc. VarRefKind ::= "=" ;
+VarRefKindName. VarRefKind ::= "=" "*" ;
+
+-- Simple Types:
+SimpleTypeBool. SimpleType ::= "Bool" ;
+SimpleTypeInt. SimpleType ::= "Int" ;
+SimpleTypeString. SimpleType ::= "String" ;
+SimpleTypeUri. SimpleType ::= "Uri" ;
+SimpleTypeByteArray. SimpleType ::= "ByteArray" ;
+SimpleTypeDouble. SimpleType ::= "Double" ;
+
+-- Branch for select statements
+BranchImpl.      Branch ::= ReceiptLinearImpl "=>" Proc3 ;
+separator nonempty Branch "" ;
+
+-- Case for match statements
+CaseImpl.        Case ::= Proc13 "=>" Proc3 ;
+separator nonempty Case "" ;
+
+-- Bundle for process grouping
+BundleRead.      Bundle ::= "bundle+" ;
+BundleWrite.     Bundle ::= "bundle-" ;
+BundleReadWrite. Bundle ::= "bundle" ;
+-- TODO: discuss it: BundleEquiv.     Bundle ::= "bundle0" ;
+
+-- Declaration for let bindings
+DeclImpl.        Decl ::= Ident "=" Proc ;
+separator Decl ";" ;
+
+-- List of declarations
+DeclsImpl.       Decls ::= [Decl] ;
+
+-- Name Declarations.
+NameDeclSimpl. NameDecl ::= Ident ;
+NameDeclUrn. NameDecl ::= Ident "(" UriLiteral ")" ;
+separator nonempty NameDecl "," ;
 
 --token Var (((letter | '\'') (letter | digit | '_' | '\'')*)|(('_') (letter | digit | '_' | '\'')+)) ;
 

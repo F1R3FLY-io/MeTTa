@@ -22,10 +22,10 @@ class ParserSpec extends AnyFlatSpec with Matchers {
     (interpreter, inst)
   }
 
-  it should "interpret the ArrowCats module correctly" in {
-    val (interpreter, inst) = loadInterpreterFor("../GSLT/src/test/module/ArrowCats.module")
+  it should "interpret the ArithmeticOperations module correctly" in {
+    val (interpreter, inst) = loadInterpreterFor("../GSLT/src/test/module/ArithmeticOperations.module")
     val basePres = interpreter.interpret(Nil, inst)
-                       .getOrElse(fail("Interpretation of ArrowCats.module failed"))
+                       .getOrElse(fail("Interpretation of ArithmeticOperations.module failed"))
     val actual   = PrettyPrinter.print(basePres)
 
     val expected =

@@ -1,0 +1,49 @@
+Module ArrowCats {
+  Theory Arrows() {
+    Empty
+      Exports { T1; T2; T3; T4; (T1 -> T2); }
+      Terms {
+        Qux  . T1 ::= "qux" ;
+        Quux . T2 ::= "quux" ;
+        -- Bar: (T1 -> T2) -> T3
+        Bar  . T3 ::= "bar" (Bind t1 T1) "." (t1)T2 ;
+        -- Baz: T2 -> T3
+        Baz  . T3 ::= "baz" T2 ;
+        -- Bee: (T1 -> T2) -> T3
+        Bee  . T3 ::= "bee" (T1 -> T2) ;
+        -- Foo: ((T1 -> T2) -> T3) -> T4
+        Foo  . T4 ::= "foo" (Bind t1t2 (T1 -> T2)) "." (t1t2)T3 ;
+        Deep . T1 ::= "deep" (Bind t (((T1 -> T1) -> (T1 -> T1)) -> T1)) "." (t)T1 ;
+      }
+  }
+
+  theory Arrows()
+}
+
+-- // In Foo and Bee,
+-- //   (T1 -> T2)
+-- // is used as a category, so we generate
+-- //   AppT1T2 . T2 ::= "α" "{" (T1 -> T2) "," T1 "}" ;
+-- //   IdentT1T2 . (T1 -> T2) ::= Ident ;
+-- //   LamT1T2 . (T1 -> T2) ::= "λ" "{" Ident "," T2 "}" ;
+-- //   IdentT1 . T1 ::= Ident ;
+-- // The IdentTX productions are the same as the one for Bind.
+--
+-- // foo(bar)
+-- // ⇓ η
+-- // foo(λf.bar(f))
+-- // ⇓ η
+-- // foo(λf.bar(λx.f(x)))
+-- foo f . bar x . α{f, x}
+--
+-- // foo(λf.baz(f(qux)))
+-- foo f . baz α{f, qux}
+--
+-- // bar(λx.quux)
+-- bar x quux
+--
+-- // bee(λx.quux)
+-- bee λ{x, quux}
+--
+-- // bee(λx.bar(λy.quux))
+-- bee λ{x, bar y quux}

@@ -48,10 +48,10 @@ class InstInterpreterSpec extends AnyFlatSpec with Matchers {
       |}
       |Equations
       |{
-      |  (Mult (Mult x y) z) == (Mult x (Mult y z));
-      |  (Mult x (One)) == x;
-      |  (Mult (One) x) == x;
-      |  (Plus x y) == (Plus y x);
+      |  (PPar (PPar x y) z) == (PPar x (PPar y z));
+      |  (PPar x (PZero)) == x;
+      |  (PPar (PZero) x) == x;
+      |  (PPar x y) == (PPar y x);
       |  if x # Q then (PPar (PNew x P) Q) == (PNew x (PPar P Q));
       |  (PNew x (PNew x P)) == (PNew x P);
       |  (PNew x (PNew y P)) == (PNew y (PNew x P));
@@ -102,6 +102,35 @@ class InstInterpreterSpec extends AnyFlatSpec with Matchers {
       |}
       |Rewrites
       |{
+      |}
+      """.stripMargin
+
+    actual.trim shouldEqual expected.trim
+  }
+
+  it should "interpret the RenameRewrite module correctly" in {
+    val (interpreter, inst) = loadInterpreterFor("../GSLT/src/test/module/RenameRewrite.module")
+    val basePres = interpreter.interpret(Nil, inst)
+                       .getOrElse(fail("Interpretation of RenameRewrite.module failed"))
+    val actual   = PrettyPrinter.print(basePres)
+
+    val expected =
+      s"""
+      Presentation Exports
+      |{
+      |  T;
+      |}
+      |Terms
+      |{
+      |  C . T ::= "C";
+      |  D . T ::= "D";
+      |}
+      |Equations
+      |{
+      |}
+      |Rewrites
+      |{
+      |  Step : (C) ~> (D)
       |}
       """.stripMargin
 

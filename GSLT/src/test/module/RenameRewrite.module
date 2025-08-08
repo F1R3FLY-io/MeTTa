@@ -1,0 +1,31 @@
+Module RenameRewrite {
+  Theory Simple() {
+    Empty
+      Exports { T; }
+      Terms {
+        A . T ::= "A" ;
+        B . T ::= "B" ;
+      }
+      Rewrites {
+        Step: (A) ~> (B) ;
+      }
+  }
+  
+  Theory Replaced(s: Simple) {
+    s
+      Replacements {
+        [] A . T => C . T ::= "C" ;
+        [] B . T => D . T ::= "D" ;
+      }
+  }
+  
+  Theory FreeReplaced() {
+    let s = Simple() in (
+      let r = Replaced(s) in (
+        r
+      )
+    )
+  }
+  
+  theory FreeReplaced()
+}

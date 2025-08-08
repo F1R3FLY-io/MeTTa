@@ -60,7 +60,7 @@ object InstInterpreterCases {
       }
 
       allowedLabels = filteredTerms.collect {
-        case rule: Rule => rule.label_.toString
+        case rule: Rule => labelToString(rule.label_)
       }
 
       commonEquations = presA.listequation_.asScala.toSet intersect presB.listequation_.asScala.toSet
@@ -101,7 +101,7 @@ object InstInterpreterCases {
         })
       }
       // Allowed labels are taken from the surviving Rule definitions.
-      allowedLabels = diffDefs.collect { case rule: Rule => rule.label_.toString }
+      allowedLabels = diffDefs.collect { case rule: Rule => labelToString(rule.label_) }
       // For equations, only keep those not in bp2 and whose mentioned labels are among allowedLabels.
       diffEquations = bp1.listequation_.asScala.toSet.filter { eq =>
         !bp2.listequation_.asScala.toSet.contains(eq) &&
@@ -122,7 +122,11 @@ object InstInterpreterCases {
                      listrewritedecl = Some(diffRewrites.toList))
   }
 
-  def handleAddExports(interpreter: InstInterpreter, env: List[(String, BasePres)], inst: TheoryInstAddExports): Either[String, BasePres] =
+  def handleAddExports(
+    interpreter: InstInterpreter,
+    env: List[(String, BasePres)],
+    inst: TheoryInstAddExports
+  ): Either[String, BasePres] =
     interpreter.interpret(env, inst.theoryinst_).flatMap { basePres =>
       // Process each export instruction sequentially.
       inst.listexport_.toArray.toList.foldLeft[Either[String, BasePres]](Right(basePres)) { (accEither, expInst) =>
@@ -167,7 +171,7 @@ object InstInterpreterCases {
           // Find the Rule in currentPres whose label matches s.label_.
           val ruleOpt: Option[Rule] =
             currentPres.listdef_.asScala.collect { case r: Rule => r }
-              .find(r => r.label_.toString == s.label_.toString)
+              .find(r => labelToString(r.label_) == labelToString(s.label_))
 
           ruleOpt match {
             case None =>
@@ -218,12 +222,69 @@ object InstInterpreterCases {
                               s"for label ${PrettyPrinter.print(s.label_)}."
                             )
                           else {
-                            // All OK: install the new rule
                             val newDefs = currentPres.listdef_.asScala.toList.map {
-                              case r: Rule if r.label_.toString == s.label_.toString => replRule
-                              case other                                             => other
+                              case r: Rule if labelToString(r.label_) == labelToString(s.label_) => replRule
+                              case other => other
                             }
-                            Right(copyPres(currentPres, listdef = Some(newDefs)))
+
+                            def updateAST(ast: AST): AST = ast match {
+                              case sexp: ASTSExp => {
+                                // first recurse on args
+                                val newArgs = sexp.listast_.asScala.map(updateAST).toList
+                                // then if the labels match, permute and replace label
+                                if (labelToString(sexp.label_) == labelToString(s.label_)) {
+                                  val permuted = perm.map(newArgs(_))
+                                  val newListAST = new ListAST()
+                                  newListAST.addAll(permuted.asJava)
+                                  new ASTSExp(replRule.label_, newListAST)
+                                } else {
+                                  val newListAST = new ListAST()
+                                  newListAST.addAll(newArgs.asJava)
+                                  new ASTSExp(sexp.label_, newListAST)
+                                }
+                              }
+
+                              case sub: ASTSubst =>
+                                new ASTSubst(updateAST(sub.ast_1), updateAST(sub.ast_2), sub.ident_)
+
+                              case other => other
+                            }
+
+                            def updateEquation(eq: Equation): Equation = eq match {
+                              case ef: EquationFresh =>
+                                new EquationFresh(
+                                  ef.ident_1,
+                                  ef.ident_2,
+                                  updateEquation(ef.equation_)
+                                )
+                              case impl: EquationImpl =>
+                                new EquationImpl(updateAST(impl.ast_1), updateAST(impl.ast_2))
+                            }
+
+                            val newEquations = currentPres.listequation_.asScala.toList.map(updateEquation)
+
+                            def updateRewrite(r: Rewrite): Rewrite = r match {
+                              case rb: RewriteBase =>
+                                new RewriteBase(updateAST(rb.ast_1), updateAST(rb.ast_2))
+
+                              case ctx: RewriteContext =>
+                                new RewriteContext(ctx.hypothesis_, updateRewrite(ctx.rewrite_))
+
+                              case other => other
+                            }
+
+                            val newRewrites = currentPres.listrewritedecl_.asScala.toList.map(rd => {
+                              val rdecl = rd.asInstanceOf[RDecl]
+                              new RDecl(rdecl.ident_, updateRewrite(rdecl.rewrite_))
+                            })
+
+                            // Return the updated BasePres with definitions, equations AND rewrites replaced
+                            Right(BasePresOps.copyPres(
+                              currentPres,
+                              listdef        = Some(newDefs),
+                              listequation   = Some(newEquations),
+                              listrewritedecl= Some(newRewrites)
+                            ))
                           }
                         }
                       }

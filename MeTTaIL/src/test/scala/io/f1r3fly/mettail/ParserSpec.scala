@@ -13,7 +13,13 @@ class ParserSpec extends AnyFlatSpec with Matchers {
   try {
     processor.resolveModules(entryPath)
   } catch {
-    case _: Exception => test_passed = false
+    case e: Exception => {
+      test_passed = false
+      println("--------- Parsing error ---------")
+      println(e.getMessage)
+      println(e.printStackTrace())
+      println("----- End of parsing error ------")
+    }
   }
   assert(test_passed)
 }

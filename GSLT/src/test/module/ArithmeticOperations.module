@@ -1,5 +1,5 @@
 Module ArithmeticOperations {
-  50 * a + 2
+  50 * (a + 2)
   4 / 2
   2 * a + 3 * b
   1 % 2

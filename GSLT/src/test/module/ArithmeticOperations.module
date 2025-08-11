@@ -6,7 +6,7 @@ Module ArithmeticOperations {
   4 / 2
   3 %% 2
   ~false
-  true or false
+  (256 == 250 + 6) or false
   false and true
   false < true
   5 > x

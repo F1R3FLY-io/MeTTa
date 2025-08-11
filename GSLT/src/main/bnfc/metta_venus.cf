@@ -94,7 +94,7 @@ NameRemainderVar.   NameRemainder ::= "..." "@" Ident ;
 NameRemainderEmpty. NameRemainder ::= "" ;
 
 -- Process Variables
-ProcVarImpl.        ProcVar ::= Ident ;
+ProcVarImpl.        ProcVar ::= "$" Ident ;
 
 ProcRemainderVar.   ProcRemainder ::= "..." ProcVar ;
 ProcRemainderEmpty. ProcRemainder ::= "" ;
@@ -338,13 +338,14 @@ separator Proc "," ;
 PGround.         Proc16 ::= Ground ;
 PCollect.        Proc16 ::= Collection ;
 PVar.            Proc16 ::= ProcVar ;
+PName.           Proc16 ::= Name ;
 PVarRef.         Proc13 ::= VarRefKind Ident ;
 PNil.            Proc16 ::= "Nil" ;
 PSimpleType.     Proc16 ::= SimpleType ;
 PNegation.       Proc15 ::= "~" Proc15 ;
 PConjunction.    Proc14 ::= Proc14 "/\\" Proc15 ;
 PDisjunction.    Proc13 ::= Proc13 "\\/" Proc14 ;
-PEval.           Proc12 ::= "*" Name ;
+PEval.           Proc12 ::= "@" Name ;
 PMethod.         Proc11 ::= Proc11 "." Ident "(" [Proc] ")" ;
 PExprs.          Proc11 ::= "(" Proc4 ")" ;
 PNot.            Proc10 ::= "not" Proc10 ;

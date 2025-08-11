@@ -39,7 +39,7 @@ cd "$BUILD_DIR"
 #------------------------------------------------------------------------------
 # Generate Parser/Lexer using BNFC
 #------------------------------------------------------------------------------
-CLASSPATH="lib/antlr-4.9.3-complete.jar:$CLASSPATH" bnfc --antlr --java -m "$SOURCE_CF"
+CLASSPATH="lib/antlr-4.9.3-complete.jar:${CLASSPATH:-}" bnfc --antlr --java -m "$SOURCE_CF"
 
 #------------------------------------------------------------------------------
 # Prepare Build Directories for Compilation and Manifest
@@ -80,8 +80,8 @@ done
 #------------------------------------------------------------------------------
 # Build the Project and Create the JAR
 #------------------------------------------------------------------------------
-CLASSPATH="../lib/antlr-4.9.3-complete.jar:$CLASSPATH" make
-CLASSPATH="../lib/antlr-4.9.3-complete.jar:$CLASSPATH" make jar
+CLASSPATH="../lib/antlr-4.9.3-complete.jar:${CLASSPATH:-}" make
+CLASSPATH="../lib/antlr-4.9.3-complete.jar:${CLASSPATH:-}" make jar
 
 #------------------------------------------------------------------------------
 # Return to Project Root and Move the JAR to the Target Directory

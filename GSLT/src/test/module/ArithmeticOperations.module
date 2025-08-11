@@ -1,3 +1,17 @@
 Module ArithmeticOperations {
-  1 * a + 2
+  50 * a + 2
+  4 / 2
+  2 * a + 3 * b
+  1 % 2
+  4 / 2
+  3 %% 2
+  true or false
+  false < true
+  5 > x
+  3 <= 10
+  15 >= 0
+  a matches b
+  256 == 250 + 6
+  3 != 0
+  c.m(3)
 }

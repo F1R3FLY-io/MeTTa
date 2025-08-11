@@ -5,7 +5,9 @@ Module ArithmeticOperations {
   1 % 2
   4 / 2
   3 %% 2
+  ~false
   true or false
+  false and true
   false < true
   5 > x
   3 <= 10

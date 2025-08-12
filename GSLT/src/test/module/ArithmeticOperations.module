@@ -15,5 +15,13 @@ Module ArithmeticOperations {
   a matches b
   256 == 250 + 6
   3 != 0
-  c.m(3)
+  c.m(3, x, Nil, @y)
+  a /\ b
+  a1 \/ b2
+  not (x == y) or (x != y)
+  (-3.1415926)
+  {- a-- + b -}
+  {- b++ - c1 -}
+  port!!(3, 4, z)
+  2 + -3
 }

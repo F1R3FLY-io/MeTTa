@@ -1,7 +1,8 @@
 Module ArithmeticOperations {
-  50 * (a + 2)
+  (5 * 3)
+  (50 * (a + 2))
   4 / 2
-  2 * a + 3 * b
+  {- 2 * a + 3 * b -}
   1 % 2
   4 / 2
   3 %% 2
@@ -15,13 +16,13 @@ Module ArithmeticOperations {
   a matches b
   256 == 250 + 6
   3 != 0
-  c.m(3, x, Nil, @y)
+  c.m(3, x, Nil, *y)
   a /\ b
   a1 \/ b2
   not (x == y) or (x != y)
   (-3.1415926)
-  {- a-- + b -}
-  {- b++ - c1 -}
+  a-- + b
+  b++ - c1
   port!!(3, 4, z)
   2 + -3
 }

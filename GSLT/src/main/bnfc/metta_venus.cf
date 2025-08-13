@@ -213,7 +213,7 @@ BindNTerminal    . Item ::= "(" "Bind" Ident Cat ")" ;
 ListOfCat   . Cat ::= "[" Cat "]" ;
 IdCat       . Cat ::= Ident ;
 ArrowCat    . Cat ::= "(" Cat "->" Cat ")" ;
-ProdCat     . Cat ::= "∏" "{" [Cat] "}" ;
+ProdCat     . Cat ::= "Product" "{" [Cat] "}" ;
 
 [] . [Cat] ::= ;
 (:) . [Cat] ::= Cat ";" [Cat] ;

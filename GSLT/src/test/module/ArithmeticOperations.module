@@ -1,28 +1,202 @@
+
+{------------------------------------------------------------------------------------------------}
+{- This module provides basic arithmetic expressions to check the correctness of their parsing. -}
+{------------------------------------------------------------------------------------------------}
+
 Module ArithmeticOperations {
-  (5 * 3)
-  (50 * (a + 2))
-  4 / 2
-  {- 2 * a + 3 * b -}
-  1 % 2
-  4 / 2
-  3 %% 2
-  ~false
-  (256 == 250 + 6) or false
-  false and true
-  false < true
-  5 > x
-  3 <= 10
-  15 >= 0
-  a matches b
-  256 == 250 + 6
-  3 != 0
-  c.m(3, x, Nil, *y)
-  a /\ b
-  a1 \/ b2
-  not (x == y) or (x != y)
-  (-3.1415926)
-  a-- + b
-  b++ - c1
-  port!!(3, 4, z)
-  2 + -3
+
+  -- Literals:
+     (
+       "Hello, world",
+       -3.1415926,
+       true
+     )
+
+  -- Multiplication:
+     (
+       5 * 3
+     )
+
+  -- Addition:
+     (
+       50 * (a + 2)
+     )
+  
+  -- Division:
+     (
+       (x + 1.23e-05) / 2
+     )
+
+  -- Subtraction:
+     (
+       -2 * a - 3.1415926 * b
+     )
+
+  -- Obtaining modulus:
+     (
+       1 % 2 + z
+     )
+
+  -- Obtaining percentage:
+     (
+       3 %% 2 - l
+     )
+
+  -- Bit inversion:
+     (
+       ~65535
+     )
+
+  -- Equality check:
+     (
+       (256 == 250 + 6) or false
+     )
+
+  -- Conjunction calculation:
+     (
+       false and true
+     )
+
+  -- comparison - less than:
+     (
+       false < true
+     )
+
+  --  comparison - greater than:
+     (
+       5 > x
+     )
+
+  -- comparison: comparison: less than or equal to
+     (
+       3 <= 10
+     )
+
+  -- comparison: comparison: greater than or equal to
+     (
+       15 >= 0
+     )
+
+  -- Matching:
+     (
+       a matches b
+     )
+
+  -- Comparison for equality:
+     (
+       256 == 250 + 6
+     )
+
+  -- Comparison for inequality:
+     (
+       3 != 0
+     )
+
+  -- Calling class methods:
+     (
+       c.m(3, x, Nil, *y)
+     )
+
+  -- Calculatiing intersection of sets:
+     (
+       a /\ b
+     )
+
+  -- Calculatiing union of sets:
+     (
+       a1 \/ b2
+     )
+
+  -- Calculating negation:
+     (
+       not (x == y) or (x != y)
+     )
+
+  -- Decrementing:
+     (
+       a-- + b
+     )
+
+  -- Incrementing:
+     (
+       b++ - c1
+     )
+
+  -- Data sending:
+     (
+       port!!(3, 4, z)
+     )
+
+  -- Unary negation operator:
+     (
+       2 + -3
+     )
+
+  -- Dats sending (simmetrical):
+     (
+       port!$(x1, -3.14, *x2)
+     )
+
+  -- Creating contracts:
+     (
+       contract source(x, y) = {z}
+     )
+
+  -- Getting data:
+     ( for ( x <- source ) { cl.mthd(x) } )
+
+  -- Selecting:
+     ( select {
+        x <- source => 1 + x
+        y <- source => 2 + y
+      }
+    )
+
+  -- Matching:
+     (
+       match x {
+         1 => cl.mt(x)
+         2 => math.pi()
+       }
+     )
+
+  -- Bundling:
+     (
+       bundle+ {
+         x - y + 1
+       }
+     )
+
+  -- Assignments:
+     (
+       let a = x in {
+         "data"
+       }
+     )
+
+  -- Arithmetic branching:  
+     (
+       if (x >= 0)
+         true
+       else
+         cl.mthd(x)
+     )
+
+  -- Data/object creation:
+  (
+    new x, y in set
+  )
+
+  -- Data sending (synchronously):
+  (
+    port!?(n);x,math.exp(1)
+  )
+
+  -- Parallel calculations:
+  (
+    1,
+    Nil,
+    3 + cl.m(a, b, c)
+  )
+
 }

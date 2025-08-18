@@ -94,7 +94,7 @@ NameRemainderVar.   NameRemainder ::= "..." "@" Ident ;
 NameRemainderEmpty. NameRemainder ::= "" ;
 
 -- Process Variables
-ProcVarImpl.        ProcVar ::= "$" Ident ;
+ProcVarImpl.        ProcVar ::= Ident ;
 
 ProcRemainderVar.   ProcRemainder ::= "..." ProcVar ;
 ProcRemainderEmpty. ProcRemainder ::= "" ;
@@ -338,7 +338,6 @@ separator Proc "," ;
 PGround.         Proc16 ::= Ground ;
 PCollect.        Proc16 ::= Collection ;
 PVar.            Proc16 ::= ProcVar ;
-PName.           Proc16 ::= Name ;
 PVarRef.         Proc13 ::= VarRefKind Ident ;
 PNil.            Proc16 ::= "Nil" ;
 PSimpleType.     Proc16 ::= SimpleType ;

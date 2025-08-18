@@ -144,6 +144,8 @@ Module ArithmeticOperations {
 
   -- Getting data:
      ( for ( x <- source ) { cl.mthd(x) } )
+     ( for ( x <<- source ) { cl.mthd(x) } )
+     ( for ( x <= source ) { cl.mthd(x) } )
 
   -- Selecting:
      ( select {

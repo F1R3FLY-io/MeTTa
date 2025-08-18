@@ -15,7 +15,7 @@ class LabelHelpersSpec extends AnyFlatSpec with Matchers {
     val eqImpl = new EquationImpl(ast1, ast2)
 
     val labels = LabelHelpers.labelsInEquation(eqImpl)
-    // fails, but do not commit this change: labels should contain allOf ("foo", "(:){qux}")
+    labels should contain allOf ("foo", "(:){qux}")
     labels.size shouldEqual 2
   }
 

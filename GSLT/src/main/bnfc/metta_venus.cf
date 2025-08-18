@@ -16,6 +16,7 @@ ProgSpaceDecl . Prog ::= SpaceDecl ;
 ProgTheoryDecl . Prog ::= TheoryDecl ;
 ProgSpaceInst . Prog ::= "space" SpaceInst ;
 ProgTheoryInst . Prog ::= "theory" TheoryInst ;
+ProgProc . Prog ::= Proc ;
 
 ProgRecv . Prog ::= FactComprehension ;
 separator nonempty Prog "" ;
@@ -345,7 +346,6 @@ PConjunction.    Proc14 ::= Proc14 "/\\" Proc15 ;
 PDisjunction.    Proc13 ::= Proc13 "\\/" Proc14 ;
 PEval.           Proc12 ::= "*" Name ;
 PMethod.         Proc11 ::= Proc11 "." Ident "(" [Proc] ")" ;
-PExprs.          Proc11 ::= "(" Proc4 ")" ;
 PNot.            Proc10 ::= "not" Proc10 ;
 PNeg.            Proc10 ::= "-" Proc10 ;
 PMult.           Proc9  ::= Proc9 "*" Proc10 ;

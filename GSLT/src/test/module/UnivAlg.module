@@ -1,6 +1,6 @@
 Module UnivAlg {
-  Theory Set() {
-    Empty 
+  Theory Aset() {
+    Empty
       Exports { 
         Elem; 
       }

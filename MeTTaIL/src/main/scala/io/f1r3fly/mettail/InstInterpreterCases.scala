@@ -122,6 +122,10 @@ object InstInterpreterCases {
                      listrewritedecl = Some(diffRewrites.toList))
   }
 
+  def handleAddExportsCheck(): String =
+    Left("")
+
+
   def handleAddExports(
     interpreter: InstInterpreter,
     env: List[(String, BasePres)],

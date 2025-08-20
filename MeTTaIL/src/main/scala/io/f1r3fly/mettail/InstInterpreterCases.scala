@@ -122,8 +122,40 @@ object InstInterpreterCases {
                      listrewritedecl = Some(diffRewrites.toList))
   }
 
-  def handleAddExportsCheck(): String =
-    Left("")
+
+  def checkAddExports(
+    interpreter: InstInterpreter,
+    env: List[(String, BasePres)],
+    inst: TheoryInstAddExports
+  ): Option[String] = {
+      val result: Either[String, BasePres] =
+      interpreter.interpret(env, inst.theoryinst_).flatMap { basePres =>
+        inst.listexport_.toArray.toList.foldLeft[Either[String, BasePres]](Right(basePres)) { (accEither, expInst) =>
+          accEither.flatMap { currentPres =>
+            expInst match {
+              case base: BaseExport =>
+                Left("")
+              case re: RenameExport =>
+                if (currentPres.listcat_.asScala.toList.exists(cat => cat.equals(re.cat_1)))
+                  Left("")
+                else
+                  Left(s"Error: Cannot rename export. Export ${PrettyPrinter.print(re.cat_1)} not found among current exports.")
+              case _ =>
+                Left("Error: Unknown export type encountered in addExports.")
+            }
+          }
+        }
+      }
+      result match {
+        case Left(errorMessage) =>
+          if (errorMessage.isEmpty)
+            None
+          else
+            Some(errorMessage)
+        case _ =>
+          None
+      }
+    } // checkAddExports()
 
 
   def handleAddExports(
@@ -156,6 +188,7 @@ object InstInterpreterCases {
         }
       }
     }
+
 
   def handleAddReplacements(interpreter: InstInterpreter,
                             env: List[(String, BasePres)],

@@ -1,5 +1,5 @@
 Module UnivAlg {
-  Theory Aset() {
+  Theory Set() {
     Empty
       Exports { 
         Elem; 

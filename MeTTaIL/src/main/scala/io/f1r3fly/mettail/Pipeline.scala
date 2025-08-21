@@ -24,6 +24,7 @@ case class Context(
   linearized:  Seq[(String, String)]         = Nil,
   finalInst:   Option[TheoryInst]            = None,
   presentation: Option[BasePres]             = None,
+  // SK: TODOStoreIntermediateVariablesHere = None,
 )
 
 object LoadModules extends Pass[Context] {

@@ -76,7 +76,7 @@ Module Rholang {
   }
   
   Theory FreeRholang() {
-    let s = u.Set() in (
+    let s = u.EmptySet() in (
     let m = u.Monoid(s) in (
     let cm = u.CommutativeMonoid(m) in (
     let pm = ParMonoid(cm) in (

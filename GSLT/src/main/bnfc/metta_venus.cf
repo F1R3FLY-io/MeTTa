@@ -381,7 +381,7 @@ PPar.         Proc  ::= Proc "|" Proc1 ;
 -- Collections:
 CollectList.   Collection ::= "[" [Proc] ProcRemainder "]" ;
 CollectTuple.  Collection ::= Tuple;
-CollectSet.    Collection ::= "Collection" "(" [Proc] ProcRemainder")" ;
+CollectSet.    Collection ::= "Set" "(" [Proc] ProcRemainder")" ;
 CollectMap.    Collection ::= "{" [KeyValuePair] ProcRemainder"}" ;
 
 TupleSingle.    Tuple ::= "(" Proc ",)" ;

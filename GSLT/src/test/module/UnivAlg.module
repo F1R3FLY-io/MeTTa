@@ -1,12 +1,12 @@
 Module UnivAlg {
-  Theory Set() {
+  Theory EmptySet() {
     Empty
       Exports { 
         Elem; 
       }
   }
 
-  Theory Monoid(s: Set) {
+  Theory Monoid(s: EmptySet) {
     s
       Terms {
         One . Elem ::= "1" ;

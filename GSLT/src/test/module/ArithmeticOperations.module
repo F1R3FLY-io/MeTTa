@@ -102,7 +102,7 @@ Module ArithmeticOperations {
        a /\ b
      )
 
-  -- Calculatiing union of sets:
+  -- Calculating union of sets:
      (
        a1 \/ b2
      )

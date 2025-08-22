@@ -138,7 +138,7 @@ object GenerateBNFC extends Pass[Context] {
                         .getOrElse(sys.error("No presentation"))
     println("\n[Generated BNFC]\n")
     println(PrettyPrinter.print(listDef))
-    
+
     ctx.copy(presentation = ctx.presentation.map((pres: BasePres) => new BasePres(
       pres.listcat_,
       listDef,

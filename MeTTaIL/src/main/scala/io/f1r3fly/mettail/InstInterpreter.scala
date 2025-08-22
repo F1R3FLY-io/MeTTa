@@ -18,12 +18,7 @@ class InstInterpreter(
     case disj: TheoryInstDisj                       => handleDisj(this, env, disj)
     case conj: TheoryInstConj                       => handleConj(this, env, conj)
     case subtract: TheoryInstSubtract               => handleSubtract(this, env, subtract)
-    case addExports: TheoryInstAddExports           => {
-      checkAddExports(this, env, addExports) match {
-        case None        => handleAddExports(this, env, addExports)
-        case Some(value) => Left(value)
-      }
-    }
+    case addExports: TheoryInstAddExports           => handleAddExports(this, env, addExports)
     case addReplacements: TheoryInstAddReplacements => handleAddReplacements(this, env, addReplacements)
     case addTerms: TheoryInstAddTerms               => handleAddTerms(this, env, addTerms)
     case addEquations: TheoryInstAddEquations       => handleAddEquations(this, env, addEquations)
@@ -36,10 +31,11 @@ class InstInterpreter(
     case free: TheoryInstFree                       => handleFree()
   }
 
-  // Checks whether the data can be successfully processed by the interpret() method
+  // Checks whether the data can be successfully processed by the interpret() method.
+  // Returns None if they can; otherwise, a corresponding error message.
   def check_interpret(env: List[(String, BasePres)], thInst: TheoryInst): Option[String] = thInst match {
-    case disj: TheoryInstDisj                       => None
-    case conj: TheoryInstConj                       => None
+    case disj: TheoryInstDisj                       => None // +
+    case conj: TheoryInstConj                       => None // +
     case subtract: TheoryInstSubtract               => None
     case addExports: TheoryInstAddExports           => checkAddExports(this, env, addExports)
     case addReplacements: TheoryInstAddReplacements => None

@@ -38,10 +38,10 @@ class InstInterpreter(
     case conj: TheoryInstConj                       => None
     case subtract: TheoryInstSubtract               => None
     case addExports: TheoryInstAddExports           => checkAddExports(this, env, addExports)
-    case addReplacements: TheoryInstAddReplacements => None // TODO
+    case addReplacements: TheoryInstAddReplacements => checkAddReplacements(this, env, addReplacements)
     case addTerms: TheoryInstAddTerms               => None // TODO
     case addEquations: TheoryInstAddEquations       => checkAddEquations(this, env, addEquations)
-    case addRewrites: TheoryInstAddRewrites         => None // TODO
+    case addRewrites: TheoryInstAddRewrites         => checkAddRewrites(this, env, addRewrites)
     case empty: TheoryInstEmpty                     => None
     case ctor: TheoryInstCtor                       => checkCtor(
       this, env, resolvedModules, currentModulePath, ctor, moduleProcessor

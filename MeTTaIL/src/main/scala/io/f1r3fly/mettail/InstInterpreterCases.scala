@@ -189,6 +189,71 @@ object InstInterpreterCases {
       }
     }
 
+  def checkAddReplacements(interpreter: InstInterpreter,
+                           env: List[(String, BasePres)],
+                           inst: TheoryInstAddReplacements): Option[String] = {
+    interpreter.interpret(env, inst.theoryinst_) match {
+      case Left(err) => Some(err)
+      case Right(basePres) =>
+        import scala.jdk.CollectionConverters._
+        val replacements: List[SimpleRepl] =
+          inst.listreplacement_.asScala.toList.collect { case s: SimpleRepl => s }
+
+        def convertIntList(intList: IntList): List[Int] = intList match {
+          case ints: Ints => ints.listinteger_.asScala.toList.map(_.intValue())
+        }
+
+        replacements.foldLeft[Option[String]](None) {
+          case (Some(err), _) => Some(err)
+          case (None, s) =>
+            val ruleOpt: Option[Rule] =
+              basePres.listdef_.asScala.collect { case r: Rule => r }
+                .find(r => labelToString(r.label_) == labelToString(s.label_))
+
+            ruleOpt match {
+              case None =>
+                Some(s"Error: No definition found with label ${PrettyPrinter.print(s.label_)} in theory.")
+
+              case Some(rule) =>
+                if (!rule.cat_.equals(s.cat_))
+                  Some(s"Error: Category mismatch for definition with label ${PrettyPrinter.print(s.label_)}.")
+                else s.def_ match {
+                  case replRule: Rule =>
+                    val existingLabels = basePres.listdef_.asScala.collect { case r: Rule => r.label_ }
+                    val otherLabels = existingLabels.filterNot(_ == s.label_)
+                    if (otherLabels.contains(replRule.label_))
+                      Some(s"Error: Replacement rule label ${PrettyPrinter.print(replRule.label_)} already exists in theory.")
+                    else {
+                      val origNTs = nonTerminals(rule.listitem_)
+                      val replNTs = nonTerminals(replRule.listitem_)
+                      if (origNTs.size != replNTs.size)
+                        Some(s"Error: Arity mismatch for definition with label ${s.label_}. " +
+                          s"Expected ${origNTs.size} non-terminal items but got ${replNTs.size}.")
+                      else {
+                        val n = origNTs.size
+                        val perm = convertIntList(s.intlist_)
+                        if (perm.sorted != (0 until n).toList)
+                          Some(s"Error: intlist in replacement for label ${PrettyPrinter.print(s.label_)} " +
+                            s"is not a permutation of 0 to ${n - 1}.")
+                        else {
+                          val coordsMatch = (0 until n).forall { j =>
+                            origNTs(j) == replNTs(perm(j))
+                          }
+                          if (!coordsMatch)
+                            Some(s"Error: Category mismatch among non-terminal items in replacement " +
+                              s"for label ${PrettyPrinter.print(s.label_)}.")
+                          else None // success for this replacement
+                        }
+                      }
+                    }
+
+                  case _ =>
+                    Some(s"Error: Replacement definition for label ${PrettyPrinter.print(s.label_)} is not a Rule.")
+                }
+            }
+        }
+    }
+  }
 
   def handleAddReplacements(interpreter: InstInterpreter,
                             env: List[(String, BasePres)],
@@ -463,6 +528,48 @@ object InstInterpreterCases {
           bp,
           listequation = Some(bp.listequation_.asScala.toList :+ e)
         )
+      }
+    }
+  }
+
+  def checkAddRewrites(interpreter: InstInterpreter,
+                       env: List[(String, BasePres)],
+                       inst: TheoryInstAddRewrites): Option[String] = {
+    interpreter.interpret(env, inst.theoryinst_) match {
+      case Left(err) => Some(err)
+      case Right(basePres) =>
+        val defs: Map[Label, Rule] = listDefToMap(basePres.listdef_)
+        inst.listrewritedecl_.asScala.foldLeft[Option[String]](None) {
+          case (Some(err), _) => Some(err) // short-circuit on first error
+          case (None, rewriteDecl) =>
+            val rw = rewrite(rewriteDecl)
+            val rb = rewriteBase(rw)
+            val pretty = s"rewrite ${PrettyPrinter.print(rewriteDecl)}"
+
+            for {
+              _ <- sameCategory(catOfAST(rb.ast_1, defs), catOfAST(rb.ast_2, defs), pretty).left.toOption
+              m1 <- consistentCategory(rb.ast_1, defs, pretty).toOption
+              m2 <- consistentCategory(rb.ast_2, defs, pretty).toOption
+              _ <- (m1.keySet ++ m2.keySet).foldLeft[Option[String]](None) {
+                case (Some(e), _) => Some(e)
+                case (None, ident) =>
+                  (m1.get(ident), m2.get(ident)) match {
+                    case (Some(l), Some(r)) if l != r =>
+                      Some(s"Variable ${ident} has category ${PrettyPrinter.print(l)} on the left-" +
+                        s"hand side and category ${PrettyPrinter.print(r)} on the right-hand" +
+                        s" side of $pretty")
+                    case _ => None
+                  }
+              }
+              lVars = leftVars(rw)
+              rVars = rightVars(rw)
+              missingVars = rVars diff lVars
+              _ <- Option.when(missingVars.nonEmpty)(
+                "Error: In RewriteDecl, variables on the right-hand side" +
+                  s" not found on the left-hand side: $missingVars"
+              )
+              _ <- checkHypotheticals(hypVars(rw), defs, rb).left.toOption
+            } yield pretty // returning the first failing rewrite description
       }
     }
   }

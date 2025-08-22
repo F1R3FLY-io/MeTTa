@@ -24,6 +24,7 @@ case class Context(
   linearized:  Seq[(String, String)]         = Nil,
   finalInst:   Option[TheoryInst]            = None,
   presentation: Option[BasePres]             = None,
+  presCheck: String                          = "",
   // SK: TODOStoreIntermediateVariablesHere = None,
 )
 
@@ -85,6 +86,23 @@ object Interpret extends Pass[Context] {
             ctx.copy(presentation = Some(pres))
           case Left(err) =>
             sys.error(s"Interpretation failed: $err")
+        }
+      case None => sys.error("No TheoryInst found")
+    }
+  }
+}
+
+object CheckInterpret extends Pass[Context] {
+  val name = "Check Interpretation"
+  def run(ctx: Context) = {
+    ctx.finalInst match {
+      case Some(inst) =>
+        val interp = new InstInterpreter(ctx.modules, ctx.entryPath, ModuleProcessor.default)
+        interp.check_interpret(Nil, inst) match {
+          case None =>
+            println("\n[Verified Presentation]\n")
+            ctx.copy(presCheck = "")
+          case Some(err) => sys.error(s"Interpretation failed: $err")
         }
       case None => sys.error("No TheoryInst found")
     }

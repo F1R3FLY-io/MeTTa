@@ -35,4 +35,22 @@ class InstInterpreter(
     case rec: TheoryInstRec                         => handleRec(this, env, rec)
     case free: TheoryInstFree                       => handleFree()
   }
+
+  // Checks whether the data can be successfully processed by the interpret() method
+  def check_interpret(env: List[(String, BasePres)], thInst: TheoryInst): Option[String] = thInst match {
+    case disj: TheoryInstDisj                       => None
+    case conj: TheoryInstConj                       => None
+    case subtract: TheoryInstSubtract               => None
+    case addExports: TheoryInstAddExports           => checkAddExports(this, env, addExports)
+    case addReplacements: TheoryInstAddReplacements => None
+    case addTerms: TheoryInstAddTerms               => None
+    case addEquations: TheoryInstAddEquations       => None
+    case addRewrites: TheoryInstAddRewrites         => None
+    case empty: TheoryInstEmpty                     => None
+    case ctor: TheoryInstCtor                       => None
+    case ref: TheoryInstRef                         => None
+    case rec: TheoryInstRec                         => None
+    case free: TheoryInstFree                       => None
+  }
+
 }

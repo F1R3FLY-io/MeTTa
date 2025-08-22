@@ -23,7 +23,7 @@ object Main {
       DumpASTs,
       DumpLinear,
       FindFinalInst,
-      // SK: TODOAddChecksHere,
+      CheckInterpret,
       Interpret,
       DesugarBinders
     )

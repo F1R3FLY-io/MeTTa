@@ -531,6 +531,12 @@ object InstInterpreterCases {
     }
   }
 
+  def checkRef(env: List[(String, BasePres)], ref: TheoryInstRef): Option[String] =
+    env.reverse.find(_._1 == ref.ident_) match {
+      case Some((_, pres)) => None
+      case None            => Some(s"Identifier ${ref.ident_} is free")
+    }
+
   def handleRef(env: List[(String, BasePres)], ref: TheoryInstRef): Either[String, BasePres] =
     env.reverse.find(_._1 == ref.ident_) match {
       case Some((_, pres)) => Right(pres)

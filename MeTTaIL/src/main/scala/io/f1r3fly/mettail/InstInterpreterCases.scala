@@ -494,6 +494,37 @@ object InstInterpreterCases {
       }
     }
 
+  def checkCtor(
+                  interpreter: InstInterpreter,
+                  env: List[(String, BasePres)],
+                  resolvedModules: Map[String, Module],
+                  currentModulePath: String,
+                  ctor: TheoryInstCtor,
+                  moduleProcessor: ModuleProcessor
+                ): Option[String] = {
+    moduleProcessor.resolveDottedPath(resolvedModules, currentModulePath, ctor.dottedpath_) match {
+      case Left(error) => Some(error)
+      case Right((modulePath, theoryDecl)) => theoryDecl match {
+        case baseDecl: BaseTheoryDecl =>
+          if (baseDecl.listvariabledecl_.size != ctor.listtheoryinst_.size)
+            Some(s"Mismatch in number of arguments for theory ${PrettyPrinter.print(baseDecl.name_)}")
+          else {
+            var result: String = ""
+            val formalsEither = baseDecl.listvariabledecl_.asScala.toList.map {
+              case varDecl: VarDecl => Right("")
+              case _ => {
+                result = s"Non-var declaration in formal parameter list" +
+                         s" for theory ${PrettyPrinter.print(baseDecl.name_)}"
+                Left(result)
+              }
+            }
+            if (result.isEmpty) None else Some(result)
+          }
+        case _ => Some("Resolved theory declaration is not a BaseTheoryDecl")
+      }
+    }
+  }
+
   def handleCtor(
     interpreter: InstInterpreter,
     env: List[(String, BasePres)],

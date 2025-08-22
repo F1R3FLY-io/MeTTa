@@ -34,19 +34,21 @@ class InstInterpreter(
   // Checks whether the data can be successfully processed by the interpret() method.
   // Returns None if they can; otherwise, a corresponding error message.
   def check_interpret(env: List[(String, BasePres)], thInst: TheoryInst): Option[String] = thInst match {
-    case disj: TheoryInstDisj                       => None // +
-    case conj: TheoryInstConj                       => None // +
-    case subtract: TheoryInstSubtract               => None // +
+    case disj: TheoryInstDisj                       => None
+    case conj: TheoryInstConj                       => None
+    case subtract: TheoryInstSubtract               => None
     case addExports: TheoryInstAddExports           => checkAddExports(this, env, addExports)
     case addReplacements: TheoryInstAddReplacements => None // TODO
     case addTerms: TheoryInstAddTerms               => None // TODO
     case addEquations: TheoryInstAddEquations       => None // TODO
     case addRewrites: TheoryInstAddRewrites         => None // TODO
-    case empty: TheoryInstEmpty                     => None // +
-    case ctor: TheoryInstCtor                       => None // TODO (simple)
+    case empty: TheoryInstEmpty                     => None
+    case ctor: TheoryInstCtor                       => checkCtor(
+      this, env, resolvedModules, currentModulePath, ctor, moduleProcessor
+    )
     case ref: TheoryInstRef                         => checkRef(env, ref)
-    case rec: TheoryInstRec                         => None // +
-    case free: TheoryInstFree                       => None // +
+    case rec: TheoryInstRec                         => None
+    case free: TheoryInstFree                       => None
   }
 
 }

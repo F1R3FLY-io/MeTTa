@@ -40,7 +40,7 @@ class InstInterpreter(
     case addExports: TheoryInstAddExports           => checkAddExports(this, env, addExports)
     case addReplacements: TheoryInstAddReplacements => None // TODO
     case addTerms: TheoryInstAddTerms               => None // TODO
-    case addEquations: TheoryInstAddEquations       => None // TODO
+    case addEquations: TheoryInstAddEquations       => checkAddEquations(this, env, addEquations)
     case addRewrites: TheoryInstAddRewrites         => None // TODO
     case empty: TheoryInstEmpty                     => None
     case ctor: TheoryInstCtor                       => checkCtor(

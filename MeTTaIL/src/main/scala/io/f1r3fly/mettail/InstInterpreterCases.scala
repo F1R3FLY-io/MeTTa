@@ -392,6 +392,39 @@ object InstInterpreterCases {
       }
     }
 
+  def checkAddEquations(interpreter: InstInterpreter,
+                        env: List[(String, BasePres)],
+                        inst: TheoryInstAddEquations): Option[String] = {
+    interpreter.interpret(env, inst.theoryinst_) match {
+      case Left(err) => Some(err)
+      case Right(basePres) =>
+        val defs: Map[Label, Rule] = listDefToMap(basePres.listdef_)
+        inst.listequation_.asScala.toList.foldLeft[Option[String]](None) {
+          case (Some(err), _) => Some(err) // short-circuit on first error
+          case (None, e) =>
+            val pretty = s"equation ${PrettyPrinter.print(e)}"
+            val eqn = equationImpl(e)
+
+            for {
+              _ <- sameCategory(catOfAST(eqn.ast_1, defs), catOfAST(eqn.ast_2, defs), pretty).left.toOption
+              m1 <- consistentCategory(eqn.ast_1, defs, pretty).toOption
+              m2 <- consistentCategory(eqn.ast_2, defs, pretty).toOption
+              err <- (m1.keySet ++ m2.keySet).foldLeft[Option[String]](None) {
+                case (Some(e), _) => Some(e)
+                case (None, ident) =>
+                  (m1.get(ident), m2.get(ident)) match {
+                    case (Some(l), Some(r)) if l != r =>
+                      Some(s"Variable ${ident} has category ${PrettyPrinter.print(l)} on the left-" +
+                        s"hand side and category ${PrettyPrinter.print(r)} on the right-hand" +
+                        s" side of $pretty")
+                    case _ => None
+                  }
+              }
+            } yield err
+        }
+    }
+  }
+
   def handleAddEquations(interpreter: InstInterpreter,
                           env: List[(String, BasePres)],
                           inst: TheoryInstAddEquations): Either[String, BasePres] = {

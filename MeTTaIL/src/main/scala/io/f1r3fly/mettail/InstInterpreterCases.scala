@@ -404,6 +404,55 @@ object InstInterpreterCases {
     }
   }
 
+  def checkAddTerms(
+                     interpreter: InstInterpreter,
+                     env: List[(String, BasePres)],
+                     inst: TheoryInstAddTerms
+                   ): Option[String] = {
+    interpreter.interpret(env, inst.theoryinst_) match {
+      case Left(err) => Some(err)
+      case Right(basePres) =>
+        import scala.jdk.CollectionConverters._
+
+        val newTerms: List[Def] = inst.grammar_ match {
+          case g: MkGrammar => g.listdef_.iterator.asScala.toList
+          case _            => Nil
+        }
+
+        val allowedCats: Set[Cat] = basePres.listcat_.asScala.toSet
+
+        newTerms.foldLeft[Option[String]](None) {
+          case (Some(err), _) => Some(err)
+          case (None, term) => term match {
+            case rule: Rule =>
+              val fromRule  = Set(rule.cat_)
+              val fromItems = rule.listitem_.asScala.collect { case nt: NTerminal => nt.cat_ }.toSet
+              val mentioned = fromRule ++ fromItems
+
+              if (!mentioned.subsetOf(allowedCats)) {
+                val unknown = mentioned.diff(allowedCats).map(PrettyPrinter.print)
+                Some(s"Error: Def in addTerms mentions unknown categories: $unknown")
+              } else if (basePres.listdef_.asScala.collect { case r: Rule => r.label_ }.contains(rule.label_)) {
+                Some(s"Error: Duplicate label in addTerms: ${PrettyPrinter.print(rule.label_)}")
+              } else {
+                rule.label_ match {
+                  case l: ListE    if rule.cat_ != ListOfCat(l.cat_) =>
+                    Some(s"Error: Category for []{${rule.cat_}} must be [${rule.cat_}]")
+                  case l: ListCons if rule.cat_ != ListOfCat(l.cat_) =>
+                    Some(s"Error: Category for (:){${rule.cat_}} must be [${rule.cat_}]")
+                  case l: ListOne  if rule.cat_ != ListOfCat(l.cat_) =>
+                    Some(s"Error: Category for (:[]){${rule.cat_}} must be [${rule.cat_}]")
+                  case _ =>
+                    None // All checks passed for this rule
+                }
+              }
+          case _ =>
+            None // Non-Rule defs are ignored
+        }
+      }
+    }
+  }
+
   def handleAddTerms(
     interpreter: InstInterpreter,
     env: List[(String, BasePres)],

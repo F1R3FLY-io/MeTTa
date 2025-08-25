@@ -715,6 +715,7 @@ object InstInterpreterCases {
     }
   }
 
+  /*
   def handleCtor(
     interpreter: InstInterpreter,
     env: List[(String, BasePres)],
@@ -750,6 +751,33 @@ object InstInterpreterCases {
         case _ => Left("Resolved theory declaration is not a BaseTheoryDecl")
       }
     }
+  }
+  */
+  def handleCtor(
+                  interpreter: InstInterpreter,
+                  env: List[(String, BasePres)],
+                  resolvedModules: Map[String, Module],
+                  currentModulePath: String,
+                  ctor: TheoryInstCtor,
+                  moduleProcessor: ModuleProcessor
+                ): Either[String, BasePres] = {
+    /*
+    val Right((modulePath, baseDecl: BaseTheoryDecl)) =
+      moduleProcessor.resolveDottedPath(resolvedModules, currentModulePath, ctor.dottedpath_)
+    */
+    val (modulePath, theoryDecl) =
+      moduleProcessor.resolveDottedPath(resolvedModules, currentModulePath, ctor.dottedpath_).right.get
+    val baseDecl = theoryDecl.asInstanceOf[BaseTheoryDecl]
+
+    val actuals = ctor.listtheoryinst_.asScala.toList
+    val actualPresentations = sequence(actuals.map(interpreter.interpret(env, _))).right.get
+    val formals = baseDecl.listvariabledecl_.asScala.toList.map(_.asInstanceOf[VarDecl].ident_.toString)
+    val newBindings = formals.zip(actualPresentations)
+    new InstInterpreter(
+      resolvedModules,
+      modulePath,
+      moduleProcessor
+    ).interpret(env ++ newBindings, baseDecl.theoryinst_)
   }
 
   def checkRef(env: List[(String, BasePres)], ref: TheoryInstRef): Option[String] =

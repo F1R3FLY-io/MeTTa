@@ -23,12 +23,12 @@ class InstInterpreter(
     case addTerms: TheoryInstAddTerms               => handleAddTerms(this, env, addTerms)
     case addEquations: TheoryInstAddEquations       => handleAddEquations(this, env, addEquations)
     case addRewrites: TheoryInstAddRewrites         => handleAddRewrites(this, env, addRewrites)
-    case empty: TheoryInstEmpty                     => handleEmpty()
+    case empty: TheoryInstEmpty                     => handleEmpty() // TODO +
     case ctor: TheoryInstCtor                       => 
-      handleCtor(this, env, resolvedModules, currentModulePath, ctor, moduleProcessor)
-    case ref: TheoryInstRef                         => handleRef(env, ref)
-    case rec: TheoryInstRec                         => handleRec(this, env, rec)
-    case free: TheoryInstFree                       => handleFree()
+      handleCtor(this, env, resolvedModules, currentModulePath, ctor, moduleProcessor) // TODO +
+    case ref: TheoryInstRef                         => handleRef(env, ref) // TODO +
+    case rec: TheoryInstRec                         => handleRec(this, env, rec) // TODO +
+    case free: TheoryInstFree                       => handleFree() // TODO +
   }
 
   // Checks whether the data can be successfully processed by the interpret() method.

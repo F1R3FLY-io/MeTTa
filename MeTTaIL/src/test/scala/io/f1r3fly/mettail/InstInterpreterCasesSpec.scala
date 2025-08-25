@@ -161,9 +161,9 @@ class InstInterpreterCasesSpec extends AnyFunSuite {
     val ctor = new TheoryInstCtor(new BaseDottedPath("X"), new ListTheoryInst())
     val mp = ModuleProcessor.default
 
-    val res = handleCtor(interp, env, resolved, path, ctor, mp)
-    assert(res.isLeft)
-    assert(res.left.get.contains(s"Module not found: $path"))
+    val res = checkCtor(interp, env, resolved, path, ctor, mp)
+    assert(res.isDefined)
+    assert(res.get.contains(s"Module not found: $path"))
   }
 
   // --- handleRef ---

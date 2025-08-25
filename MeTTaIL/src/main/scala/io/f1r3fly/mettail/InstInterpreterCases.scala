@@ -715,44 +715,6 @@ object InstInterpreterCases {
     }
   }
 
-  /*
-  def handleCtor(
-    interpreter: InstInterpreter,
-    env: List[(String, BasePres)],
-    resolvedModules: Map[String, Module],
-    currentModulePath: String,
-    ctor: TheoryInstCtor,
-    moduleProcessor: ModuleProcessor
-  ): Either[String, BasePres] = {
-    moduleProcessor.resolveDottedPath(resolvedModules, currentModulePath, ctor.dottedpath_) match {
-      case Left(error) => Left(error)
-      case Right((modulePath, theoryDecl)) => theoryDecl match {
-        case baseDecl: BaseTheoryDecl =>
-          if (baseDecl.listvariabledecl_.size != ctor.listtheoryinst_.size)
-            Left(s"Mismatch in number of arguments for theory ${PrettyPrinter.print(baseDecl.name_)}")
-          else {
-            val actuals = ctor.listtheoryinst_.asScala.toList
-            sequence(actuals.map(interpreter.interpret(env, _))).flatMap { actualPresentations =>
-              val formalsEither = baseDecl.listvariabledecl_.asScala.toList.map {
-                case varDecl: VarDecl => Right(varDecl.ident_.toString)
-                case _ => Left(s"Non-var declaration in formal parameter list"
-                               + s" for theory ${PrettyPrinter.print(baseDecl.name_)}")
-              }
-              sequence(formalsEither).flatMap { formals =>
-                val newBindings = formals.zip(actualPresentations)
-                new InstInterpreter(
-                  resolvedModules,
-                  modulePath,
-                  moduleProcessor
-                ).interpret(env ++ newBindings, baseDecl.theoryinst_)
-              }
-            }
-          }
-        case _ => Left("Resolved theory declaration is not a BaseTheoryDecl")
-      }
-    }
-  }
-  */
   def handleCtor(
                   interpreter: InstInterpreter,
                   env: List[(String, BasePres)],
@@ -761,10 +723,6 @@ object InstInterpreterCases {
                   ctor: TheoryInstCtor,
                   moduleProcessor: ModuleProcessor
                 ): Either[String, BasePres] = {
-    /*
-    val Right((modulePath, baseDecl: BaseTheoryDecl)) =
-      moduleProcessor.resolveDottedPath(resolvedModules, currentModulePath, ctor.dottedpath_)
-    */
     val (modulePath, theoryDecl) =
       moduleProcessor.resolveDottedPath(resolvedModules, currentModulePath, ctor.dottedpath_).right.get
     val baseDecl = theoryDecl.asInstanceOf[BaseTheoryDecl]

@@ -5,6 +5,7 @@ import metta_venus.PrettyPrinter
 import scala.jdk.CollectionConverters._
 
 object InstInterpreterCases {
+
   import AddEqRwHelpers._
   import ASTHelpers._
   import BasePresOps._
@@ -490,9 +491,9 @@ object InstInterpreterCases {
                 case l: ListE    if rule.cat_ != ListOfCat(l.cat_) =>
                   Left(s"Error: Category for []{${rule.cat_}} must be [${rule.cat_}]")
                 case l: ListCons if rule.cat_ != ListOfCat(l.cat_) =>
-                Left(s"Error: Category for (:){${rule.cat_}} must be [${rule.cat_}]")
+                  Left(s"Error: Category for (:){${rule.cat_}} must be [${rule.cat_}]")
                 case l: ListOne  if rule.cat_ != ListOfCat(l.cat_) =>
-                Left(s"Error: Category for (:[]){${rule.cat_}} must be [${rule.cat_}]")
+                  Left(s"Error: Category for (:[]){${rule.cat_}} must be [${rule.cat_}]")
                 case _ =>
                   // All checks pass: append this rule and continue
                   Right(copyPres(bp, listdef = Some(bp.listdef_.asScala.toList :+ rule)))
@@ -619,7 +620,7 @@ object InstInterpreterCases {
               )
               _ <- checkHypotheticals(hypVars(rw), defs, rb).left.toOption
             } yield pretty // returning the first failing rewrite description
-      }
+        }
     }
   }
 
@@ -758,10 +759,7 @@ object InstInterpreterCases {
     }
 
   def handleRef(env: List[(String, BasePres)], ref: TheoryInstRef): Either[String, BasePres] =
-    env.reverse.find(_._1 == ref.ident_) match {
-      case Some((_, pres)) => Right(pres)
-      case None            => Left(s"Identifier ${ref.ident_} is free")
-    }
+    Right(env.reverse.find(_._1 == ref.ident_).get._2)
 
   def handleRec(interpreter: InstInterpreter, env: List[(String, BasePres)], rec: TheoryInstRec): Either[String, BasePres] =
     interpreter.interpret(env, rec.theoryinst_1).flatMap { pres1 =>

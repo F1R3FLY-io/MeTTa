@@ -177,9 +177,9 @@ class InstInterpreterCasesSpec extends AnyFunSuite {
 
   test("handleRef should error when identifier is free") {
     val ref = new TheoryInstRef("missing")
-    val res = handleRef(Nil, ref)
-    assert(res.isLeft)
-    assert(res.left.get.contains("Identifier missing is free"))
+    val res = checkRef(Nil, ref)
+    assert(res.isDefined)
+    assert(res.get.contains("Identifier missing is free"))
   }
 
   // --- handleRec ---

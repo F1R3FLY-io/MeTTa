@@ -198,9 +198,9 @@ class InstInterpreterSpec extends AnyFlatSpec with Matchers {
     val resolved    = Map.empty[String, Module]
     val interpreter = new InstInterpreter(resolved, "path", ModuleProcessor.default)
     val ref         = new TheoryInstRef("missing")
-    val res         = interpreter.interpret(Nil, ref)
+    val res         = interpreter.check_interpret(Nil, ref)
 
-    assert(res.isLeft)
-    assert(res.left.get.contains("Identifier missing is free"))
+    assert(res.isDefined)
+    assert(res.get.contains("Identifier missing is free"))
   }
 }

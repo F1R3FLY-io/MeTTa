@@ -616,65 +616,32 @@ object InstInterpreterCases {
     }
   }
 
-  def handleAddRewrites(interpreter: InstInterpreter,
-                        env: List[(String, BasePres)],
-                        inst: TheoryInstAddRewrites): Either[String, BasePres] =
-    interpreter.interpret(env, inst.theoryinst_).flatMap { basePres =>
-      val defs: Map[Label, Rule] = listDefToMap(basePres.listdef_)
+  def handleAddRewrites(
+                       interpreter: InstInterpreter,
+                       env: List[(String, BasePres)],
+                       inst: TheoryInstAddRewrites
+                     ): Either[String, BasePres] = {
+  interpreter.interpret(env, inst.theoryinst_).flatMap { basePres =>
+    val defs: Map[Label, Rule] = listDefToMap(basePres.listdef_)
 
-      // Extract the new rewrite declarations from the instruction.
-      inst.listrewritedecl_.asScala.foldLeft[Either[String, BasePres]](
-        Right(basePres)
-      ) { (basePres, rewriteDecl) =>
-        val rw = rewrite(rewriteDecl)
-        val rb = rewriteBase(rw)
-        val pretty = s"rewrite ${PrettyPrinter.print(rewriteDecl)}"
-
-        // Check validity of rewrites as follows
-        for {
-          // 1. The two sides of the rewrite have the same category
-          //    OR one has a category and the other is a top-level variable.
-          _ <- sameCategory(catOfAST(rb.ast_1, defs), catOfAST(rb.ast_2, defs), pretty)
-          // 2. Check that each variable has a consistent category
-          //    Check that the vars on the left are consistent.
-          m1 <- consistentCategory(rb.ast_1, defs, pretty)
-          //    Check that the vars on the right are consistent.
-          m2 <- consistentCategory(rb.ast_2, defs, pretty)
-          //    Check that the both sides are consistent with each other.
-          allVars = m1.keySet ++ m2.keySet
-          _ <- allVars.foldLeft[Either[String, Unit]](Right(())) { (acc, ident) =>
-            (m1.get(ident), m2.get(ident)) match {
-              case (Some(l), Some(r)) if l != r =>
-                Left(s"Variable ${ident} has category ${PrettyPrinter.print(l)} on the left-"
-                     + s"hand side and category ${PrettyPrinter.print(r)} on the right-hand"
-                     + s" side of $pretty")
-              case _ => acc
-            }
-          }
-          // 3. Check each rewrite declaration to ensure that
-          //    every variable on the right appears on the left.
-          lVars = leftVars(rw)
-          rVars = rightVars(rw)
-          missingVars = rVars diff lVars
-          _ <- Either.cond(
-            missingVars.isEmpty,
-            (),
-            "Error: In RewriteDecl, variables on the right-hand side"
-              + s" not found on the left-hand side: $missingVars"
+    inst.listrewritedecl_.asScala.foldLeft[Either[String, BasePres]](Right(basePres)) {
+      (accEither, rewriteDecl) =>
+        accEither.flatMap { currentPres =>
+          val rw = rewrite(rewriteDecl)
+          val rb = rewriteBase(rw)
+          for {
+            _ <- sameCategory(catOfAST(rb.ast_1, defs), catOfAST(rb.ast_2, defs), "")
+            _ <- consistentCategory(rb.ast_1, defs, "")
+            _ <- consistentCategory(rb.ast_2, defs, "")
+            _ <- checkHypotheticals(hypVars(rw), defs, rb)
+          } yield copyPres(
+            currentPres,
+            listrewritedecl = Some(currentPres.listrewritedecl_.asScala.toList :+ rewriteDecl)
           )
-
-          // 4. When the Rewrite is a RewriteContext let Src ~> Tgt in r,
-          //    Src must appear only on the left, Tgt must appear only on the right,
-          //    and the category of Src must match the category of Tgt
-          _ <- checkHypotheticals(hypVars(rw), defs, rb)
-
-          bp <- basePres
-        } yield copyPres(
-          bp,
-          listrewritedecl = Some(bp.listrewritedecl_.asScala.toList :+ rewriteDecl)
-        )
+        }
       }
     }
+  }
 
   def checkCtor(
                   interpreter: InstInterpreter,

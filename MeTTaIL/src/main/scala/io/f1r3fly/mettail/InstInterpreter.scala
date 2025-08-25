@@ -18,7 +18,7 @@ class InstInterpreter(
     case disj: TheoryInstDisj                       => handleDisj(this, env, disj) // TODO +
     case conj: TheoryInstConj                       => handleConj(this, env, conj) // TODO +
     case subtract: TheoryInstSubtract               => handleSubtract(this, env, subtract) // TODO +
-    case addExports: TheoryInstAddExports           => handleAddExports(this, env, addExports)
+    case addExports: TheoryInstAddExports           => handleAddExports(this, env, addExports)// TODO +
     case addReplacements: TheoryInstAddReplacements => handleAddReplacements(this, env, addReplacements)
     case addTerms: TheoryInstAddTerms               => handleAddTerms(this, env, addTerms)
     case addEquations: TheoryInstAddEquations       => handleAddEquations(this, env, addEquations)

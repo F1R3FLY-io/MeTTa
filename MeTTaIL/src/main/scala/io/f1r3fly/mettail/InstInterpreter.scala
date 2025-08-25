@@ -15,9 +15,9 @@ class InstInterpreter(
 
   // BasePresOps is defined in InstInterpreterCases below and imported here
   def interpret(env: List[(String, BasePres)], thInst: TheoryInst): Either[String, BasePres] = thInst match {
-    case disj: TheoryInstDisj                       => handleDisj(this, env, disj)
-    case conj: TheoryInstConj                       => handleConj(this, env, conj)
-    case subtract: TheoryInstSubtract               => handleSubtract(this, env, subtract)
+    case disj: TheoryInstDisj                       => handleDisj(this, env, disj) // TODO +
+    case conj: TheoryInstConj                       => handleConj(this, env, conj) // TODO +
+    case subtract: TheoryInstSubtract               => handleSubtract(this, env, subtract) // TODO +
     case addExports: TheoryInstAddExports           => handleAddExports(this, env, addExports)
     case addReplacements: TheoryInstAddReplacements => handleAddReplacements(this, env, addReplacements)
     case addTerms: TheoryInstAddTerms               => handleAddTerms(this, env, addTerms)

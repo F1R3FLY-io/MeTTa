@@ -33,22 +33,24 @@ class InstInterpreter(
 
   // Checks whether the data can be successfully processed by the interpret() method.
   // Returns None if they can; otherwise, a corresponding error message.
-  def check_interpret(env: List[(String, BasePres)], thInst: TheoryInst): Option[String] = thInst match {
-    case disj: TheoryInstDisj                       => None
-    case conj: TheoryInstConj                       => None
-    case subtract: TheoryInstSubtract               => None
-    case addExports: TheoryInstAddExports           => checkAddExports(this, env, addExports)
-    case addReplacements: TheoryInstAddReplacements => checkAddReplacements(this, env, addReplacements)
-    case addTerms: TheoryInstAddTerms               => checkAddTerms(this, env, addTerms)
-    case addEquations: TheoryInstAddEquations       => checkAddEquations(this, env, addEquations)
-    case addRewrites: TheoryInstAddRewrites         => checkAddRewrites(this, env, addRewrites)
-    case empty: TheoryInstEmpty                     => None
-    case ctor: TheoryInstCtor                       => checkCtor(
-      this, env, resolvedModules, currentModulePath, ctor, moduleProcessor
-    )
-    case ref: TheoryInstRef                         => checkRef(env, ref)
-    case rec: TheoryInstRec                         => None
-    case free: TheoryInstFree                       => None
+  def check_interpret(env: List[(String, BasePres)], thInst: TheoryInst): Option[String] = {
+    thInst match {
+      case disj: TheoryInstDisj                       => None
+      case conj: TheoryInstConj                       => None
+      case subtract: TheoryInstSubtract               => None
+      case addExports: TheoryInstAddExports           => checkAddExports(this, env, addExports)
+      case addReplacements: TheoryInstAddReplacements => checkAddReplacements(this, env, addReplacements)
+      case addTerms: TheoryInstAddTerms               => checkAddTerms(this, env, addTerms)
+      case addEquations: TheoryInstAddEquations       => checkAddEquations(this, env, addEquations)
+      case addRewrites: TheoryInstAddRewrites         => checkAddRewrites(this, env, addRewrites)
+      case empty: TheoryInstEmpty                     => None
+      case ctor: TheoryInstCtor                       => checkCtor(
+        this, env, resolvedModules, currentModulePath, ctor, moduleProcessor
+      )
+      case ref: TheoryInstRef                         => checkRef(env, ref)
+      case rec: TheoryInstRec                         => None
+      case free: TheoryInstFree                       => None
+    }
   }
 
 }

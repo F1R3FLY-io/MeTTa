@@ -146,9 +146,9 @@ class InstInterpreterSpec extends AnyFlatSpec with Matchers {
 
   it should "error when interpreting a module with duplicate replacement labels" in {
     val (interpreter, inst) = loadInterpreterFor("../GSLT/src/test/module/bad/ReplacementShadows.module")
-    val res = interpreter.interpret(Nil, inst)
+    val res = interpreter.check_interpret(Nil, inst)
 
-    res shouldBe Left("Error: Replacement rule label Bar already exists in theory.")
+    res shouldBe Some("Error: Replacement rule label Bar already exists in theory.")
   }
 
   it should "error when local theory not found" in {

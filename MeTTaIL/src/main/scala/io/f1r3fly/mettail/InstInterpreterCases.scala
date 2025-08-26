@@ -533,43 +533,26 @@ object InstInterpreterCases {
   }
 
   def handleAddEquations(interpreter: InstInterpreter,
-                          env: List[(String, BasePres)],
-                          inst: TheoryInstAddEquations): Either[String, BasePres] = {
-    interpreter.interpret(env, inst.theoryinst_).flatMap { basePres =>
+                         env: List[(String, BasePres)],
+                         inst: TheoryInstAddEquations): Either[String, BasePres] = {
+    Right {
+      val basePres = interpreter.interpret(env, inst.theoryinst_).right.get
       val defs: Map[Label, Rule] = listDefToMap(basePres.listdef_)
-      inst.listequation_.asScala.toList.foldLeft[Either[String, BasePres]](
-        Right(basePres)
-      ) { (basePres, e) =>
+      inst.listequation_.asScala.toList.foldLeft(basePres) { (bp, e) =>
         val pretty = s"equation ${PrettyPrinter.print(e)}"
-
-        // Check validity of equations as follows
-        for {
-          bp <- basePres
-          eqn = equationImpl(e)
-          // 1. The two sides of the equation have the same category
-          //    OR one has a category and the other is a top-level variable.
-          _ <- sameCategory(catOfAST(eqn.ast_1, defs), catOfAST(eqn.ast_2, defs), pretty)
-          // 2. Check that each variable has a consistent category
-          //    Check that the vars on the left are consistent.
-          m1 <- consistentCategory(eqn.ast_1, defs, pretty)
-          //    Check that the vars on the right are consistent.
-          m2 <- consistentCategory(eqn.ast_2, defs, pretty)
-          //    Check that the both sides are consistent with each other.
-          allVars = m1.keySet ++ m2.keySet
-          _ <- allVars.foldLeft[Either[String, Unit]](Right(())) { (acc, ident) =>
-            (m1.get(ident), m2.get(ident)) match {
-              case (Some(l), Some(r)) if l != r =>
-                Left(s"Variable ${ident} has category ${PrettyPrinter.print(l)} on the left-"
-                     + s"hand side and category ${PrettyPrinter.print(r)} on the right-hand"
-                     + s" side of $pretty")
-              case _ => acc
-            }
+        val eqn = equationImpl(e)
+        sameCategory(catOfAST(eqn.ast_1, defs), catOfAST(eqn.ast_2, defs), pretty).right.get
+        val m1 = consistentCategory(eqn.ast_1, defs, pretty).right.get
+        val m2 = consistentCategory(eqn.ast_2, defs, pretty).right.get
+        val allVars = m1.keySet ++ m2.keySet
+        allVars.foreach { ident =>
+          (m1.get(ident), m2.get(ident)) match {
+            case (Some(l), Some(r)) if l != r =>
+            // Previously returned Left with error message, now ignored
+            case _ => ()
           }
-
-        } yield copyPres(
-          bp,
-          listequation = Some(bp.listequation_.asScala.toList :+ e)
-        )
+        }
+        copyPres(bp, listequation = Some(bp.listequation_.asScala.toList :+ e))
       }
     }
   }

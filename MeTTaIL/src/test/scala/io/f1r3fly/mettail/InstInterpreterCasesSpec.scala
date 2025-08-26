@@ -94,6 +94,22 @@ class InstInterpreterCasesSpec extends AnyFunSuite {
     assert(res.isRight)
   }
 
+  test("handleAddExports should error when given an empty exports block") {
+    val cat   = new IdCat("C")
+    val rule  = new Rule(new Id("L"), cat, new ListItem())
+    val base  = BasePresOps.empty
+    val inst0 = new TheoryInstEmpty()
+    val listexport = new ListExport() // empty list of exports
+    val inst    = new TheoryInstAddExports(inst0, listexport)
+    val interp  = new SingleInterpreter(base, inst0)
+
+    val res = handleAddExports(interp, Nil, inst)
+    assert(res.isLeft)
+    assert(res.left.get.contains(
+      "Error: missing distinguished export."
+    ))
+  }
+
   // --- handleAddTerms: unknown categories ---
   test("handleAddTerms should error when adding terms with unknown categories") {
     val cat   = new IdCat("C")

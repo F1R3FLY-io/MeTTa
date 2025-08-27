@@ -81,7 +81,6 @@ VarDecl . VariableDecl ::= Ident ":" DottedPath ;
 separator VariableDecl "," ;
 
 BaseDottedPath . DottedPath ::= Ident ;
-SetDottedPath . DottedPath ::= "Set" ;
 QualifiedDottedPath . DottedPath ::= Ident "." DottedPath ;
 
 -- Names

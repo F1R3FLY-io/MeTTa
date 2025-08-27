@@ -123,40 +123,31 @@ object InstInterpreterCases {
                      listrewritedecl = Some(diffRewrites.toList))
   }
 
-
   def checkAddExports(
-    interpreter: InstInterpreter,
-    env: List[(String, BasePres)],
-    inst: TheoryInstAddExports
-  ): Option[String] = {
-      val result: Either[String, BasePres] =
-      interpreter.interpret(env, inst.theoryinst_).flatMap { basePres =>
-        inst.listexport_.toArray.toList.foldLeft[Either[String, BasePres]](Right(basePres)) { (accEither, expInst) =>
-          accEither.flatMap { currentPres =>
-            expInst match {
-              case base: BaseExport =>
-                Left("")
-              case re: RenameExport =>
-                if (currentPres.listcat_.asScala.toList.exists(cat => cat.equals(re.cat_1)))
-                  Left("")
-                else
-                  Left(s"Error: Cannot rename export. Export ${PrettyPrinter.print(re.cat_1)} not found among current exports.")
-              case _ =>
-                Left("Error: Unknown export type encountered in addExports.")
-            }
-          }
-        }
+                               interpreter: InstInterpreter,
+                               env: List[(String, BasePres)],
+                               inst: TheoryInstAddExports
+                             ): Option[String] =
+    interpreter.interpret(env, inst.theoryinst_).toOption.flatMap { basePres =>
+      if (inst.listexport_.size < 1) {
+        Some("Error: missing distinguished export.")
+      } else {
+        inst.listexport_
+          .toArray
+          .toList
+          .collectFirst {
+            case re: RenameExport =>
+              val currentCats = basePres.listcat_.asScala.toList
+              if (!currentCats.exists(_.equals(re.cat_1))) {
+                Some(s"Error: Cannot rename export. Export ${PrettyPrinter.print(re.cat_1)} not found among current exports.")
+              } else {
+                None
+              }
+            case _ =>
+              Some("Error: Unknown export type encountered in addExports.")
+          }.flatten
       }
-      result match {
-        case Left(errorMessage) =>
-          if (errorMessage.isEmpty)
-            None
-          else
-            Some(errorMessage)
-        case _ =>
-          None
-      }
-    } // checkAddExports()
+    }
 
   def handleAddExports(
                         interpreter: InstInterpreter,

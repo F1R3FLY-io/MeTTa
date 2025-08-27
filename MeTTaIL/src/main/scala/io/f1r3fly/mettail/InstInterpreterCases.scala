@@ -429,84 +429,27 @@ object InstInterpreterCases {
                      interpreter: InstInterpreter,
                      env: List[(String, BasePres)],
                      inst: TheoryInstAddTerms
-                   ): Option[String] = {
-    interpreter.interpret(env, inst.theoryinst_) match {
-      case Left(err) => Some(err)
-      case Right(basePres) =>
-        import scala.jdk.CollectionConverters._
-
-        val newTerms: List[Def] = inst.grammar_ match {
-          case g: MkGrammar => g.listdef_.iterator.asScala.toList
-          case _            => Nil
-        }
-
-        val allowedCats: Set[Cat] = basePres.listcat_.asScala.toSet
-
-        newTerms.foldLeft[Option[String]](None) {
-          case (Some(err), _) => Some(err)
-          case (None, term) => term match {
-            case rule: Rule =>
-              val fromRule  = Set(rule.cat_)
-              val fromItems = rule.listitem_.asScala.collect { case nt: NTerminal => nt.cat_ }.toSet
-              val mentioned = fromRule ++ fromItems
-
-              if (!mentioned.subsetOf(allowedCats)) {
-                val unknown = mentioned.diff(allowedCats).map(PrettyPrinter.print)
-                Some(s"Error: Def in addTerms mentions unknown categories: $unknown")
-              } else if (basePres.listdef_.asScala.collect { case r: Rule => r.label_ }.contains(rule.label_)) {
-                Some(s"Error: Duplicate label in addTerms: ${PrettyPrinter.print(rule.label_)}")
-              } else {
-                rule.label_ match {
-                  case l: ListE    if rule.cat_ != ListOfCat(l.cat_) =>
-                    Some(s"Error: Category for []{${rule.cat_}} must be [${rule.cat_}]")
-                  case l: ListCons if rule.cat_ != ListOfCat(l.cat_) =>
-                    Some(s"Error: Category for (:){${rule.cat_}} must be [${rule.cat_}]")
-                  case l: ListOne  if rule.cat_ != ListOfCat(l.cat_) =>
-                    Some(s"Error: Category for (:[]){${rule.cat_}} must be [${rule.cat_}]")
-                  case _ =>
-                    None // All checks passed for this rule
-                }
-              }
-          case _ =>
-            None // Non-Rule defs are ignored
-        }
-      }
-    }
-  }
-
-  def handleAddTerms(
-    interpreter: InstInterpreter,
-    env: List[(String, BasePres)],
-    inst: TheoryInstAddTerms
-  ): Either[String, BasePres] =
+                   ): Option[String] =
     interpreter.interpret(env, inst.theoryinst_).flatMap { basePres =>
-      // Extract the incoming list of Defs (only Rules matter here)
       val newTerms: List[Def] = inst.grammar_ match {
         case g: MkGrammar => g.listdef_.iterator.asScala.toList
         case _            => Nil
       }
-      // Allowed categories come from the original BasePres
       val allowedCats: Set[Cat] = basePres.listcat_.asScala.toSet
 
-      // Fold over newTerms, starting with Right(basePres)
       newTerms.foldLeft[Either[String, BasePres]](Right(basePres)) {
-        case (Left(err), _) => Left(err)  // once an error, keep propagating
+        case (Left(err), _) => Left(err)
         case (Right(bp), term) => term match {
           case rule: Rule =>
-            // 1) Unknown‑category check
             val fromRule  = Set(rule.cat_)
             val fromItems = rule.listitem_.asScala.collect { case nt: NTerminal => nt.cat_ }.toSet
             val mentioned = fromRule ++ fromItems
             if (!mentioned.subsetOf(allowedCats)) {
               val unknown = mentioned.diff(allowedCats).map(PrettyPrinter.print)
               Left(s"Error: Def in addTerms mentions unknown categories: $unknown")
-            }
-            // 2) Duplicate‑label check
-            else if (bp.listdef_.asScala.collect { case r: Rule => r.label_ }.contains(rule.label_)) {
+            } else if (bp.listdef_.asScala.collect { case r: Rule => r.label_ }.contains(rule.label_)) {
               Left(s"Error: Duplicate label in addTerms: ${PrettyPrinter.print(rule.label_)}")
-            }
-            // 3) Special List‑label check
-            else {
+            } else {
               rule.label_ match {
                 case l: ListE    if rule.cat_ != ListOfCat(l.cat_) =>
                   Left(s"Error: Category for []{${rule.cat_}} must be [${rule.cat_}]")
@@ -515,16 +458,30 @@ object InstInterpreterCases {
                 case l: ListOne  if rule.cat_ != ListOfCat(l.cat_) =>
                   Left(s"Error: Category for (:[]){${rule.cat_}} must be [${rule.cat_}]")
                 case _ =>
-                  // All checks pass: append this rule and continue
                   Right(copyPres(bp, listdef = Some(bp.listdef_.asScala.toList :+ rule)))
               }
             }
 
           case _ =>
-            // Non‑Rule defs (e.g. Comments) are ignored
             Right(bp)
         }
       }
+    }.left.toOption
+
+  def handleAddTerms(
+                      interpreter: InstInterpreter,
+                      env: List[(String, BasePres)],
+                      inst: TheoryInstAddTerms
+                    ): Either[String, BasePres] =
+    interpreter.interpret(env, inst.theoryinst_).map { basePres =>
+      val newTerms: List[Def] = inst.grammar_ match {
+        case g: MkGrammar => g.listdef_.iterator.asScala.toList
+        case _            => Nil
+      }
+      val updatedDefs = basePres.listdef_.asScala.toList ++ newTerms.collect {
+        case rule: Rule => rule
+      }
+      copyPres(basePres, listdef = Some(updatedDefs))
     }
 
   def checkAddEquations(interpreter: InstInterpreter,

@@ -105,8 +105,10 @@ class InstInterpreterCasesSpec extends AnyFunSuite {
     val inst    = new TheoryInstAddTerms(inst0, grammar)
     val interp  = new SingleInterpreter(base, inst0)
 
-    val res = handleAddTerms(interp, Nil, inst)
-    assert(res.isLeft)
+    // val res = handleAddTerms(interp, Nil, inst)
+    val res = checkAddTerms(interp, Nil, inst)
+    // assert(res.isLeft)
+    assert(res.isDefined)
     /* fails sometimes without any changes
     assert(res.left.get.contains(
       "Error: Def in addTerms mentions unknown categories: Set(C)"

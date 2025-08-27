@@ -139,9 +139,11 @@ class InstInterpreterSpec extends AnyFlatSpec with Matchers {
 
   it should "error when interpreting a module with duplicate term labels" in {
     val (interpreter, inst) = loadInterpreterFor("../GSLT/src/test/module/bad/RepeatLabel.module")
-    val res = interpreter.interpret(Nil, inst)
+    // val res = interpreter.interpret(Nil, inst)
+    val res = interpreter.check_interpret(Nil, inst)
 
-    res shouldBe Left("Error: Duplicate label in addTerms: Foo")
+    // res shouldBe Left("Error: Duplicate label in addTerms: Foo")
+    res shouldBe Some("Error: Duplicate label in addTerms: Foo")
   }
 
   it should "error when interpreting a module with duplicate replacement labels" in {

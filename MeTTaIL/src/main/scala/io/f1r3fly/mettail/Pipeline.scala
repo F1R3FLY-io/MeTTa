@@ -25,7 +25,6 @@ case class Context(
   finalInst:   Option[TheoryInst]            = None,
   presentation: Option[BasePres]             = None,
   presCheck: String                          = "",
-  // SK: TODOStoreIntermediateVariablesHere = None,
 )
 
 object LoadModules extends Pass[Context] {

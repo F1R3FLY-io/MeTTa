@@ -338,6 +338,8 @@ object InstInterpreterCases {
     def convertIntList(intList: IntList): List[Int] = intList match {
       case ints: Ints => ints.listinteger_.asScala.toList.map(_.intValue())
     }
+
+    // Process each replacement sequentially.
     replacements.foldLeft(basePres) { (currentPres, s) =>
       val rule = currentPres.listdef_.asScala.collect { case r: Rule => r }
         .find(r => labelToString(r.label_) == labelToString(s.label_)).get

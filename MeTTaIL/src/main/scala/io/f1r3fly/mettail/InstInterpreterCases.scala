@@ -22,63 +22,84 @@ object InstInterpreterCases {
       } yield x :: xs
     }
 
-  def handleEmpty(): Either[String, BasePres] =
-    Right(empty)
+  def handleEmpty(): BasePres =
+    empty
 
-  def handleFree(): Either[String, BasePres] =
-    Right(empty)
+  def handleFree(): BasePres =
+    empty
 
-  def handleDisj(interpreter: InstInterpreter, env: List[(String, BasePres)], disj: TheoryInstDisj): Either[String, BasePres] =
-    for {
-      presA <- interpreter.interpret(env, disj.theoryinst_1)
-      presB <- interpreter.interpret(env, disj.theoryinst_2)
-      exports   = (presA.listcat_.asScala.toList ++ presB.listcat_.asScala.toList).distinct
-      terms     = (presA.listdef_.asScala.toList ++ presB.listdef_.asScala.toList).distinct
-      equations = (presA.listequation_.asScala.toList ++ presB.listequation_.asScala.toList).distinct
-      rewrites  = (presA.listrewritedecl_.asScala.toList ++ presB.listrewritedecl_.asScala.toList).distinct
-    } yield copyPres(empty,
-                     listcat = Some(exports),
-                     listdef = Some(terms),
-                     listequation = Some(equations),
-                     listrewritedecl = Some(rewrites))
+  def handleDisj(interpreter: InstInterpreter, env: List[(String, BasePres)], disj: TheoryInstDisj): BasePres = {
+    val presA = interpreter.interpret(env, disj.theoryinst_1) match {
+      case Right(value) => value
+      case Left(msg)    => sys.error(s"Failed to interpret theoryinst_1: $msg")
+    }
 
-  def handleConj(interpreter: InstInterpreter, env: List[(String, BasePres)], conj: TheoryInstConj): Either[String, BasePres] = {
-    for {
-      presA <- interpreter.interpret(env, conj.theoryinst_1)
-      presB <- interpreter.interpret(env, conj.theoryinst_2)
-      commonExports = presA.listcat_.asScala.toSet intersect presB.listcat_.asScala.toSet
-      commonTerms   = presA.listdef_.asScala.toSet intersect presB.listdef_.asScala.toSet
+    val presB = interpreter.interpret(env, disj.theoryinst_2) match {
+      case Right(value) => value
+      case Left(msg)    => sys.error(s"Failed to interpret theoryinst_2: $msg")
+    }
 
-      filteredTerms = commonTerms.filter {
-        case rule: Rule =>
-          val fromRule  = Set(rule.cat_)
-          val fromItems = rule.listitem_.asScala.collect {
-            case nt: NTerminal => nt.cat_
-          }.toSet
-          val mentionedCats = fromRule ++ fromItems
-          mentionedCats.subsetOf(commonExports)
-        case _ => true
-      }
+    val exports   = (presA.listcat_.asScala.toList ++ presB.listcat_.asScala.toList).distinct
+    val terms     = (presA.listdef_.asScala.toList ++ presB.listdef_.asScala.toList).distinct
+    val equations = (presA.listequation_.asScala.toList ++ presB.listequation_.asScala.toList).distinct
+    val rewrites  = (presA.listrewritedecl_.asScala.toList ++ presB.listrewritedecl_.asScala.toList).distinct
 
-      allowedLabels = filteredTerms.collect {
-        case rule: Rule => labelToString(rule.label_)
-      }
+    copyPres(
+      empty,
+      listcat = Some(exports),
+      listdef = Some(terms),
+      listequation = Some(equations),
+      listrewritedecl = Some(rewrites)
+    )
+  }
 
-      commonEquations = presA.listequation_.asScala.toSet intersect presB.listequation_.asScala.toSet
-      filteredEquations = commonEquations.filter { eq =>
-        labelsInEquation(eq).subsetOf(allowedLabels)
-      }
+  def handleConj(interpreter: InstInterpreter, env: List[(String, BasePres)], conj: TheoryInstConj): BasePres = {
+    val presA = interpreter.interpret(env, conj.theoryinst_1) match {
+      case Right(value) => value
+      case Left(msg)    => sys.error(s"Failed to interpret theoryinst_1: $msg")
+    }
 
-      commonRewrites = presA.listrewritedecl_.asScala.toSet intersect presB.listrewritedecl_.asScala.toSet
-      filteredRewrites = commonRewrites.filter {
-        case rdecl: RDecl => labelsInRewrite(rdecl.rewrite_).subsetOf(allowedLabels)
-        case _ => true
-      }
-    } yield copyPres(empty,
-                     listcat = Some(commonExports.toList),
-                     listdef = Some(filteredTerms.toList),
-                     listequation = Some(filteredEquations.toList),
-                     listrewritedecl = Some(filteredRewrites.toList))
+    val presB = interpreter.interpret(env, conj.theoryinst_2) match {
+      case Right(value) => value
+      case Left(msg)    => sys.error(s"Failed to interpret theoryinst_2: $msg")
+    }
+
+    val commonExports = presA.listcat_.asScala.toSet intersect presB.listcat_.asScala.toSet
+    val commonTerms   = presA.listdef_.asScala.toSet intersect presB.listdef_.asScala.toSet
+
+    val filteredTerms = commonTerms.filter {
+      case rule: Rule =>
+        val fromRule  = Set(rule.cat_)
+        val fromItems = rule.listitem_.asScala.collect {
+          case nt: NTerminal => nt.cat_
+        }.toSet
+        val mentionedCats = fromRule ++ fromItems
+        mentionedCats.subsetOf(commonExports)
+      case _ => true
+    }
+
+    val allowedLabels = filteredTerms.collect {
+      case rule: Rule => labelToString(rule.label_)
+    }
+
+    val commonEquations = presA.listequation_.asScala.toSet intersect presB.listequation_.asScala.toSet
+    val filteredEquations = commonEquations.filter { eq =>
+      labelsInEquation(eq).subsetOf(allowedLabels)
+    }
+
+    val commonRewrites = presA.listrewritedecl_.asScala.toSet intersect presB.listrewritedecl_.asScala.toSet
+    val filteredRewrites = commonRewrites.filter {
+      case rdecl: RDecl => labelsInRewrite(rdecl.rewrite_).subsetOf(allowedLabels)
+      case _ => true
+    }
+
+    copyPres(
+      empty,
+      listcat = Some(commonExports.toList),
+      listdef = Some(filteredTerms.toList),
+      listequation = Some(filteredEquations.toList),
+      listrewritedecl = Some(filteredRewrites.toList)
+    )
   }
 
   def handleSubtract(interpreter: InstInterpreter,
@@ -687,12 +708,21 @@ object InstInterpreterCases {
       case None            => Some(s"Identifier ${ref.ident_} is free")
     }
 
-  def handleRef(env: List[(String, BasePres)], ref: TheoryInstRef): Either[String, BasePres] =
-    Right(env.reverse.find(_._1 == ref.ident_).get._2)
+  def handleRef(env: List[(String, BasePres)], ref: TheoryInstRef): BasePres = {
+    env.reverse.find(_._1 == ref.ident_).get._2
+  }
 
-  def handleRec(interpreter: InstInterpreter, env: List[(String, BasePres)], rec: TheoryInstRec): Either[String, BasePres] =
-    interpreter.interpret(env, rec.theoryinst_1).flatMap { pres1 =>
-      val envUpdated = env :+ (rec.ident_, pres1)
-      interpreter.interpret(envUpdated, rec.theoryinst_2)
+  def handleRec(interpreter: InstInterpreter, env: List[(String, BasePres)], rec: TheoryInstRec): BasePres = {
+    val pres1 = interpreter.interpret(env, rec.theoryinst_1) match {
+      case Right(value) => value
+      case Left(msg)    => sys.error(s"Failed to interpret theoryinst_1: $msg")
     }
+
+    val envUpdated = env :+ (rec.ident_, pres1)
+
+    interpreter.interpret(envUpdated, rec.theoryinst_2) match {
+      case Right(value) => value
+      case Left(msg)    => sys.error(s"Failed to interpret theoryinst_2: $msg")
+    }
+  }
 }

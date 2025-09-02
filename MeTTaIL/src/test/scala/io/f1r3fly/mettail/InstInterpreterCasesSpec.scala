@@ -74,14 +74,12 @@ class InstInterpreterCasesSpec extends AnyFunSuite {
   // --- handleEmpty & handleFree ---
   test("handleEmpty should return an empty BasePres") {
     val res = handleEmpty()
-    assert(res.isRight)
-    assert(res.getOrElse(fail("Expected Right(BasePres)")) == BasePresOps.empty)
+    assert(res == BasePresOps.empty)
   }
 
   test("handleFree should return an empty BasePres") {
     val res = handleFree()
-    assert(res.isRight)
-    assert(res.getOrElse(fail("Expected Right(BasePres)")) == BasePresOps.empty)
+    assert(res == BasePresOps.empty)
   }
 
   test("handleDisj should merge two BasePres from interpreter results") {
@@ -91,7 +89,7 @@ class InstInterpreterCasesSpec extends AnyFunSuite {
     val dummyInterpreter = new DummyInterpreter(singleCatPres)
     val inst = new TheoryInstDisj(new TheoryInstEmpty(), new TheoryInstEmpty()) 
     val res = handleDisj(dummyInterpreter, Nil, inst)
-    assert(res.isRight)
+    assert(res == singleCatPres)
   }
 
   test("handleAddExports should error when given an empty exports block") {
@@ -186,7 +184,7 @@ class InstInterpreterCasesSpec extends AnyFunSuite {
     val env = List(("k", bp))
     val ref = new TheoryInstRef("k")
     val res = handleRef(env, ref)
-    assert(res == Right(bp))
+    assert(res == bp)
   }
 
   test("handleRef should error when identifier is free") {
@@ -205,7 +203,7 @@ class InstInterpreterCasesSpec extends AnyFunSuite {
     val rec = new TheoryInstRec("x", inst1, inst2)
 
     val res = handleRec(interp, Nil, rec)
-    assert(res == Right(bp2))
+    assert(res == bp2)
   }
 }
 

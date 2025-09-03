@@ -172,8 +172,9 @@ class InstInterpreterCasesSpec extends AnyFunSuite {
     val mp = ModuleProcessor.default
 
     val res = checkCtor(interp, env, resolved, path, ctor, mp)
-    assert(res.isDefined)
-    assert(res.get.contains(s"Module not found: $path"))
+    // assert(res.isDefined)
+    // assert(res.get.contains(s"Module not found: $path"))
+    assert(res.contains(s"Module not found: $path"))
   }
 
   // --- handleRef ---

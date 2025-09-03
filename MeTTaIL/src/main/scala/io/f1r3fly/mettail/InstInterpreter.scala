@@ -24,7 +24,7 @@ class InstInterpreter(
     case addRewrites: TheoryInstAddRewrites         => Right(handleAddRewrites(this, env, addRewrites))
     case empty: TheoryInstEmpty                     => Right(handleEmpty())
     case ctor: TheoryInstCtor                       => 
-      handleCtor(this, env, resolvedModules, currentModulePath, ctor, moduleProcessor)
+      Right(handleCtor(this, env, resolvedModules, currentModulePath, ctor, moduleProcessor))
     case ref: TheoryInstRef                         => Right(handleRef(env, ref))
     case rec: TheoryInstRec                         => Right(handleRec(this, env, rec))
     case free: TheoryInstFree                       => Right(handleFree())

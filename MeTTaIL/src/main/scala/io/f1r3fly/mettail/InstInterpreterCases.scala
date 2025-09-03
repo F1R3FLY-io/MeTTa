@@ -183,25 +183,22 @@ object InstInterpreterCases {
                         interpreter: InstInterpreter,
                         env: List[(String, BasePres)],
                         inst: TheoryInstAddExports
-                      ): Either[String, BasePres] = {
+                      ): BasePres = {
     val basePres = interpreter.interpret(env, inst.theoryinst_).right.get
-    inst.listexport_.toArray.toList.foldLeft[Either[String, BasePres]](Right(basePres)) {
-      (accEither, expInst) =>
-        val currentPres = accEither.right.get
-
-        expInst match {
-          // For a BaseExport, simply add its Cat to the exports list.
-          case base: BaseExport =>
-            val updatedCats = currentPres.listcat_.asScala.toList :+ base.cat_
-            Right(BasePresOps.copyPres(currentPres, listcat = Some(updatedCats)))
-          // For a RenameExport, update all occurrences
-          // Checking that the old Cat is present is in checkAddExports().
-          case re: RenameExport =>
-            val currentCats = currentPres.listcat_.asScala.toList
-            val updatedCats = currentCats.map(cat => if (cat == re.cat_1) re.cat_2 else cat)
-            val updatedDefs = currentPres.listdef_.asScala.toList.map(d => updateDef(d, re.cat_1, re.cat_2))
-            Right(BasePresOps.copyPres(currentPres, listcat = Some(updatedCats), listdef = Some(updatedDefs)))
-        }
+    inst.listexport_.toArray.toList.foldLeft(basePres) { (currentPres, expInst) =>
+      expInst match {
+        // For a BaseExport, simply add its Cat to the exports list.
+        case base: BaseExport =>
+          val updatedCats = currentPres.listcat_.asScala.toList :+ base.cat_
+          BasePresOps.copyPres(currentPres, listcat = Some(updatedCats))
+        // For a RenameExport, update all occurrences
+        // Checking that the old Cat is present is in checkAddExports().
+        case re: RenameExport =>
+          val currentCats = currentPres.listcat_.asScala.toList
+          val updatedCats = currentCats.map(cat => if (cat == re.cat_1) re.cat_2 else cat)
+          val updatedDefs = currentPres.listdef_.asScala.toList.map(d => updateDef(d, re.cat_1, re.cat_2))
+          BasePresOps.copyPres(currentPres, listcat = Some(updatedCats), listdef = Some(updatedDefs))
+      }
     }
   }
 

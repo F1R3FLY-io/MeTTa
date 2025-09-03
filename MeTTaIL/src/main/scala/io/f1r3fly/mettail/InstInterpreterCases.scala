@@ -477,6 +477,7 @@ object InstInterpreterCases {
       }
     }.left.toOption
 
+  /*
   def handleAddTerms(
                       interpreter: InstInterpreter,
                       env: List[(String, BasePres)],
@@ -492,6 +493,29 @@ object InstInterpreterCases {
       }
       copyPres(basePres, listdef = Some(updatedDefs))
     }
+  */
+  def handleAddTerms(
+                      interpreter: InstInterpreter,
+                      env: List[(String, BasePres)],
+                      inst: TheoryInstAddTerms
+                    ): BasePres = {
+    // Interpret the base presentation from the theory instance
+    val basePres = interpreter.interpret(env, inst.theoryinst_).right.get
+
+    // Extract new term definitions from the grammar
+    val newTerms: List[Def] = inst.grammar_ match {
+      case g: MkGrammar => g.listdef_.iterator.asScala.toList
+      case _            => Nil
+    }
+
+    // Filter only Rule definitions from the new terms and append to existing ones
+    val updatedDefs = basePres.listdef_.asScala.toList ++ newTerms.collect {
+      case rule: Rule => rule
+    }
+
+    // Return a copy of the presentation with updated definitions
+    copyPres(basePres, listdef = Some(updatedDefs))
+  }
 
   def checkAddEquations(interpreter: InstInterpreter,
                         env: List[(String, BasePres)],

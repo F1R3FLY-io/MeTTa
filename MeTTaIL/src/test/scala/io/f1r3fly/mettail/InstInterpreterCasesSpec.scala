@@ -139,10 +139,8 @@ class InstInterpreterCasesSpec extends AnyFunSuite {
     val interp  = new SingleInterpreter(base, inst0)
 
     val res = handleAddTerms(interp, Nil, inst)
-    assert(res.isRight)
-    val out = res.getOrElse(fail())
     // since base had no defs, you get exactly the grammar’s rule
-    out.listdef_.asScala.toList shouldEqual List(rule)
+    res.listdef_.asScala.toList shouldEqual List(rule)
   }
 
   // --- handleAddRewrites ---
@@ -172,8 +170,6 @@ class InstInterpreterCasesSpec extends AnyFunSuite {
     val mp = ModuleProcessor.default
 
     val res = checkCtor(interp, env, resolved, path, ctor, mp)
-    // assert(res.isDefined)
-    // assert(res.get.contains(s"Module not found: $path"))
     assert(res.contains(s"Module not found: $path"))
   }
 

@@ -10,7 +10,7 @@ object InstInterpreterCases {
   import ASTHelpers._
   import BasePresOps._
   import LabelHelpers._
-  import ModuleProcessor._
+  import scala.jdk.CollectionConverters._
 
   // Distributes List over Either.  If any element is a Left(err),
   //   the result is a Left(err); otherwise, it's a Right(listOfA)
@@ -347,6 +347,7 @@ object InstInterpreterCases {
     }.left.toOption
   }
 
+  /*
   def handleAddReplacements(
                              interpreter: InstInterpreter,
                              env: List[(String, BasePres)],
@@ -415,6 +416,106 @@ object InstInterpreterCases {
         new RDecl(rdecl.ident_, updateRewrite(rdecl.rewrite_))
       }
 
+      BasePresOps.copyPres(
+        currentPres,
+        listdef         = Some(newDefs),
+        listequation    = Some(newEquations),
+        listrewritedecl = Some(newRewrites)
+      )
+    }
+  }
+  */
+  def handleAddReplacements(
+                             interpreter: InstInterpreter,
+                             env: List[(String, BasePres)],
+                             inst: TheoryInstAddReplacements
+                           ): BasePres = {
+    interpreter.interpret(env, inst.theoryinst_).right.get
+
+    val basePres = interpreter.interpret(env, inst.theoryinst_).right.get
+    val replacements: List[SimpleRepl] =
+      inst.listreplacement_.asScala.toList.collect { case s: SimpleRepl => s }
+
+    def convertIntList(intList: IntList): List[Int] = intList match {
+      case ints: Ints => ints.listinteger_.asScala.toList.map(_.intValue())
+    }
+
+    // Process each replacement sequentially.
+    replacements.foldLeft(basePres) { (currentPres, s) =>
+      // Find the Rule in currentPres whose label matches s.label_.
+      val rule =
+        currentPres.listdef_.asScala.collect { case r: Rule => r }
+          .find(r => labelToString(r.label_) == labelToString(s.label_)).get
+
+      // s.def_ must be a Rule
+      val replRule = s.def_.asInstanceOf[Rule]
+
+      // 1) Category must match
+      // 2) Duplicate‐label check: the new rule’s label must not collide
+      // 3) Arity check
+      val origNTs = nonTerminals(rule.listitem_)
+      val replNTs = nonTerminals(replRule.listitem_)
+      val n       = origNTs.size
+      val perm    = convertIntList(s.intlist_)
+
+      // 4) Permutation check
+      // 5) Category‐alignment check across each position
+      val newDefs = currentPres.listdef_.asScala.toList.map {
+        case r: Rule if labelToString(r.label_) == labelToString(s.label_) => replRule
+        case other => other
+      }
+
+      def updateAST(ast: AST): AST = ast match {
+        case sexp: ASTSExp =>
+          // first recurse on args
+          val newArgs = sexp.listast_.asScala.map(updateAST).toList
+          // then if the labels match, permute and replace label
+          if (labelToString(sexp.label_) == labelToString(s.label_)) {
+            val permuted = perm.map(newArgs(_))
+            val newListAST = new ListAST()
+            newListAST.addAll(permuted.asJava)
+            new ASTSExp(replRule.label_, newListAST)
+          } else {
+            val newListAST = new ListAST()
+            newListAST.addAll(newArgs.asJava)
+            new ASTSExp(sexp.label_, newListAST)
+          }
+
+        case sub: ASTSubst =>
+          new ASTSubst(updateAST(sub.ast_1), updateAST(sub.ast_2), sub.ident_)
+
+        case other => other
+      }
+
+      def updateEquation(eq: Equation): Equation = eq match {
+        case ef: EquationFresh =>
+          new EquationFresh(
+            ef.ident_1,
+            ef.ident_2,
+            updateEquation(ef.equation_)
+          )
+        case impl: EquationImpl =>
+          new EquationImpl(updateAST(impl.ast_1), updateAST(impl.ast_2))
+      }
+
+      val newEquations = currentPres.listequation_.asScala.toList.map(updateEquation)
+
+      def updateRewrite(r: Rewrite): Rewrite = r match {
+        case rb: RewriteBase =>
+          new RewriteBase(updateAST(rb.ast_1), updateAST(rb.ast_2))
+
+        case ctx: RewriteContext =>
+          new RewriteContext(ctx.hypothesis_, updateRewrite(ctx.rewrite_))
+
+        case other => other
+      }
+
+      val newRewrites = currentPres.listrewritedecl_.asScala.toList.map { rd =>
+        val rdecl = rd.asInstanceOf[RDecl]
+        new RDecl(rdecl.ident_, updateRewrite(rdecl.rewrite_))
+      }
+
+      // Return the updated BasePres with definitions, equations AND rewrites replaced
       BasePresOps.copyPres(
         currentPres,
         listdef         = Some(newDefs),

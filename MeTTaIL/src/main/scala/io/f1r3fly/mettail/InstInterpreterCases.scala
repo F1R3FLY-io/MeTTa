@@ -526,34 +526,34 @@ object InstInterpreterCases {
     }
   }
 
-  def handleAddEquations(interpreter: InstInterpreter,
-                         env: List[(String, BasePres)],
-                         inst: TheoryInstAddEquations): Either[String, BasePres] = {
-    Right {
-      val basePres = interpreter.interpret(env, inst.theoryinst_).right.get
-      val defs: Map[Label, Rule] = listDefToMap(basePres.listdef_)
-      inst.listequation_.asScala.toList.foldLeft(basePres) { (bp, e) =>
-        val pretty = s"equation ${PrettyPrinter.print(e)}"
-        // Check validity of equations as follows
-        val eqn = equationImpl(e)
-        // The two sides of the equation have the same category
-        // OR one has a category and the other is a top-level variable.
-        sameCategory(catOfAST(eqn.ast_1, defs), catOfAST(eqn.ast_2, defs), pretty).right.get
-        // Check that each variable has a consistent category
-        // Check that the vars on the left are consistent.
-        val m1 = consistentCategory(eqn.ast_1, defs, pretty).right.get
-        // Check that the vars on the right are consistent.
-        val m2 = consistentCategory(eqn.ast_2, defs, pretty).right.get
-        val allVars = m1.keySet ++ m2.keySet
-        allVars.foreach { ident =>
-          (m1.get(ident), m2.get(ident)) match {
-            case (Some(l), Some(r)) if l != r =>
-            // Previously returned Left with error message, now ignored
-            case _ => ()
-          }
+  def handleAddEquations(
+                          interpreter: InstInterpreter,
+                          env: List[(String, BasePres)],
+                          inst: TheoryInstAddEquations
+                        ): BasePres = {
+    val basePres = interpreter.interpret(env, inst.theoryinst_).right.get
+    val defs: Map[Label, Rule] = listDefToMap(basePres.listdef_)
+
+    inst.listequation_.asScala.toList.foldLeft(basePres) { (bp, e) =>
+      val pretty = s"equation ${PrettyPrinter.print(e)}"
+      // Check validity of equations as follows
+      val eqn = equationImpl(e)
+      // The two sides of the equation have the same category
+      // OR one has a category and the other is a top-level variable.
+      sameCategory(catOfAST(eqn.ast_1, defs), catOfAST(eqn.ast_2, defs), pretty).right.get
+      // Check that each variable has a consistent category
+      // Check that the vars on the left are consistent.
+      val m1 = consistentCategory(eqn.ast_1, defs, pretty).right.get
+      // Check that the vars on the right are consistent.
+      val m2 = consistentCategory(eqn.ast_2, defs, pretty).right.get
+      val allVars = m1.keySet ++ m2.keySet
+      allVars.foreach { ident =>
+        (m1.get(ident), m2.get(ident)) match {
+          case (Some(l), Some(r)) if l != r =>
+          case _ => () // Error messages are ignored: use checkAddEquations(), first
         }
-        copyPres(bp, listequation = Some(bp.listequation_.asScala.toList :+ e))
       }
+      copyPres(bp, listequation = Some(bp.listequation_.asScala.toList :+ e))
     }
   }
 

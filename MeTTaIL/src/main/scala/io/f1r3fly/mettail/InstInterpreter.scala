@@ -20,7 +20,7 @@ class InstInterpreter(
     case addExports: TheoryInstAddExports           => handleAddExports(this, env, addExports)
     case addReplacements: TheoryInstAddReplacements => handleAddReplacements(this, env, addReplacements)
     case addTerms: TheoryInstAddTerms               => handleAddTerms(this, env, addTerms)
-    case addEquations: TheoryInstAddEquations       => handleAddEquations(this, env, addEquations)
+    case addEquations: TheoryInstAddEquations       => Right(handleAddEquations(this, env, addEquations))
     case addRewrites: TheoryInstAddRewrites         => Right(handleAddRewrites(this, env, addRewrites))
     case empty: TheoryInstEmpty                     => Right(handleEmpty())
     case ctor: TheoryInstCtor                       => 

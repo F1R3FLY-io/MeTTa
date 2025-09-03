@@ -610,29 +610,26 @@ object InstInterpreterCases {
   }
 
   def handleAddRewrites(
-                       interpreter: InstInterpreter,
-                       env: List[(String, BasePres)],
-                       inst: TheoryInstAddRewrites
-                     ): Either[String, BasePres] = {
-  interpreter.interpret(env, inst.theoryinst_).flatMap { basePres =>
+                         interpreter: InstInterpreter,
+                         env: List[(String, BasePres)],
+                         inst: TheoryInstAddRewrites
+                       ): BasePres = {
+    val basePres = interpreter.interpret(env, inst.theoryinst_).right.get
     val defs: Map[Label, Rule] = listDefToMap(basePres.listdef_)
-    // Extract the new rewrite declarations from the instruction.
-    inst.listrewritedecl_.asScala.foldLeft[Either[String, BasePres]](Right(basePres)) {
-      (accEither, rewriteDecl) =>
-        accEither.flatMap { currentPres =>
-          val rw = rewrite(rewriteDecl)
-          val rb = rewriteBase(rw)
-          for {
-            _ <- sameCategory(catOfAST(rb.ast_1, defs), catOfAST(rb.ast_2, defs), "")
-            _ <- consistentCategory(rb.ast_1, defs, "")
-            _ <- consistentCategory(rb.ast_2, defs, "")
-            _ <- checkHypotheticals(hypVars(rw), defs, rb)
-          } yield copyPres(
-            currentPres,
-            listrewritedecl = Some(currentPres.listrewritedecl_.asScala.toList :+ rewriteDecl)
-          )
-        }
-      }
+
+    inst.listrewritedecl_.asScala.foldLeft(basePres) { (currentPres, rewriteDecl) =>
+      val rw = rewrite(rewriteDecl)
+      val rb = rewriteBase(rw)
+
+      sameCategory(catOfAST(rb.ast_1, defs), catOfAST(rb.ast_2, defs), "")
+      consistentCategory(rb.ast_1, defs, "")
+      consistentCategory(rb.ast_2, defs, "")
+      checkHypotheticals(hypVars(rw), defs, rb)
+
+      copyPres(
+        currentPres,
+        listrewritedecl = Some(currentPres.listrewritedecl_.asScala.toList :+ rewriteDecl)
+      )
     }
   }
 

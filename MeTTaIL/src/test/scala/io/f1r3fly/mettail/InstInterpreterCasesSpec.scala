@@ -159,9 +159,7 @@ class InstInterpreterCasesSpec extends AnyFunSuite {
     val interp = new SingleInterpreter(base, inst0)
 
     val res = handleAddRewrites(interp, Nil, inst)
-    assert(res.isRight)
-    val out = res.getOrElse(fail())
-    out.listrewritedecl_.asScala.toList shouldEqual List(new RDecl("r", rw))
+    res.listrewritedecl_.asScala.toList shouldEqual List(new RDecl("r", rw))
   }
 
   // --- handleCtor ---

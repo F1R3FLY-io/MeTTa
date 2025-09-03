@@ -102,46 +102,55 @@ object InstInterpreterCases {
     )
   }
 
-  def handleSubtract(interpreter: InstInterpreter,
-                     env: List[(String, BasePres)],
-                     subtract: TheoryInstSubtract): Either[String, BasePres] = {
-    for {
-      bp1 <- interpreter.interpret(env, subtract.theoryinst_1)
-      bp2 <- interpreter.interpret(env, subtract.theoryinst_2)
-      // Subtract the exported categories
-      diffCats = bp1.listcat_.asScala.toSet -- bp2.listcat_.asScala.toSet
-      // For definitions, remove any that are in bp2 or that mention a category that was removed.
-      diffDefs = bp1.listdef_.asScala.toSet.filter { d =>
-        !bp2.listdef_.asScala.toSet.contains(d) &&
+  def handleSubtract(
+                      interpreter: InstInterpreter,
+                      env: List[(String, BasePres)],
+                      subtract: TheoryInstSubtract
+                    ): BasePres = {
+    val bp1 = interpreter.interpret(env, subtract.theoryinst_1).right.get
+    val bp2 = interpreter.interpret(env, subtract.theoryinst_2).right.get
+
+    // Subtract the exported categories
+    val diffCats = bp1.listcat_.asScala.toSet -- bp2.listcat_.asScala.toSet
+
+    // For definitions, remove any that are in bp2 or that mention a category that was removed.
+    val diffDefs = bp1.listdef_.asScala.toSet.filter { d =>
+      !bp2.listdef_.asScala.toSet.contains(d) &&
         (d match {
-           case rule: Rule =>
-             val ruleCats = Set(rule.cat_) ++ rule.listitem_.asScala.collect {
-               case nt: NTerminal => nt.cat_
-             }
-             ruleCats.subsetOf(diffCats)
-           case _ => true
+          case rule: Rule =>
+            val ruleCats = Set(rule.cat_) ++ rule.listitem_.asScala.collect {
+              case nt: NTerminal => nt.cat_
+            }
+            ruleCats.subsetOf(diffCats)
+          case _ => true
         })
-      }
-      // Allowed labels are taken from the surviving Rule definitions.
-      allowedLabels = diffDefs.collect { case rule: Rule => labelToString(rule.label_) }
-      // For equations, only keep those not in bp2 and whose mentioned labels are among allowedLabels.
-      diffEquations = bp1.listequation_.asScala.toSet.filter { eq =>
-        !bp2.listequation_.asScala.toSet.contains(eq) &&
+    }
+
+    // Allowed labels are taken from the surviving Rule definitions.
+    val allowedLabels = diffDefs.collect { case rule: Rule => labelToString(rule.label_) }
+
+    // For equations, only keep those not in bp2 and whose mentioned labels are among allowedLabels.
+    val diffEquations = bp1.listequation_.asScala.toSet.filter { eq =>
+      !bp2.listequation_.asScala.toSet.contains(eq) &&
         labelsInEquation(eq).subsetOf(allowedLabels)
-      }
-      // For rewrite declarations, keep only those not in bp2 and whose rewrite’s labels are a subset of allowedLabels.
-      diffRewrites = bp1.listrewritedecl_.asScala.toSet.filter { rw =>
-        !bp2.listrewritedecl_.asScala.toSet.contains(rw) &&
+    }
+
+    // For rewrite declarations, keep only those not in bp2 and whose rewrite’s labels are a subset of allowedLabels.
+    val diffRewrites = bp1.listrewritedecl_.asScala.toSet.filter { rw =>
+      !bp2.listrewritedecl_.asScala.toSet.contains(rw) &&
         (rw match {
-           case rdecl: RDecl => labelsInRewrite(rdecl.rewrite_).subsetOf(allowedLabels)
-           case _ => true
+          case rdecl: RDecl => labelsInRewrite(rdecl.rewrite_).subsetOf(allowedLabels)
+          case _ => true
         })
-      }
-    } yield copyPres(empty,
-                     listcat = Some(diffCats.toList),
-                     listdef = Some(diffDefs.toList),
-                     listequation = Some(diffEquations.toList),
-                     listrewritedecl = Some(diffRewrites.toList))
+    }
+
+    copyPres(
+      empty,
+      listcat         = Some(diffCats.toList),
+      listdef         = Some(diffDefs.toList),
+      listequation    = Some(diffEquations.toList),
+      listrewritedecl = Some(diffRewrites.toList)
+    )
   }
 
   def checkAddExports(
@@ -347,84 +356,6 @@ object InstInterpreterCases {
     }.left.toOption
   }
 
-  /*
-  def handleAddReplacements(
-                             interpreter: InstInterpreter,
-                             env: List[(String, BasePres)],
-                             inst: TheoryInstAddReplacements
-                           ): Either[String, BasePres] = Right {
-    import scala.jdk.CollectionConverters._
-    val basePres = interpreter.interpret(env, inst.theoryinst_).right.get
-    val replacements: List[SimpleRepl] =
-      inst.listreplacement_.asScala.toList.collect { case s: SimpleRepl => s }
-    def convertIntList(intList: IntList): List[Int] = intList match {
-      case ints: Ints => ints.listinteger_.asScala.toList.map(_.intValue())
-    }
-
-    // Process each replacement sequentially.
-    replacements.foldLeft(basePres) { (currentPres, s) =>
-      val rule = currentPres.listdef_.asScala.collect { case r: Rule => r }
-        .find(r => labelToString(r.label_) == labelToString(s.label_)).get
-      val replRule = s.def_.asInstanceOf[Rule]
-      val origNTs = nonTerminals(rule.listitem_)
-      val replNTs = nonTerminals(replRule.listitem_)
-      val perm    = convertIntList(s.intlist_)
-      val newDefs = currentPres.listdef_.asScala.toList.map {
-        case r: Rule if labelToString(r.label_) == labelToString(s.label_) => replRule
-        case other => other
-      }
-
-      def updateAST(ast: AST): AST = ast match {
-        case sexp: ASTSExp =>
-          val newArgs = sexp.listast_.asScala.map(updateAST).toList
-          if (labelToString(sexp.label_) == labelToString(s.label_)) {
-            val permuted = perm.map(newArgs(_))
-            val newListAST = new ListAST()
-            newListAST.addAll(permuted.asJava)
-            new ASTSExp(replRule.label_, newListAST)
-          } else {
-            val newListAST = new ListAST()
-            newListAST.addAll(newArgs.asJava)
-            new ASTSExp(sexp.label_, newListAST)
-          }
-
-        case sub: ASTSubst =>
-          new ASTSubst(updateAST(sub.ast_1), updateAST(sub.ast_2), sub.ident_)
-
-        case other => other
-      }
-
-      def updateEquation(eq: Equation): Equation = eq match {
-        case ef: EquationFresh =>
-          new EquationFresh(ef.ident_1, ef.ident_2, updateEquation(ef.equation_))
-        case impl: EquationImpl =>
-          new EquationImpl(updateAST(impl.ast_1), updateAST(impl.ast_2))
-      }
-
-      val newEquations = currentPres.listequation_.asScala.toList.map(updateEquation)
-
-      def updateRewrite(r: Rewrite): Rewrite = r match {
-        case rb: RewriteBase =>
-          new RewriteBase(updateAST(rb.ast_1), updateAST(rb.ast_2))
-        case ctx: RewriteContext =>
-          new RewriteContext(ctx.hypothesis_, updateRewrite(ctx.rewrite_))
-        case other => other
-      }
-
-      val newRewrites = currentPres.listrewritedecl_.asScala.toList.map { rd =>
-        val rdecl = rd.asInstanceOf[RDecl]
-        new RDecl(rdecl.ident_, updateRewrite(rdecl.rewrite_))
-      }
-
-      BasePresOps.copyPres(
-        currentPres,
-        listdef         = Some(newDefs),
-        listequation    = Some(newEquations),
-        listrewritedecl = Some(newRewrites)
-      )
-    }
-  }
-  */
   def handleAddReplacements(
                              interpreter: InstInterpreter,
                              env: List[(String, BasePres)],
@@ -578,23 +509,6 @@ object InstInterpreterCases {
       }
     }.left.toOption
 
-  /*
-  def handleAddTerms(
-                      interpreter: InstInterpreter,
-                      env: List[(String, BasePres)],
-                      inst: TheoryInstAddTerms
-                    ): Either[String, BasePres] =
-    interpreter.interpret(env, inst.theoryinst_).map { basePres =>
-      val newTerms: List[Def] = inst.grammar_ match {
-        case g: MkGrammar => g.listdef_.iterator.asScala.toList
-        case _            => Nil
-      }
-      val updatedDefs = basePres.listdef_.asScala.toList ++ newTerms.collect {
-        case rule: Rule => rule
-      }
-      copyPres(basePres, listdef = Some(updatedDefs))
-    }
-  */
   def handleAddTerms(
                       interpreter: InstInterpreter,
                       env: List[(String, BasePres)],

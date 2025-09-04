@@ -97,12 +97,12 @@ Module ArithmeticOperations {
        c.m(3, x, Nil, *y)
      )
 
-  -- Calculatiing intersection of sets:
+  -- Calculating intersection of sets:
      (
        a /\ b
      )
 
-  -- Calculatiing union of sets:
+  -- Calculating union of sets:
      (
        a1 \/ b2
      )

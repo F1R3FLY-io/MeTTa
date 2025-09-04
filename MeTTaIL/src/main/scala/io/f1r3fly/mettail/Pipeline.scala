@@ -24,6 +24,7 @@ case class Context(
   linearized:  Seq[(String, String)]         = Nil,
   finalInst:   Option[TheoryInst]            = None,
   presentation: Option[BasePres]             = None,
+  presCheck: String                          = "",
 )
 
 object LoadModules extends Pass[Context] {
@@ -90,6 +91,23 @@ object Interpret extends Pass[Context] {
   }
 }
 
+object CheckInterpret extends Pass[Context] {
+  val name = "Check Interpretation"
+  def run(ctx: Context) = {
+    ctx.finalInst match {
+      case Some(inst) =>
+        val interp = new InstInterpreter(ctx.modules, ctx.entryPath, ModuleProcessor.default)
+        interp.check_interpret(Nil, inst) match {
+          case None =>
+            println("\n[Verified Presentation]\n")
+            ctx.copy(presCheck = "")
+          case Some(err) => sys.error(s"Interpretation failed: $err")
+        }
+      case None => sys.error("No TheoryInst found")
+    }
+  }
+}
+
 object DesugarBinders extends Pass[Context] {
   val name = "Desugar Binds"
   def run(ctx: Context) = {
@@ -119,7 +137,7 @@ object GenerateBNFC extends Pass[Context] {
                         .getOrElse(sys.error("No presentation"))
     println("\n[Generated BNFC]\n")
     println(PrettyPrinter.print(listDef))
-    
+
     ctx.copy(presentation = ctx.presentation.map((pres: BasePres) => new BasePres(
       pres.listcat_,
       listDef,

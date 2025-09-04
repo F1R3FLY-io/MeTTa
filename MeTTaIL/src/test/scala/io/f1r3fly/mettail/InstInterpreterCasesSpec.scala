@@ -74,14 +74,12 @@ class InstInterpreterCasesSpec extends AnyFunSuite {
   // --- handleEmpty & handleFree ---
   test("handleEmpty should return an empty BasePres") {
     val res = handleEmpty()
-    assert(res.isRight)
-    assert(res.getOrElse(fail("Expected Right(BasePres)")) == BasePresOps.empty)
+    assert(res == BasePresOps.empty)
   }
 
   test("handleFree should return an empty BasePres") {
     val res = handleFree()
-    assert(res.isRight)
-    assert(res.getOrElse(fail("Expected Right(BasePres)")) == BasePresOps.empty)
+    assert(res == BasePresOps.empty)
   }
 
   test("handleDisj should merge two BasePres from interpreter results") {
@@ -91,7 +89,7 @@ class InstInterpreterCasesSpec extends AnyFunSuite {
     val dummyInterpreter = new DummyInterpreter(singleCatPres)
     val inst = new TheoryInstDisj(new TheoryInstEmpty(), new TheoryInstEmpty()) 
     val res = handleDisj(dummyInterpreter, Nil, inst)
-    assert(res.isRight)
+    assert(res == singleCatPres)
   }
 
   test("handleAddExports should error when given an empty exports block") {
@@ -103,11 +101,9 @@ class InstInterpreterCasesSpec extends AnyFunSuite {
     val inst    = new TheoryInstAddExports(inst0, listexport)
     val interp  = new SingleInterpreter(base, inst0)
 
-    val res = handleAddExports(interp, Nil, inst)
-    assert(res.isLeft)
-    assert(res.left.get.contains(
-      "Error: missing distinguished export."
-    ))
+    val res = checkAddExports(interp, Nil, inst)
+    assert(res.isDefined)
+    assert(res.get.contains("Error: missing distinguished export."))
   }
 
   // --- handleAddTerms: unknown categories ---
@@ -121,8 +117,8 @@ class InstInterpreterCasesSpec extends AnyFunSuite {
     val inst    = new TheoryInstAddTerms(inst0, grammar)
     val interp  = new SingleInterpreter(base, inst0)
 
-    val res = handleAddTerms(interp, Nil, inst)
-    assert(res.isLeft)
+    val res = checkAddTerms(interp, Nil, inst)
+    assert(res.isDefined)
     /* fails sometimes without any changes
     assert(res.left.get.contains(
       "Error: Def in addTerms mentions unknown categories: Set(C)"
@@ -143,10 +139,8 @@ class InstInterpreterCasesSpec extends AnyFunSuite {
     val interp  = new SingleInterpreter(base, inst0)
 
     val res = handleAddTerms(interp, Nil, inst)
-    assert(res.isRight)
-    val out = res.getOrElse(fail())
     // since base had no defs, you get exactly the grammar’s rule
-    out.listdef_.asScala.toList shouldEqual List(rule)
+    res.listdef_.asScala.toList shouldEqual List(rule)
   }
 
   // --- handleAddRewrites ---
@@ -163,9 +157,7 @@ class InstInterpreterCasesSpec extends AnyFunSuite {
     val interp = new SingleInterpreter(base, inst0)
 
     val res = handleAddRewrites(interp, Nil, inst)
-    assert(res.isRight)
-    val out = res.getOrElse(fail())
-    out.listrewritedecl_.asScala.toList shouldEqual List(new RDecl("r", rw))
+    res.listrewritedecl_.asScala.toList shouldEqual List(new RDecl("r", rw))
   }
 
   // --- handleCtor ---
@@ -177,9 +169,8 @@ class InstInterpreterCasesSpec extends AnyFunSuite {
     val ctor = new TheoryInstCtor(new BaseDottedPath("X"), new ListTheoryInst())
     val mp = ModuleProcessor.default
 
-    val res = handleCtor(interp, env, resolved, path, ctor, mp)
-    assert(res.isLeft)
-    assert(res.left.get.contains(s"Module not found: $path"))
+    val res = checkCtor(interp, env, resolved, path, ctor, mp)
+    assert(res.contains(s"Module not found: $path"))
   }
 
   // --- handleRef ---
@@ -188,14 +179,14 @@ class InstInterpreterCasesSpec extends AnyFunSuite {
     val env = List(("k", bp))
     val ref = new TheoryInstRef("k")
     val res = handleRef(env, ref)
-    assert(res == Right(bp))
+    assert(res == bp)
   }
 
   test("handleRef should error when identifier is free") {
     val ref = new TheoryInstRef("missing")
-    val res = handleRef(Nil, ref)
-    assert(res.isLeft)
-    assert(res.left.get.contains("Identifier missing is free"))
+    val res = checkRef(Nil, ref)
+    assert(res.isDefined)
+    assert(res.get.contains("Identifier missing is free"))
   }
 
   // --- handleRec ---
@@ -207,7 +198,7 @@ class InstInterpreterCasesSpec extends AnyFunSuite {
     val rec = new TheoryInstRec("x", inst1, inst2)
 
     val res = handleRec(interp, Nil, rec)
-    assert(res == Right(bp2))
+    assert(res == bp2)
   }
 }
 

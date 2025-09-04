@@ -139,16 +139,16 @@ class InstInterpreterSpec extends AnyFlatSpec with Matchers {
 
   it should "error when interpreting a module with duplicate term labels" in {
     val (interpreter, inst) = loadInterpreterFor("../GSLT/src/test/module/bad/RepeatLabel.module")
-    val res = interpreter.interpret(Nil, inst)
+    val res = interpreter.check_interpret(Nil, inst)
 
-    res shouldBe Left("Error: Duplicate label in addTerms: Foo")
+    res shouldBe Some("Error: Duplicate label in addTerms: Foo")
   }
 
   it should "error when interpreting a module with duplicate replacement labels" in {
     val (interpreter, inst) = loadInterpreterFor("../GSLT/src/test/module/bad/ReplacementShadows.module")
-    val res = interpreter.interpret(Nil, inst)
+    val res = interpreter.check_interpret(Nil, inst)
 
-    res shouldBe Left("Error: Replacement rule label Bar already exists in theory.")
+    res shouldBe Some("Error: Replacement rule label Bar already exists in theory.")
   }
 
   it should "error when local theory not found" in {
@@ -158,10 +158,10 @@ class InstInterpreterSpec extends AnyFlatSpec with Matchers {
     val resolved     = Map("path" -> module)
     val interpreter  = new InstInterpreter(resolved, "path", ModuleProcessor.default)
     val ctor         = new TheoryInstCtor(new BaseDottedPath("Missing"), new ListTheoryInst())
-    val res          = interpreter.interpret(Nil, ctor)
+    val res          = interpreter.check_interpret(Nil, ctor)
 
-    assert(res.isLeft)
-    assert(res.left.get.contains("Theory 'Missing' not found in path or imports"))
+    assert(res.isDefined)
+    assert(res.get.contains("Theory 'Missing' not found in path or imports"))
   }
 
   it should "error when module alias not declared" in {
@@ -172,10 +172,10 @@ class InstInterpreterSpec extends AnyFlatSpec with Matchers {
     val interpreter = new InstInterpreter(resolved, "path", ModuleProcessor.default)
     val dp          = new QualifiedDottedPath("u", new BaseDottedPath("X"))
     val ctor        = new TheoryInstCtor(dp, new ListTheoryInst())
-    val res         = interpreter.interpret(Nil, ctor)
+    val res         = interpreter.check_interpret(Nil, ctor)
 
-    assert(res.isLeft)
-    assert(res.left.get.contains("Module alias 'u' not found"))
+    assert(res.isDefined)
+    assert(res.get.contains("Module alias 'u' not found"))
   }
 
   it should "error when theory not found in imported module" in {
@@ -188,19 +188,19 @@ class InstInterpreterSpec extends AnyFlatSpec with Matchers {
     val interpreter = new InstInterpreter(resolved, "path", ModuleProcessor.default)
     val dp          = new QualifiedDottedPath("u", new BaseDottedPath("UnknownTheory"))
     val ctor        = new TheoryInstCtor(dp, new ListTheoryInst())
-    val res         = interpreter.interpret(Nil, ctor)
+    val res         = interpreter.check_interpret(Nil, ctor)
 
-    assert(res.isLeft)
-    assert(res.left.get.contains("Module alias 'u' not found in ImportModuleAs statements of path"))
+    assert(res.isDefined)
+    assert(res.get.contains("Module alias 'u' not found in ImportModuleAs statements of path"))
   }
 
   it should "error when identifier is free" in {
     val resolved    = Map.empty[String, Module]
     val interpreter = new InstInterpreter(resolved, "path", ModuleProcessor.default)
     val ref         = new TheoryInstRef("missing")
-    val res         = interpreter.interpret(Nil, ref)
+    val res         = interpreter.check_interpret(Nil, ref)
 
-    assert(res.isLeft)
-    assert(res.left.get.contains("Identifier missing is free"))
+    assert(res.isDefined)
+    assert(res.get.contains("Identifier missing is free"))
   }
 }

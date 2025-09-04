@@ -23,6 +23,7 @@ object Main {
       DumpASTs,
       DumpLinear,
       FindFinalInst,
+      CheckInterpret,
       Interpret,
       DesugarBinders
     )

@@ -78,10 +78,11 @@ class InstInterpreterCasesSpec extends AnyFunSuite {
   }
 
   test("handleFree should return an empty BasePres") {
-    /* TODO
-    val res = handleFree()
+    val inst = new TheoryInstFree(new BaseDottedPath("ID"))
+    val base  = BasePresOps.empty
+    val interpr = new SingleInterpreter(base, inst)
+    val res = handleFree(interpr, Nil, inst)
     assert(res == BasePresOps.empty)
-    */
   }
 
   test("handleDisj should merge two BasePres from interpreter results") {

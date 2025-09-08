@@ -25,11 +25,6 @@ object InstInterpreterCases {
   def handleEmpty(): BasePres =
     empty
 
-  /*
-  def handleFree(): BasePres =
-    empty
-  */
-
   def handleFree(interpreter: InstInterpreter, env: List[(String, BasePres)], fr: TheoryInstFree): BasePres = {
       interpreter.interpret(env, fr) match {
         case Right(value) => value

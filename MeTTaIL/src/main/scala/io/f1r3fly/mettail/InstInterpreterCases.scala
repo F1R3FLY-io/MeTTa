@@ -25,8 +25,17 @@ object InstInterpreterCases {
   def handleEmpty(): BasePres =
     empty
 
+  /*
   def handleFree(): BasePres =
     empty
+  */
+
+  def handleFree(interpreter: InstInterpreter, env: List[(String, BasePres)], fr: TheoryInstFree): BasePres = {
+      interpreter.interpret(env, fr) match {
+        case Right(value) => value
+        case Left(msg)    => sys.error(s"Failed to interpret: $msg")
+      }
+    }
 
   def handleDisj(interpreter: InstInterpreter, env: List[(String, BasePres)], disj: TheoryInstDisj): BasePres = {
     val presA = interpreter.interpret(env, disj.theoryinst_1) match {

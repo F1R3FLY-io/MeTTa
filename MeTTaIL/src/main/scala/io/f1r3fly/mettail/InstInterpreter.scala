@@ -27,7 +27,7 @@ class InstInterpreter(
       Right(handleCtor(this, env, resolvedModules, currentModulePath, ctor, moduleProcessor))
     case ref: TheoryInstRef                         => Right(handleRef(env, ref))
     case rec: TheoryInstRec                         => Right(handleRec(this, env, rec))
-    case free: TheoryInstFree                       => Right(handleFree())
+    case free: TheoryInstFree                       => Right(handleFree(this, env, free))
   }
 
   // Checks whether the data can be successfully processed by the interpret() method.

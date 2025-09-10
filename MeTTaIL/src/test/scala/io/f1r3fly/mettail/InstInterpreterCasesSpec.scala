@@ -12,16 +12,16 @@ import scala.jdk.CollectionConverters._
 /** A simple interpreter for testing: when asked to interpret exactly `target`, returns `basePres`. */
 class SingleInterpreter(basePres: BasePres, target: TheoryInst)
     extends InstInterpreter(Map.empty, "", ModuleProcessor.default) {
-  override def interpret(env: List[(String, BasePres)], inst: TheoryInst): Either[String, BasePres] =
-    if (inst eq target) Right(basePres)
+  override def interpret(env: List[(String, BasePres)], inst: TheoryInst): BasePres =
+    if (inst eq target) basePres
     else super.interpret(env, inst)
 }
 
 /** A dummy interpreter that always returns the same BasePres, no matter the instruction. */
 class DummyInterpreter(pres: BasePres)
     extends InstInterpreter(Map.empty, "", ModuleProcessor.default) {
-  override def interpret(env: List[(String, BasePres)], inst: TheoryInst): Either[String, BasePres] =
-    Right(pres)
+  override def interpret(env: List[(String, BasePres)], inst: TheoryInst): BasePres =
+    pres
 }
 
 /** A fake interpreter that takes two BasePres and ignores everything else. */
@@ -34,9 +34,9 @@ class PairInterpreter(
   override def interpret(
       env: List[(String, BasePres)],
       inst: TheoryInst
-  ): Either[String, BasePres] =
+  ): BasePres =
     // Used only in the “module not found” test path, so interpret is never actually called.
-    Right(presA)
+    presA
 }
 
 /** A stub for handleRec: returns presA on instA, presB on instB, error otherwise. */
@@ -49,10 +49,10 @@ class RecInterpreter(
   override def interpret(
       env: List[(String, BasePres)],
       inst: TheoryInst
-  ): Either[String, BasePres] =
-    if (inst eq instA) Right(presA)
-    else if (inst eq instB) Right(presB)
-    else Left("Unexpected inst")
+  ): BasePres =
+    if (inst eq instA) presA
+    else if (inst eq instB) presB
+    else sys.error("Unexpected inst")
 }
 
 class InstInterpreterCasesSpec extends AnyFunSuite {
@@ -81,7 +81,7 @@ class InstInterpreterCasesSpec extends AnyFunSuite {
     val inst = new TheoryInstFree(new BaseDottedPath("ID"))
     val base  = BasePresOps.empty
     val interpr = new SingleInterpreter(base, inst)
-    val res = handleFree(interpr, Nil, inst)
+    val res = handleFree(interpr, Nil, inst) // TODO put under try
     assert(res == BasePresOps.empty)
   }
 
@@ -141,7 +141,7 @@ class InstInterpreterCasesSpec extends AnyFunSuite {
     val inst    = new TheoryInstAddTerms(inst0, grammar)
     val interp  = new SingleInterpreter(base, inst0)
 
-    val res = handleAddTerms(interp, Nil, inst)
+    val res = handleAddTerms(interp, Nil, inst) // TODO put under try
     // since base had no defs, you get exactly the grammar’s rule
     res.listdef_.asScala.toList shouldEqual List(rule)
   }
@@ -159,7 +159,7 @@ class InstInterpreterCasesSpec extends AnyFunSuite {
     val inst = new TheoryInstAddRewrites(inst0, decls)
     val interp = new SingleInterpreter(base, inst0)
 
-    val res = handleAddRewrites(interp, Nil, inst)
+    val res = handleAddRewrites(interp, Nil, inst) // TODO put under try
     res.listrewritedecl_.asScala.toList shouldEqual List(new RDecl("r", rw))
   }
 

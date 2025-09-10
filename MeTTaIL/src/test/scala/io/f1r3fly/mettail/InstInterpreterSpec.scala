@@ -25,7 +25,7 @@ class InstInterpreterSpec extends AnyFlatSpec with Matchers {
   "InstInterpreter" should "interpret the Rholang module correctly" in {
     val (interpreter, inst) = loadInterpreterFor("../GSLT/src/test/module/Rholang.module")
     val basePres = interpreter.interpret(Nil, inst)
-                       .getOrElse(fail("Interpretation of Rholang.module failed"))
+                       // TODO "put under try" .getOrElse(fail("Interpretation of Rholang.module failed"))
     val actual   = PrettyPrinter.print(basePres)
 
     val expected =
@@ -74,7 +74,7 @@ class InstInterpreterSpec extends AnyFlatSpec with Matchers {
   it should "interpret the ArrowCats module correctly" in {
     val (interpreter, inst) = loadInterpreterFor("../GSLT/src/test/module/ArrowCats.module")
     val basePres = interpreter.interpret(Nil, inst)
-                       .getOrElse(fail("Interpretation of ArrowCats.module failed"))
+                       // TODO put under try: .getOrElse(fail("Interpretation of ArrowCats.module failed"))
     val actual   = PrettyPrinter.print(basePres)
 
     val expected =
@@ -111,7 +111,7 @@ class InstInterpreterSpec extends AnyFlatSpec with Matchers {
   it should "interpret the RenameRewrite module correctly" in {
     val (interpreter, inst) = loadInterpreterFor("../GSLT/src/test/module/RenameRewrite.module")
     val basePres = interpreter.interpret(Nil, inst)
-                       .getOrElse(fail("Interpretation of RenameRewrite.module failed"))
+                      // TODO put under try: .getOrElse(fail("Interpretation of RenameRewrite.module failed"))
     val actual   = PrettyPrinter.print(basePres)
 
     val expected =

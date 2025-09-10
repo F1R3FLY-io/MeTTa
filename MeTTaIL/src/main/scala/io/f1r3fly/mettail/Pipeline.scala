@@ -78,14 +78,10 @@ object Interpret extends Pass[Context] {
     ctx.finalInst match {
       case Some(inst) =>
         val interp = new InstInterpreter(ctx.modules, ctx.entryPath, ModuleProcessor.default)
-        interp.interpret(Nil, inst) match {
-          case Right(pres) =>
-            println("\n[Interpreted Presentation]\n")
-            println(PrettyPrinter.print(pres))
-            ctx.copy(presentation = Some(pres))
-          case Left(err) =>
-            sys.error(s"Interpretation failed: $err")
-        }
+        val bp = interp.interpret(Nil, inst)
+        println("\n[Interpreted Presentation]\n")
+        println(PrettyPrinter.print(bp))
+        ctx.copy(presentation = Some(bp))
       case None => sys.error("No TheoryInst found")
     }
   }

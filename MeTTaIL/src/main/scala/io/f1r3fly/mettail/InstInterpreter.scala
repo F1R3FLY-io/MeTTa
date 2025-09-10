@@ -13,21 +13,21 @@ class InstInterpreter(
   import InstInterpreterCases._
 
   // BasePresOps is defined in InstInterpreterCases below and imported here
-  def interpret(env: List[(String, BasePres)], thInst: TheoryInst): Either[String, BasePres] = thInst match {
-    case disj: TheoryInstDisj                       => Right(handleDisj(this, env, disj))
-    case conj: TheoryInstConj                       => Right(handleConj(this, env, conj))
-    case subtract: TheoryInstSubtract               => Right(handleSubtract(this, env, subtract))
-    case addExports: TheoryInstAddExports           => Right(handleAddExports(this, env, addExports))
-    case addReplacements: TheoryInstAddReplacements => Right(handleAddReplacements(this, env, addReplacements))
-    case addTerms: TheoryInstAddTerms               => Right(handleAddTerms(this, env, addTerms))
-    case addEquations: TheoryInstAddEquations       => Right(handleAddEquations(this, env, addEquations))
-    case addRewrites: TheoryInstAddRewrites         => Right(handleAddRewrites(this, env, addRewrites))
-    case empty: TheoryInstEmpty                     => Right(handleEmpty())
+  def interpret(env: List[(String, BasePres)], thInst: TheoryInst): BasePres = thInst match {
+    case disj: TheoryInstDisj                       => handleDisj(this, env, disj)
+    case conj: TheoryInstConj                       => handleConj(this, env, conj)
+    case subtract: TheoryInstSubtract               => handleSubtract(this, env, subtract)
+    case addExports: TheoryInstAddExports           => handleAddExports(this, env, addExports)
+    case addReplacements: TheoryInstAddReplacements => handleAddReplacements(this, env, addReplacements)
+    case addTerms: TheoryInstAddTerms               => handleAddTerms(this, env, addTerms)
+    case addEquations: TheoryInstAddEquations       => handleAddEquations(this, env, addEquations)
+    case addRewrites: TheoryInstAddRewrites         => handleAddRewrites(this, env, addRewrites)
+    case empty: TheoryInstEmpty                     => handleEmpty()
     case ctor: TheoryInstCtor                       => 
-      Right(handleCtor(this, env, resolvedModules, currentModulePath, ctor, moduleProcessor))
-    case ref: TheoryInstRef                         => Right(handleRef(env, ref))
-    case rec: TheoryInstRec                         => Right(handleRec(this, env, rec))
-    case free: TheoryInstFree                       => Right(handleFree(this, env, free))
+      handleCtor(this, env, resolvedModules, currentModulePath, ctor, moduleProcessor)
+    case ref: TheoryInstRef                         => handleRef(env, ref)
+    case rec: TheoryInstRec                         => handleRec(this, env, rec)
+    case free: TheoryInstFree                       => handleFree(this, env, free)
   }
 
   // Checks whether the data can be successfully processed by the interpret() method.

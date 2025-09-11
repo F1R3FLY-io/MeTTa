@@ -30,7 +30,7 @@ class InstInterpreter(
     case free: TheoryInstFree                       => handleFree(this, env, free)
   }
 
-  // Checks whether the data can be successfully processed by the interpret() method.
+  // Checks whether data can be successfully processed by the interpret() method.
   // Returns None if they can; otherwise, a corresponding error message.
   def check_interpret(env: List[(String, BasePres)], thInst: TheoryInst): Option[String] = {
     thInst match {

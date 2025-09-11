@@ -52,7 +52,7 @@ class RecInterpreter(
   ): BasePres =
     if (inst eq instA) presA
     else if (inst eq instB) presB
-    else sys.error("Unexpected inst")
+    else throw new RuntimeException("Unexpected inst")
 }
 
 class InstInterpreterCasesSpec extends AnyFunSuite {

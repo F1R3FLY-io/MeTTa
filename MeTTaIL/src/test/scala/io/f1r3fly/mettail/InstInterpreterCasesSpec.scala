@@ -81,7 +81,11 @@ class InstInterpreterCasesSpec extends AnyFunSuite {
     val inst = new TheoryInstFree(new BaseDottedPath("ID"))
     val base  = BasePresOps.empty
     val interpr = new SingleInterpreter(base, inst)
-    val res = handleFree(interpr, Nil, inst) // TODO put under try
+    val res = try {
+      handleFree(interpr, Nil, inst)
+    } catch {
+      case ex: Exception => fail(s"Exception thrown during handleFree: ${ex.getMessage}")
+    }
     assert(res == BasePresOps.empty)
   }
 
@@ -141,7 +145,12 @@ class InstInterpreterCasesSpec extends AnyFunSuite {
     val inst    = new TheoryInstAddTerms(inst0, grammar)
     val interp  = new SingleInterpreter(base, inst0)
 
-    val res = handleAddTerms(interp, Nil, inst) // TODO put under try
+    val res = try {
+      handleAddTerms(interp, Nil, inst)
+    } catch {
+      case ex: Exception => fail(s"Exception thrown during handleAddTerms: ${ex.getMessage}")
+    }
+
     // since base had no defs, you get exactly the grammar’s rule
     res.listdef_.asScala.toList shouldEqual List(rule)
   }
@@ -159,7 +168,12 @@ class InstInterpreterCasesSpec extends AnyFunSuite {
     val inst = new TheoryInstAddRewrites(inst0, decls)
     val interp = new SingleInterpreter(base, inst0)
 
-    val res = handleAddRewrites(interp, Nil, inst) // TODO put under try
+    val res = try {
+      handleAddRewrites(interp, Nil, inst)
+    } catch {
+      case ex: Exception => fail(s"Exception thrown during handleAddRewrites: ${ex.getMessage}")
+    }
+
     res.listrewritedecl_.asScala.toList shouldEqual List(new RDecl("r", rw))
   }
 

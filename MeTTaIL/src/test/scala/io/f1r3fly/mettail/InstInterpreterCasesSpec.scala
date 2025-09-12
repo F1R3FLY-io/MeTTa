@@ -81,11 +81,7 @@ class InstInterpreterCasesSpec extends AnyFunSuite {
     val inst = new TheoryInstFree(new BaseDottedPath("ID"))
     val base  = BasePresOps.empty
     val interpr = new SingleInterpreter(base, inst)
-    val res = try {
-      handleFree(interpr, Nil, inst)
-    } catch {
-      case ex: Exception => fail(s"Exception thrown during handleFree: ${ex.getMessage}")
-    }
+    handleFree(interpr, Nil, inst)
     assert(res == BasePresOps.empty)
   }
 

@@ -81,7 +81,7 @@ class InstInterpreterCasesSpec extends AnyFunSuite {
     val inst = new TheoryInstFree(new BaseDottedPath("ID"))
     val base  = BasePresOps.empty
     val interpr = new SingleInterpreter(base, inst)
-    handleFree(interpr, Nil, inst)
+    val res = handleFree(interpr, Nil, inst)
     assert(res == BasePresOps.empty)
   }
 

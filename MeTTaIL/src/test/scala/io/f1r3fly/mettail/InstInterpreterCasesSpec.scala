@@ -108,7 +108,11 @@ class InstInterpreterCasesSpec extends AnyFunSuite {
     val inst    = new TheoryInstAddExports(inst0, listexport)
     val interp  = new SingleInterpreter(base, inst0)
 
-    val res = checkAddExports(interp, Nil, inst)
+    val res = try {
+      checkAddExports(interp, Nil, inst)
+    } catch {
+      case ex: Exception => fail(s"Exception thrown during checkAddExports: ${ex.getMessage}")
+    }
     assert(res.isDefined)
     assert(res.get.contains("Error: missing distinguished export."))
   }
@@ -124,7 +128,11 @@ class InstInterpreterCasesSpec extends AnyFunSuite {
     val inst    = new TheoryInstAddTerms(inst0, grammar)
     val interp  = new SingleInterpreter(base, inst0)
 
-    val res = checkAddTerms(interp, Nil, inst)
+    val res = try {
+      checkAddTerms(interp, Nil, inst)
+    } catch {
+      case ex: Exception => fail(s"Exception thrown during checkAddTerms: ${ex.getMessage}")
+    }
     assert(res.isDefined)
     /* fails sometimes without any changes
     assert(res.left.get.contains(
@@ -186,7 +194,11 @@ class InstInterpreterCasesSpec extends AnyFunSuite {
     val ctor = new TheoryInstCtor(new BaseDottedPath("X"), new ListTheoryInst())
     val mp = ModuleProcessor.default
 
-    val res = checkCtor(interp, env, resolved, path, ctor, mp)
+    val res = try {
+      checkCtor(interp, env, resolved, path, ctor, mp)
+    } catch {
+      case ex: Exception => fail(s"Exception thrown during checkCtor: ${ex.getMessage}")
+    }
     assert(res.contains(s"Module not found: $path"))
   }
 
@@ -201,7 +213,11 @@ class InstInterpreterCasesSpec extends AnyFunSuite {
 
   test("handleRef should error when identifier is free") {
     val ref = new TheoryInstRef("missing")
-    val res = checkRef(Nil, ref)
+    val res = try {
+      checkRef(Nil, ref)
+    } catch {
+      case ex: Exception => fail(s"Exception thrown during checkRef: ${ex.getMessage}")
+    }
     assert(res.isDefined)
     assert(res.get.contains("Identifier missing is free"))
   }
@@ -216,20 +232,5 @@ class InstInterpreterCasesSpec extends AnyFunSuite {
 
     val res = handleRec(interp, Nil, rec)
     assert(res == bp2)
-  }
-}
-
-object InstInterpreterCasesSpec {
-
-  class RecInterpreter(
-      presA: BasePres,
-      presB: BasePres,
-      instA: TheoryInst,
-      instB: TheoryInst
-  ) {
-    def interpret(env: List[(String, BasePres)], inst: TheoryInst): Either[String, BasePres] =
-      if (inst eq instA) Right(presA)
-      else if (inst eq instB) Right(presB)
-      else Left("Unexpected inst")
   }
 }

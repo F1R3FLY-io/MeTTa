@@ -27,7 +27,33 @@ object InstInterpreterCases {
     empty
 
   def handleFree(interpreter: InstInterpreter, env: List[(String, BasePres)], fr: TheoryInstFree): BasePres = {
-    interpreter.interpret(env, fr)
+    // Resolve the DottedPath to find the theory declaration
+    val (modulePath, theoryDecl) = interpreter.moduleProcessor.resolveDottedPath(
+      interpreter.resolvedModules,
+      interpreter.currentModulePath,
+      fr.dottedpath_
+    ) match {
+      case Right(result) => result
+      case Left(msg) => sys.error(s"Failed to resolve dotted path in free: $msg")
+    }
+
+    theoryDecl match {
+      case baseDecl: BaseTheoryDecl =>
+        // For free theories, we expect zero parameters (like FreeRholang())
+        if (baseDecl.listvariabledecl_.size != 0) {
+          sys.error(s"Free theory ${PrettyPrinter.print(baseDecl.name_)} must have zero parameters, but has ${baseDecl.listvariabledecl_.size}")
+        }
+
+        // Create a new interpreter for the resolved module and interpret the theory body
+        new InstInterpreter(
+          interpreter.resolvedModules,
+          modulePath,
+          interpreter.moduleProcessor
+        ).interpret(env, baseDecl.theoryinst_)
+
+      case _ =>
+        sys.error(s"Resolved theory declaration for free is not a BaseTheoryDecl: ${PrettyPrinter.print(theoryDecl)}")
+    }
   }
 
   def handleDisj(interpreter: InstInterpreter, env: List[(String, BasePres)], disj: TheoryInstDisj): BasePres = {

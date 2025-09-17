@@ -5,9 +5,9 @@ import metta_venus.PrettyPrinter
 import scala.jdk.CollectionConverters._
 
 class InstInterpreter(
-  resolvedModules: Map[String, Module],
-  currentModulePath: String,
-  moduleProcessor: ModuleProcessor
+  val resolvedModules: Map[String, Module],
+  val currentModulePath: String,
+  val moduleProcessor: ModuleProcessor
 ) {
 
   import InstInterpreterCases._

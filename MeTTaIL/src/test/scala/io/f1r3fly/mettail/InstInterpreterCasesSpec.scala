@@ -77,12 +77,51 @@ class InstInterpreterCasesSpec extends AnyFunSuite {
     assert(res == BasePresOps.empty)
   }
 
-  test("handleFree should return an empty BasePres") {
-    val inst = new TheoryInstFree(new BaseDottedPath("ID"))
-    val base  = BasePresOps.empty
-    val interpr = new SingleInterpreter(base, inst)
-    val res = handleFree(interpr, Nil, inst)
-    assert(res == BasePresOps.empty)
+  test("handleFree should resolve and instantiate a free theory") {
+    // Create a mock theory declaration for a zero-parameter theory
+    val theoryName = new NameVar("FreeTest")
+    val theoryBody = new TheoryInstEmpty() // Simple empty theory body
+    val theoryDecl = new BaseTheoryDecl(
+      theoryName,
+      new ListVariableDecl(), // No parameters for free theory
+      theoryBody
+    )
+
+    // Create a mock module containing the theory
+    val progDecl = new ProgTheoryDecl(theoryDecl)
+    val listProg = new ListProg()
+    listProg.add(progDecl)
+    val mockModule = new ModuleImpl(
+      new ListImport(),
+      theoryName,
+      listProg
+    )
+
+    // Create resolved modules map
+    val resolvedModules = Map("/test/path" -> mockModule)
+
+    // Create a mock module processor that will return our theory
+    val mockModuleProcessor = new ModuleProcessor(new RealFileSystem) {
+      override def resolveDottedPath(
+        resolvedModules: Map[String, Module],
+        currentModulePath: String,
+        dottedPath: DottedPath
+      ): Either[String, (String, TheoryDecl)] = {
+        Right(("/test/path", theoryDecl))
+      }
+    }
+
+    // Create the interpreter with proper context
+    val interpreter = new InstInterpreter(resolvedModules, "/test/path", mockModuleProcessor)
+
+    // Create the free theory instruction
+    val freeInst = new TheoryInstFree(new BaseDottedPath("FreeTest"))
+
+    // Test the handleFree method
+    val result = handleFree(interpreter, Nil, freeInst)
+
+    // Since the theory body is empty, we expect an empty presentation
+    assert(result == BasePresOps.empty)
   }
 
   test("handleDisj should merge two BasePres from interpreter results") {

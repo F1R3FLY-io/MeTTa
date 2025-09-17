@@ -48,7 +48,7 @@ class InstInterpreter(
       )
       case ref: TheoryInstRef                         => checkRef(env, ref)
       case rec: TheoryInstRec                         => None
-      case free: TheoryInstFree                       => None
+      case free: TheoryInstFree                       => checkFree(this, env, free)
     }
   }
 

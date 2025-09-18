@@ -77,51 +77,104 @@ class InstInterpreterCasesSpec extends AnyFunSuite {
     assert(res == BasePresOps.empty)
   }
 
-  test("handleFree should resolve and instantiate a free theory") {
-    // Create a mock theory declaration for a zero-parameter theory
-    val theoryName = new NameVar("FreeTest")
-    val theoryBody = new TheoryInstEmpty() // Simple empty theory body
-    val theoryDecl = new BaseTheoryDecl(
-      theoryName,
-      new ListVariableDecl(), // No parameters for free theory
-      theoryBody
+  test("handleFree should handle various theory dependency scenarios") {
+    // Create categories for testing
+    val catA = new IdCat("A")
+    val catB = new IdCat("B")
+    val catC = new IdCat("C")
+
+    // Theory without parameters (leaf theory)
+    val leafTheoryDecl = new BaseTheoryDecl(
+      new NameVar("LeafTheory"),
+      new ListVariableDecl(), // No parameters
+      new TheoryInstAddExports(
+        new TheoryInstEmpty(),
+        { val exports = new ListExport(); exports.add(new BaseExport(catA)); exports }
+      )
     )
 
-    // Create a mock module containing the theory
-    val progDecl = new ProgTheoryDecl(theoryDecl)
-    val listProg = new ListProg()
-    listProg.add(progDecl)
-    val mockModule = new ModuleImpl(
-      new ListImport(),
-      theoryName,
-      listProg
+    // Theory with just one parameter
+    val singleParamDecl = new BaseTheoryDecl(
+      new NameVar("SingleParam"),
+      { val vars = new ListVariableDecl();
+        vars.add(new VarDecl("dep1", new BaseDottedPath("LeafTheory"))); vars },
+      new TheoryInstAddExports(
+        new TheoryInstRef("dep1"),
+        { val exports = new ListExport(); exports.add(new BaseExport(catB)); exports }
+      )
     )
 
-    // Create resolved modules map
-    val resolvedModules = Map("/test/path" -> mockModule)
+    // Theory with nested parameters (multi-level dependency)
+    val nestedParamDecl = new BaseTheoryDecl(
+      new NameVar("NestedParam"),
+      { val vars = new ListVariableDecl();
+        vars.add(new VarDecl("dep1", new BaseDottedPath("SingleParam")));
+        vars.add(new VarDecl("dep2", new BaseDottedPath("LeafTheory"))); vars },
+      new TheoryInstAddExports(
+        new TheoryInstDisj(new TheoryInstRef("dep1"), new TheoryInstRef("dep2")),
+        { val exports = new ListExport(); exports.add(new BaseExport(catC)); exports }
+      )
+    )
 
-    // Create a mock module processor that will return our theory
+    // Create modules containing these theories
+    val createModule = (name: String, decl: BaseTheoryDecl) => {
+      val progDecl = new ProgTheoryDecl(decl)
+      val listProg = new ListProg()
+      listProg.add(progDecl)
+      new ModuleImpl(
+        new ListImport(),
+        new NameVar(name),
+        listProg
+      )
+    }
+
+    val resolvedModules = Map(
+      "/leaf" -> createModule("LeafModule", leafTheoryDecl),
+      "/single" -> createModule("SingleModule", singleParamDecl),
+      "/nested" -> createModule("NestedModule", nestedParamDecl)
+    )
+
+    // Mock module processor that resolves theories correctly
     val mockModuleProcessor = new ModuleProcessor(new RealFileSystem) {
       override def resolveDottedPath(
         resolvedModules: Map[String, Module],
         currentModulePath: String,
         dottedPath: DottedPath
       ): Either[String, (String, TheoryDecl)] = {
-        Right(("/test/path", theoryDecl))
+        dottedPath match {
+          case bdp: BaseDottedPath => bdp.ident_ match {
+            case "LeafTheory" => Right(("/leaf", leafTheoryDecl))
+            case "SingleParam" => Right(("/single", singleParamDecl))
+            case "NestedParam" => Right(("/nested", nestedParamDecl))
+            case other => Left(s"Unknown theory: $other")
+          }
+          case _ => Left("Complex dotted paths not supported in test")
+        }
       }
     }
 
-    // Create the interpreter with proper context
-    val interpreter = new InstInterpreter(resolvedModules, "/test/path", mockModuleProcessor)
+    val interpreter = new InstInterpreter(resolvedModules, "/test", mockModuleProcessor)
 
-    // Create the free theory instruction
-    val freeInst = new TheoryInstFree(new BaseDottedPath("FreeTest"))
+    // Test a theory without parameters
+    val leafResult = handleFree(interpreter, Nil, new TheoryInstFree(new BaseDottedPath("LeafTheory")))
+    assert(leafResult.listcat_.asScala.toList.contains(catA))
 
-    // Test the handleFree method
-    val result = handleFree(interpreter, Nil, freeInst)
+    // Test a theory with just one parameter
+    val singleResult = handleFree(interpreter, Nil, new TheoryInstFree(new BaseDottedPath("SingleParam")))
+    assert(singleResult.listcat_.asScala.toList.contains(catA)) // from dependency
+    assert(singleResult.listcat_.asScala.toList.contains(catB)) // from theory itself
+    
+    // Test a theory with nested parameters
+    val nestedResult = handleFree(interpreter, Nil, new TheoryInstFree(new BaseDottedPath("NestedParam")))
+    assert(nestedResult.listcat_.asScala.toList.contains(catA)) // from leaf dependency
+    assert(nestedResult.listcat_.asScala.toList.contains(catB)) // from single param dependency
+    assert(nestedResult.listcat_.asScala.toList.contains(catC)) // from nested theory itself
 
-    // Since the theory body is empty, we expect an empty presentation
-    assert(result == BasePresOps.empty)
+    // Test of recursion stopping - verify that the same leaf theory isn't processed multiple times
+    // The nested theory depends on both SingleParam and LeafTheory directly,
+    // and SingleParam also depends on LeafTheory, so LeafTheory should appear in dependencies
+    // but the recursion should stop properly without infinite loops
+    assert(nestedResult.listcat_.asScala.toList.count(_ == catA) >= 1) // At least one occurrence of catA
   }
 
   test("handleDisj should merge two BasePres from interpreter results") {

@@ -39,10 +39,20 @@ object InstInterpreterCases {
       case Left(error) => Some(s"Failed to resolve dotted path in free: $error")
       case Right((_, theoryDecl)) => theoryDecl match {
         case baseDecl: BaseTheoryDecl =>
-          if (baseDecl.listvariabledecl_.size != 0) {
-            Some(s"Free theory ${PrettyPrinter.print(baseDecl.name_)} must have zero parameters, but has ${baseDecl.listvariabledecl_.size}")
+          // Now we support theories with parameters - they will be recursively resolved
+          // Just validate that all parameters are VarDecl instances
+          val varDecls = baseDecl.listvariabledecl_.asScala.toList
+          val invalidDecls = varDecls.filterNot(_.isInstanceOf[VarDecl])
+          if (invalidDecls.nonEmpty) {
+            Some(s"Free theory ${PrettyPrinter.print(baseDecl.name_)} contains non-variable declarations")
           } else {
-            None
+            // Recursively checking each parameter dependency:
+            val paramChecks = varDecls.collect { case varDecl: VarDecl => varDecl }.map { varDecl =>
+              val paramFreeInst = new TheoryInstFree(varDecl.dottedpath_)
+              checkFree(interpreter, env, paramFreeInst)
+            }
+            // Returning the first error found, if any:
+            paramChecks.collectFirst { case Some(error) => error }
           }
         case _ =>
           Some(s"Resolved theory declaration for free is not a BaseTheoryDecl: ${PrettyPrinter.print(theoryDecl)}")
@@ -51,6 +61,7 @@ object InstInterpreterCases {
   }
 
   def handleFree(interpreter: InstInterpreter, env: List[(String, BasePres)], fr: TheoryInstFree): BasePres = {
+    // Resolving dottedPath -> theoryDecl:
     val (modulePath, theoryDecl) = interpreter.moduleProcessor.resolveDottedPath(
       interpreter.resolvedModules,
       interpreter.currentModulePath,
@@ -59,12 +70,34 @@ object InstInterpreterCases {
 
     val baseDecl = theoryDecl.asInstanceOf[BaseTheoryDecl]
 
-    // Create a new interpreter for the resolved module and interpret the theory body
+    // Extracting the parameter list (varDecls):
+    val varDecls: List[VarDecl] = baseDecl.listvariabledecl_.asScala.toList.collect {
+      case varDecl: VarDecl => varDecl
+    }
+
+    // For each parameter, recursively calling handleFree() or instantiating directly:
+    val actualPresentations: List[BasePres] = varDecls.map { varDecl =>
+      // Create a free theory instantiation for the parameter's dotted path
+      val paramDottedPath = varDecl.dottedpath_
+      val paramFreeInst = new TheoryInstFree(paramDottedPath)
+
+      // Recursively calling handleFree for this parameter dependency:
+      // This will handle the recursive resolution: if the parameter has no arguments,
+      // it will be instantiated directly; otherwise it will recursively resolve its dependencies
+      handleFree(interpreter, env, paramFreeInst)
+    }
+
+    // Creating parameter bindings:
+    val formals = varDecls.map(_.ident_.toString)
+    val newBindings = formals.zip(actualPresentations)
+
+    // Creating a new interpreter for the resolved module and interpreting the theory body
+    // with the resolved parameter bindings:
     new InstInterpreter(
       interpreter.resolvedModules,
       modulePath,
       interpreter.moduleProcessor
-    ).interpret(env, baseDecl.theoryinst_)
+    ).interpret(env ++ newBindings, baseDecl.theoryinst_)
   }
 
   def handleDisj(interpreter: InstInterpreter, env: List[(String, BasePres)], disj: TheoryInstDisj): BasePres = {
@@ -405,7 +438,7 @@ object InstInterpreterCases {
       val replRule = s.def_.asInstanceOf[Rule]
 
       // 1) Category must match
-      // 2) Duplicate‐label check: the new rule’s label must not collide
+      // 2) Duplicate-label check: the new rule’s label must not collide
       // 3) Arity check
       val origNTs = nonTerminals(rule.listitem_)
       val replNTs = nonTerminals(replRule.listitem_)
@@ -413,7 +446,7 @@ object InstInterpreterCases {
       val perm    = convertIntList(s.intlist_)
 
       // 4) Permutation check
-      // 5) Category‐alignment check across each position
+      // 5) Category-alignment check across each position
       val newDefs = currentPres.listdef_.asScala.toList.map {
         case r: Rule if labelToString(r.label_) == labelToString(s.label_) => replRule
         case other => other

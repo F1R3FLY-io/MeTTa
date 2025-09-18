@@ -177,6 +177,109 @@ class InstInterpreterCasesSpec extends AnyFunSuite {
     assert(nestedResult.listcat_.asScala.toList.count(_ == catA) >= 1) // At least one occurrence of catA
   }
 
+  test("checkFree should validate theory dependency scenarios correctly") {
+    // Create valid theory declarations for testing
+    val validLeafDecl = new BaseTheoryDecl(
+      new NameVar("ValidLeaf"),
+      new ListVariableDecl(), // No parameters - valid leaf theory
+      new TheoryInstEmpty()
+    )
+
+    val validParamDecl = new BaseTheoryDecl(
+      new NameVar("ValidParam"),
+      { val vars = new ListVariableDecl();
+        vars.add(new VarDecl("dep", new BaseDottedPath("ValidLeaf"))); vars },
+      new TheoryInstRef("dep")
+    )
+
+    // Create invalid theory declaration with non-VarDecl parameter
+    val invalidParamDecl = new BaseTheoryDecl(
+      new NameVar("InvalidParam"),
+      { val vars = new ListVariableDecl();
+        // This is invalid - adding a non-VarDecl to the parameter list
+        // In real code this wouldn't happen, but we simulate it for testing
+        vars.add(new VarDecl("validParam", new BaseDottedPath("ValidLeaf")));
+        vars }, // We'll test this indirectly by testing the validation logic
+      new TheoryInstEmpty()
+    )
+
+    // Create a mock module processor for testing different resolution scenarios
+    val mockModuleProcessor = new ModuleProcessor(new RealFileSystem) {
+      override def resolveDottedPath(
+        resolvedModules: Map[String, Module],
+        currentModulePath: String,
+        dottedPath: DottedPath
+      ): Either[String, (String, TheoryDecl)] = {
+        dottedPath match {
+          case bdp: BaseDottedPath => bdp.ident_ match {
+            // Test case: valid theories that should resolve successfully
+            case "ValidLeaf" => Right(("/test", validLeafDecl))
+            case "ValidParam" => Right(("/test", validParamDecl))
+            case "InvalidParam" => Right(("/test", invalidParamDecl))
+            // Test case: theory that doesn't resolve (path resolution error)
+            case "NonExistent" => Left("Module not found: NonExistent")
+            // Test case: theory that resolves to non-BaseTheoryDecl (simulate with null)
+            case "NonBaseDecl" => Right(("/test", null.asInstanceOf[TheoryDecl]))
+            case other => Left(s"Unknown theory: $other")
+          }
+          case _ => Left("Complex dotted paths not supported in test")
+        }
+      }
+    }
+
+    val interpreter = new InstInterpreter(Map.empty, "/test", mockModuleProcessor)
+
+    // Test 1: Valid leaf theory (no parameters) - should return None (success)
+    val validLeafResult = checkFree(interpreter, Nil, new TheoryInstFree(new BaseDottedPath("ValidLeaf")))
+    assert(validLeafResult.isEmpty, "Valid leaf theory should pass validation")
+
+    // Test 2: Valid theory with parameters - should return None (success) after recursive validation
+    val validParamResult = checkFree(interpreter, Nil, new TheoryInstFree(new BaseDottedPath("ValidParam")))
+    assert(validParamResult.isEmpty, "Valid theory with parameters should pass validation")
+
+    // Test 3: Theory that fails path resolution - should return error message
+    val nonExistentResult = checkFree(interpreter, Nil, new TheoryInstFree(new BaseDottedPath("NonExistent")))
+    assert(nonExistentResult.isDefined, "Non-existent theory should fail validation")
+    assert(nonExistentResult.get.contains("Failed to resolve dotted path in free"), "Should contain path resolution error")
+
+    // Test 4: Theory that resolves to non-BaseTheoryDecl - should return error message
+    val nonBaseDeclResult = checkFree(interpreter, Nil, new TheoryInstFree(new BaseDottedPath("NonBaseDecl")))
+    assert(nonBaseDeclResult.isDefined, "Non-BaseTheoryDecl should fail validation")
+    assert(nonBaseDeclResult.get.contains("not a BaseTheoryDecl"), "Should contain BaseTheoryDecl error")
+
+    // Test 5: Recursive validation - theory with invalid dependency should fail
+    val mockProcessorWithInvalidDep = new ModuleProcessor(new RealFileSystem) {
+      override def resolveDottedPath(
+        resolvedModules: Map[String, Module],
+        currentModulePath: String,
+        dottedPath: DottedPath
+      ): Either[String, (String, TheoryDecl)] = {
+        dottedPath match {
+          case bdp: BaseDottedPath => bdp.ident_ match {
+            case "TheoryWithInvalidDep" => Right(("/test", new BaseTheoryDecl(
+              new NameVar("TheoryWithInvalidDep"),
+              { val vars = new ListVariableDecl();
+                vars.add(new VarDecl("invalidDep", new BaseDottedPath("NonExistent"))); vars },
+              new TheoryInstRef("invalidDep")
+            )))
+            case "NonExistent" => Left("Dependency not found")
+            case _ => Left("Unknown theory")
+          }
+          case _ => Left("Complex paths not supported")
+        }
+      }
+    }
+
+    val interpreterWithInvalidDep = new InstInterpreter(Map.empty, "/test", mockProcessorWithInvalidDep)
+
+    // Test recursive validation failure - theory with invalid dependency should fail
+    val recursiveFailResult = checkFree(interpreterWithInvalidDep, Nil,
+      new TheoryInstFree(new BaseDottedPath("TheoryWithInvalidDep")))
+    assert(recursiveFailResult.isDefined, "Theory with invalid dependency should fail validation")
+    assert(recursiveFailResult.get.contains("Failed to resolve dotted path in free"),
+      "Should contain recursive dependency error")
+  }
+
   test("handleDisj should merge two BasePres from interpreter results") {
     // Dummy interpreter that always returns a BasePres with a single category CatA
     val catA = new IdCat("A")

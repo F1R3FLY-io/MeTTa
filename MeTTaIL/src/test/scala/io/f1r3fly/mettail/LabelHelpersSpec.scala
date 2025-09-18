@@ -48,7 +48,7 @@ class LabelHelpersSpec extends AnyFlatSpec with Matchers {
     val ast1 = new ASTSExp(new Id("qux"), emptyListAST)
     val ast2 = new ASTSExp(new Wild(), emptyListAST)
     val rwBase = new RewriteBase(ast1, ast2)
-    val hyp = new Hyp("h1", "h2")
+    val hyp = new Hyp(new BaseDottedPath("h1"), new BaseDottedPath("h2"))
     val rwCtx = new RewriteContext(hyp, rwBase)
 
     val labels = LabelHelpers.labelsInRewrite(rwCtx)
@@ -58,7 +58,7 @@ class LabelHelpersSpec extends AnyFlatSpec with Matchers {
 
   it should "return empty for unsupported types" in {
     // Using an ASTSubst wrapped in RewriteContext without Label elements
-    val subst = new ASTSubst(new ASTVar("v1"), new ASTVar("v2"), "v2")
+    val subst = new ASTSubst(new ASTVar(new BaseDottedPath("v1")), new ASTVar(new BaseDottedPath("v2")), new BaseDottedPath("v2"))
     val rwBase = new RewriteBase(subst, subst)
     val labels = LabelHelpers.labelsInRewrite(rwBase)
     labels shouldBe empty

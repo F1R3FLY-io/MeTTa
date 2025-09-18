@@ -5,6 +5,13 @@ import metta_venus.PrettyPrinter
 import scala.jdk.CollectionConverters._
 
 object AddEqRwHelpers {
+  // Helper function to convert DottedPath to String
+  private def dottedPathToString(dp: DottedPath): String = dp match {
+    case b: BaseDottedPath      => b.ident_
+    case q: QualifiedDottedPath => s"${q.ident_}.${dottedPathToString(q.dottedpath_)}"
+    case _                      => ""
+  }
+  
   def nonTerminals(items: ListItem): Seq[Item] = {
     items.asScala.toSeq.filter(item => !item.isInstanceOf[Terminal])
   }
@@ -18,14 +25,14 @@ object AddEqRwHelpers {
   // Determines the category of an AST.  Doesn't recurse.
   def catOfAST(ast: AST, defs: Map[Label, Rule]): CatOfASTResult = {
     ast match {
-      case astVar: ASTVar => COAVar(astVar.ident_)
+      case astVar: ASTVar => COAVar(dottedPathToString(astVar.dottedpath_))
       case astSExp: ASTSExp => defs.get(astSExp.label_) match {
         case None => COALabelNotFound(astSExp.label_)
         case Some(rule) => COAConcrete(rule.cat_)
       }
       case astSubst: ASTSubst => catOfAST(astSubst.ast_1, defs) match {
         case lnf: COALabelNotFound => lnf
-        case COAVar(v) if astSubst.ident_ == v => catOfAST(astSubst.ast_2, defs)
+        case COAVar(v) if dottedPathToString(astSubst.dottedpath_) == v => catOfAST(astSubst.ast_2, defs)
         case other => other
       }
     }
@@ -90,10 +97,10 @@ object AddEqRwHelpers {
   // Finds all the free variables in an AST.
   def freeVarsInAST(ast: AST): Set[String] = {
     ast match {
-      case astVar: ASTVar => Set(astVar.ident_)
+      case astVar: ASTVar => Set(dottedPathToString(astVar.dottedpath_))
       case astSExp: ASTSExp => astSExp.listast_.asScala.flatMap(freeVarsInAST).toSet
       case astSubst: ASTSubst => 
-        freeVarsInAST(astSubst.ast_1).filterNot(_ == astSubst.ident_) ++ freeVarsInAST(astSubst.ast_2)
+        freeVarsInAST(astSubst.ast_1).filterNot(_ == dottedPathToString(astSubst.dottedpath_)) ++ freeVarsInAST(astSubst.ast_2)
     }
   }
 
@@ -171,7 +178,7 @@ object AddEqRwHelpers {
   }
 
   def handleASTVar(ident: String, defs: Map[Label, Rule], context: Option[Cat], astVar: ASTVar): CatOfIdentInASTResult = {
-    if (ident == astVar.ident_) {
+    if (ident == dottedPathToString(astVar.dottedpath_)) {
       context match {
         case None => COIIAVar(ident)
         case Some(ctx) => COIIAConcrete(ctx)
@@ -188,7 +195,7 @@ object AddEqRwHelpers {
       ident,
       defs,
       context,
-      findAndReplace(astSubst.ast_2, astSubst.ident_, defs)(astSubst.ast_1)
+      findAndReplace(astSubst.ast_2, dottedPathToString(astSubst.dottedpath_), defs)(astSubst.ast_1)
     )
     val coiiacat1 = catOfIdentInAST(ident, defs, context, astSubst.ast_2)
     coiiacat1 match {
@@ -279,7 +286,7 @@ object AddEqRwHelpers {
   // Precondition: any label in the AST has to appear in defs.
   private def findAndReplace(replacement: AST, ident: String, defs: Map[Label, Rule])(ast: AST): AST = {
     ast match {
-      case astVar: ASTVar => if (astVar.ident_ == ident) replacement else astVar
+      case astVar: ASTVar => if (dottedPathToString(astVar.dottedpath_) == ident) replacement else astVar
       case astSExp: ASTSExp => {
         val rule = defs(astSExp.label_)
         val filtered = nonTerminals(rule.listitem_)
@@ -302,7 +309,7 @@ object AddEqRwHelpers {
       }
       case astSubst: ASTSubst => {
         findAndReplace(replacement, ident, defs)(
-          findAndReplace(astSubst.ast_2, astSubst.ident_, defs)(astSubst.ast_1)
+          findAndReplace(astSubst.ast_2, dottedPathToString(astSubst.dottedpath_), defs)(astSubst.ast_1)
         )
       }
     }

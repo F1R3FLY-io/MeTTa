@@ -296,7 +296,7 @@ object InstInterpreterCases {
                               }
 
                               case sub: ASTSubst =>
-                                new ASTSubst(updateAST(sub.ast_1), updateAST(sub.ast_2), sub.ident_)
+                                new ASTSubst(updateAST(sub.ast_1), updateAST(sub.ast_2), sub.dottedpath_)
 
                               case other => other
                             }
@@ -410,7 +410,7 @@ object InstInterpreterCases {
           }
 
         case sub: ASTSubst =>
-          new ASTSubst(updateAST(sub.ast_1), updateAST(sub.ast_2), sub.ident_)
+          new ASTSubst(updateAST(sub.ast_1), updateAST(sub.ast_2), sub.dottedpath_)
 
         case other => other
       }

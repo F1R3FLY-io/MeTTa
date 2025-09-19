@@ -607,40 +607,32 @@ object InstInterpreterCases {
             val rb = rewriteBase(rw)
             val pretty = s"rewrite ${PrettyPrinter.print(rewriteDecl)}"
             // Check validity of rewrites as follows
-            for {
-              // The two sides of the rewrite have the same category
-              // OR one has a category and the other is a top-level variable.
-              _ <- sameCategory(catOfAST(rb.ast_1, defs), catOfAST(rb.ast_2, defs), pretty).left.toOption
-              // Check that each variable has a consistent category
-              // Check that the vars on the left are consistent.
-              m1 <- consistentCategory(rb.ast_1, defs, pretty).toOption
-              // Check that the vars on the right are consistent.
-              m2 <- consistentCategory(rb.ast_2, defs, pretty).toOption
-              _ <- (m1.keySet ++ m2.keySet).foldLeft[Option[String]](None) {
-                case (Some(e), _) => Some(e)
-                case (None, ident) =>
-                  (m1.get(ident), m2.get(ident)) match {
-                    case (Some(l), Some(r)) if l != r =>
-                      Some(s"Variable ${ident} has category ${PrettyPrinter.print(l)} on the left-" +
-                        s"hand side and category ${PrettyPrinter.print(r)} on the right-hand" +
-                        s" side of $pretty")
-                    case _ => None
+            val sameCatCheck = sameCategory(catOfAST(rb.ast_1, defs), catOfAST(rb.ast_2, defs), pretty).left.toOption
+            if (sameCatCheck.isDefined) sameCatCheck
+            else {
+              val m1Check = consistentCategory(rb.ast_1, defs, pretty).toOption
+              val m2Check = consistentCategory(rb.ast_2, defs, pretty).toOption
+              if (m1Check.isEmpty) Some(s"Consistent category check failed for left side of $pretty")
+              else if (m2Check.isEmpty) Some(s"Consistent category check failed for right side of $pretty")
+              else {
+                val lVars = leftVars(rw)
+                val rVars = rightVars(rw)
+                val missingVars = rVars diff lVars
+                val missingVarsCheck = Option.when(missingVars.nonEmpty)(
+                  "Error: In RewriteDecl, variables on the right-hand side" +
+                    s" not found on the left-hand side: $missingVars"
+                )
+                if (missingVarsCheck.isDefined) missingVarsCheck
+                else {
+                  val prefixCheck = DottedPathUtils.checkHypothesisPathPrefixes(hypVars(rw)).left.toOption
+                  if (prefixCheck.isDefined) prefixCheck
+                  else {
+                    val hypCheck = checkHypotheticals(hypVars(rw), defs, rb).left.toOption
+                    hypCheck
                   }
+                }
               }
-              // Check each rewrite declaration to ensure that
-              // every variable on the right appears on the left.
-              lVars = leftVars(rw)
-              rVars = rightVars(rw)
-              missingVars = rVars diff lVars
-              _ <- Option.when(missingVars.nonEmpty)(
-                "Error: In RewriteDecl, variables on the right-hand side" +
-                  s" not found on the left-hand side: $missingVars"
-              )
-              // When the Rewrite is a RewriteContext let Src ~> Tgt in r,
-              // Src must appear only on the left, Tgt must appear only on the right,
-              // and the category of Src must match the category of Tgt
-              _ <- checkHypotheticals(hypVars(rw), defs, rb).left.toOption
-            } yield pretty // returning the first failing rewrite description
+            }
         }
     }
   }

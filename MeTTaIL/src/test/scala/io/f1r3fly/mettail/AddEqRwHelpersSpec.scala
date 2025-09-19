@@ -17,9 +17,16 @@ class AddEqRwHelpersSpec extends AnyFunSuite {
   }
 
   test("catOfAST should return COAVar for ASTVar") {
+    // Test with simple BaseDottedPath
     val result = catOfAST(new ASTVar(new BaseDottedPath("v")), Map.empty)
     assert(result.isInstanceOf[COAVar])
     assert(result.asInstanceOf[COAVar].varName == "v")
+
+    // Test with qualified dotted path (v.w)
+    val qualifiedPath = new QualifiedDottedPath("v", new BaseDottedPath("w"))
+    val qualifiedResult = catOfAST(new ASTVar(qualifiedPath), Map.empty)
+    assert(qualifiedResult.isInstanceOf[COAVar])
+    assert(qualifiedResult.asInstanceOf[COAVar].varName == "v.w")
   }
 
   test("catOfAST should return COALabelNotFound for unknown ASTSExp label") {

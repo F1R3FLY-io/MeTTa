@@ -5,15 +5,9 @@ import metta_venus.PrettyPrinter
 import scala.collection.mutable
 import scala.collection.mutable.Map
 import scala.jdk.CollectionConverters._
+import io.f1r3fly.mettail.DottedPathUtils.dottedPathToString
 
 object Hypercube {
-
-  // Helper function to convert DottedPath to String
-  private def dottedPathToString(dp: DottedPath): String = dp match {
-    case b: BaseDottedPath      => b.ident_
-    case q: QualifiedDottedPath => s"${q.ident_}.${dottedPathToString(q.dottedpath_)}"
-    case _                      => ""
-  }
 
   /**  
     * Given an untyped BasePres, produce a new, typed BasePres  

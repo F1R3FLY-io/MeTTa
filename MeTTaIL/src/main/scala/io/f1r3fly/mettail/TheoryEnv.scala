@@ -6,6 +6,7 @@ import scala.jdk.CollectionConverters._
 import io.f1r3fly.mettail.FileSystem
 import io.f1r3fly.mettail.RealFileSystem
 import metta_venus.{MettaVenusLexer, MettaVenusParser, PrettyPrinter}
+import io.f1r3fly.mettail.DottedPathUtils.dottedPathToString
 
 final case class TheoryEnv(map: Map[DottedPath, (TheoryDecl, TheoryEnv)])
 
@@ -98,12 +99,6 @@ class TheoryEnvBuilder(fs: FileSystem) {
     case _                      => ""
   }
 
-  /** Convert a DottedPath to its string representation. */
-  def dottedPathToString(dp: DottedPath): String = dp match {
-    case b: BaseDottedPath      => b.ident_
-    case q: QualifiedDottedPath => s"${q.ident_}.${dottedPathToString(q.dottedpath_)}"
-    case _                      => ""
-  }
 
   /** Pretty-print the theory environment. */
   def prettyPrint(env: TheoryEnv): String =

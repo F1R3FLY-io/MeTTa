@@ -4,6 +4,7 @@ import org.scalatest.funsuite.AnyFunSuite
 import metta_venus.Absyn._
 import io.f1r3fly.mettail.ModuleProcessor
 import io.f1r3fly.mettail.FileSystem
+import io.f1r3fly.mettail.DottedPathUtils.dottedPathToString
 
 class ModuleProcessorSpec extends AnyFunSuite {
   // Dummy FileSystem stub: no real I/O
@@ -19,8 +20,8 @@ class ModuleProcessorSpec extends AnyFunSuite {
   test("dottedPathToString should format Base and Qualified paths") {
     val base = new BaseDottedPath("X")
     val qualified = new QualifiedDottedPath("A", base)
-    assert(processor.dottedPathToString(base) == "X")
-    assert(processor.dottedPathToString(qualified) == "A.X")
+    assert(dottedPathToString(base) == "X")
+    assert(dottedPathToString(qualified) == "A.X")
   }
 
   test("findTheoryDeclInModule should locate an existing theory") {

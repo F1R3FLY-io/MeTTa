@@ -24,6 +24,13 @@ class DummyInterpreter(pres: BasePres)
     Right(pres)
 }
 
+/** A dummy interpreter that always returns an error, for testing error cases. */
+class DummyErrorInterpreter(errorMessage: String)
+    extends InstInterpreter(Map.empty, "", ModuleProcessor.default) {
+  override def interpret(env: List[(String, BasePres)], inst: TheoryInst): Either[String, BasePres] =
+    Left(errorMessage)
+}
+
 /** A fake interpreter that takes two BasePres and ignores everything else. */
 class PairInterpreter(
     presA: BasePres,
@@ -141,6 +148,37 @@ class InstInterpreterCasesSpec extends AnyFunSuite {
     val res = handleAddTerms(interp, Nil, inst)
     // since base had no defs, you get exactly the grammar’s rule
     res.listdef_.asScala.toList shouldEqual List(rule)
+  }
+
+  // --- checkAddRewrites ---
+  test("checkAddRewrites should return None for valid rewrite declarations") {
+    val cat = new IdCat("C")
+    val rule = new Rule(new Id("L"), cat, new ListItem())
+    val base = BasePresOps.copyPres(BasePresOps.empty, listdef = Some(List(rule)))
+    val inst0 = new TheoryInstEmpty()
+    val lhs = new ASTSExp(new Id("L"), new ListAST())
+    val rhs = new ASTSExp(new Id("L"), new ListAST())
+    val rw = new RewriteBase(lhs, rhs)
+    val decls = new ListRewriteDecl(); decls.addLast(new RDecl("r", rw))
+    val inst = new TheoryInstAddRewrites(inst0, decls)
+    val interp = new SingleInterpreter(base, inst0)
+
+    val res = checkAddRewrites(interp, Nil, inst)
+    assert(res.isEmpty)
+  }
+
+  test("checkAddRewrites should return error when interpreter fails") {
+    val inst0 = new TheoryInstEmpty()
+    val lhs = new ASTSExp(new Id("L"), new ListAST())
+    val rhs = new ASTSExp(new Id("L"), new ListAST())
+    val rw = new RewriteBase(lhs, rhs)
+    val decls = new ListRewriteDecl(); decls.addLast(new RDecl("r", rw))
+    val inst = new TheoryInstAddRewrites(inst0, decls)
+    val errorInterp = new DummyErrorInterpreter("Interpreter error")
+
+    val res = checkAddRewrites(errorInterp, Nil, inst)
+    assert(res.isDefined)
+    assert(res.get == "Interpreter error")
   }
 
   // --- handleAddRewrites ---

@@ -181,30 +181,6 @@ class InstInterpreterCasesSpec extends AnyFunSuite {
     assert(res.get == "Interpreter error")
   }
 
-  /*
-  test("checkAddRewrites should return error when hypothesis has different dotted path prefixes") {
-    val cat = new IdCat("C")
-    val rule = new Rule(new Id("L"), cat, new ListItem())
-    val base = BasePresOps.copyPres(BasePresOps.empty, listdef = Some(List(rule)))
-    val inst0 = new TheoryInstEmpty()
-    val lhs = new ASTSExp(new Id("L"), new ListAST())
-    val rhs = new ASTSExp(new Id("L"), new ListAST())
-    val innerRw = new RewriteBase(lhs, rhs)
-    // Create hypothesis with different prefixes: r.p ~> s.q
-    val rDotP = new QualifiedDottedPath("r", new BaseDottedPath("p"))
-    val sDotQ = new QualifiedDottedPath("s", new BaseDottedPath("q"))
-    val hyp = new Hyp(rDotP, sDotQ)
-    val contextRw = new RewriteContext(hyp, innerRw)
-    val decls = new ListRewriteDecl(); decls.addLast(new RDecl("rewrite", contextRw))
-    val inst = new TheoryInstAddRewrites(inst0, decls)
-    val interp = new SingleInterpreter(base, inst0)
-
-    val res = checkAddRewrites(interp, Nil, inst)
-    assert(res.isDefined)
-    assert(res.get.contains("dotted path prefixes differ"))
-    assert(res.get.contains("r.p ~> s.q"))
-  }
-  */
   test("checkAddRewrites should return error when hypothesis has different dotted path prefixes") {
     val cat = new IdCat("C")
     val rule = new Rule(new Id("L"), cat, new ListItem())

@@ -4,6 +4,7 @@ import metta_venus.Absyn._
 import metta_venus.PrettyPrinter
 import scala.jdk.CollectionConverters._
 
+
 object InstInterpreterCases {
 
   import AddEqRwHelpers._
@@ -25,19 +26,83 @@ object InstInterpreterCases {
   def handleEmpty(): BasePres =
     empty
 
-  def handleFree(): BasePres =
-    empty
+  def checkFree(
+    interpreter: InstInterpreter,
+    env: List[(String, BasePres)],
+    fr: TheoryInstFree
+  ): Option[String] = {
+    interpreter.moduleProcessor.resolveDottedPath(
+      interpreter.resolvedModules,
+      interpreter.currentModulePath,
+      fr.dottedpath_
+    ) match {
+      case Left(error) => Some(s"Failed to resolve dotted path in free: $error")
+      case Right((_, theoryDecl)) => theoryDecl match {
+        case baseDecl: BaseTheoryDecl =>
+          // Now we support theories with parameters - they will be recursively resolved
+          // Just validate that all parameters are VarDecl instances
+          val varDecls = baseDecl.listvariabledecl_.asScala.toList
+          val invalidDecls = varDecls.filterNot(_.isInstanceOf[VarDecl])
+          if (invalidDecls.nonEmpty) {
+            Some(s"Free theory ${PrettyPrinter.print(baseDecl.name_)} contains non-variable declarations")
+          } else {
+            // Recursively checking each parameter dependency:
+            val paramChecks = varDecls.collect { case varDecl: VarDecl => varDecl }.map { varDecl =>
+              val paramFreeInst = new TheoryInstFree(varDecl.dottedpath_)
+              checkFree(interpreter, env, paramFreeInst)
+            }
+            // Returning the first error found, if any:
+            paramChecks.collectFirst { case Some(error) => error }
+          }
+        case _ =>
+          Some(s"Resolved theory declaration for free is not a BaseTheoryDecl: ${PrettyPrinter.print(theoryDecl)}")
+      }
+    }
+  }
+
+  def handleFree(interpreter: InstInterpreter, env: List[(String, BasePres)], fr: TheoryInstFree): BasePres = {
+    // Resolving dottedPath -> theoryDecl:
+    val (modulePath, theoryDecl) = interpreter.moduleProcessor.resolveDottedPath(
+      interpreter.resolvedModules,
+      interpreter.currentModulePath,
+      fr.dottedpath_
+    ).right.get
+
+    val baseDecl = theoryDecl.asInstanceOf[BaseTheoryDecl]
+
+    // Extracting the parameter list (varDecls):
+    val varDecls: List[VarDecl] = baseDecl.listvariabledecl_.asScala.toList.collect {
+      case varDecl: VarDecl => varDecl
+    }
+
+    // For each parameter, recursively calling handleFree() or instantiating directly:
+    val actualPresentations: List[BasePres] = varDecls.map { varDecl =>
+      // Create a free theory instantiation for the parameter's dotted path
+      val paramDottedPath = varDecl.dottedpath_
+      val paramFreeInst = new TheoryInstFree(paramDottedPath)
+
+      // Recursively calling handleFree for this parameter dependency:
+      // This will handle the recursive resolution: if the parameter has no arguments,
+      // it will be instantiated directly; otherwise it will recursively resolve its dependencies
+      handleFree(interpreter, env, paramFreeInst)
+    }
+
+    // Creating parameter bindings:
+    val formals = varDecls.map(_.ident_.toString)
+    val newBindings = formals.zip(actualPresentations)
+
+    // Creating a new interpreter for the resolved module and interpreting the theory body
+    // with the resolved parameter bindings:
+    new InstInterpreter(
+      interpreter.resolvedModules,
+      modulePath,
+      interpreter.moduleProcessor
+    ).interpret(env ++ newBindings, baseDecl.theoryinst_)
+  }
 
   def handleDisj(interpreter: InstInterpreter, env: List[(String, BasePres)], disj: TheoryInstDisj): BasePres = {
-    val presA = interpreter.interpret(env, disj.theoryinst_1) match {
-      case Right(value) => value
-      case Left(msg)    => sys.error(s"Failed to interpret theoryinst_1: $msg")
-    }
-
-    val presB = interpreter.interpret(env, disj.theoryinst_2) match {
-      case Right(value) => value
-      case Left(msg)    => sys.error(s"Failed to interpret theoryinst_2: $msg")
-    }
+    val presA = interpreter.interpret(env, disj.theoryinst_1)
+    val presB = interpreter.interpret(env, disj.theoryinst_2)
 
     val exports   = (presA.listcat_.asScala.toList ++ presB.listcat_.asScala.toList).distinct
     val terms     = (presA.listdef_.asScala.toList ++ presB.listdef_.asScala.toList).distinct
@@ -54,15 +119,8 @@ object InstInterpreterCases {
   }
 
   def handleConj(interpreter: InstInterpreter, env: List[(String, BasePres)], conj: TheoryInstConj): BasePres = {
-    val presA = interpreter.interpret(env, conj.theoryinst_1) match {
-      case Right(value) => value
-      case Left(msg)    => sys.error(s"Failed to interpret theoryinst_1: $msg")
-    }
-
-    val presB = interpreter.interpret(env, conj.theoryinst_2) match {
-      case Right(value) => value
-      case Left(msg)    => sys.error(s"Failed to interpret theoryinst_2: $msg")
-    }
+    val presA = interpreter.interpret(env, conj.theoryinst_1)
+    val presB = interpreter.interpret(env, conj.theoryinst_2)
 
     val commonExports = presA.listcat_.asScala.toSet intersect presB.listcat_.asScala.toSet
     val commonTerms   = presA.listdef_.asScala.toSet intersect presB.listdef_.asScala.toSet
@@ -107,8 +165,8 @@ object InstInterpreterCases {
                       env: List[(String, BasePres)],
                       subtract: TheoryInstSubtract
                     ): BasePres = {
-    val bp1 = interpreter.interpret(env, subtract.theoryinst_1).right.get
-    val bp2 = interpreter.interpret(env, subtract.theoryinst_2).right.get
+    val bp1 = interpreter.interpret(env, subtract.theoryinst_1)
+    val bp2 = interpreter.interpret(env, subtract.theoryinst_2)
 
     // Subtract the exported categories
     val diffCats = bp1.listcat_.asScala.toSet -- bp2.listcat_.asScala.toSet
@@ -154,37 +212,37 @@ object InstInterpreterCases {
   }
 
   def checkAddExports(
-                      interpreter: InstInterpreter,
-                      env: List[(String, BasePres)],
-                      inst: TheoryInstAddExports
-                     ): Option[String] =
-    interpreter.interpret(env, inst.theoryinst_).toOption.flatMap { basePres =>
-      if (inst.listexport_.size < 1) {
-        Some("Error: missing distinguished export.")
-      } else {
-        inst.listexport_
-          .toArray
-          .toList
-          .collectFirst {
-            case re: RenameExport =>
-              val currentCats = basePres.listcat_.asScala.toList
-              if (!currentCats.exists(_.equals(re.cat_1))) {
-                Some(s"Error: Cannot rename export. Export ${PrettyPrinter.print(re.cat_1)} not found among current exports.")
-              } else {
-                None
-              }
-            case _ =>
-              Some("Error: Unknown export type encountered in addExports.")
-          }.flatten
-      }
+                       interpreter: InstInterpreter,
+                       env: List[(String, BasePres)],
+                       inst: TheoryInstAddExports
+                     ): Option[String] = {
+    val basePres = interpreter.interpret(env, inst.theoryinst_)
+    if (inst.listexport_.size < 1) {
+      Some("Error: missing distinguished export.")
+    } else {
+      inst.listexport_
+        .toArray
+        .toList
+        .collectFirst {
+          case re: RenameExport =>
+            val currentCats = basePres.listcat_.asScala.toList
+            if (!currentCats.exists(_.equals(re.cat_1))) {
+              Some(s"Error: Cannot rename export. Export ${PrettyPrinter.print(re.cat_1)} not found among current exports.")
+            } else {
+              None
+            }
+          case _ =>
+            Some("Error: Unknown export type encountered in addExports.")
+        }.flatten
     }
+  }
 
   def handleAddExports(
                         interpreter: InstInterpreter,
                         env: List[(String, BasePres)],
                         inst: TheoryInstAddExports
                       ): BasePres = {
-    val basePres = interpreter.interpret(env, inst.theoryinst_).right.get
+    val basePres = interpreter.interpret(env, inst.theoryinst_)
     inst.listexport_.toArray.toList.foldLeft(basePres) { (currentPres, expInst) =>
       expInst match {
         // For a BaseExport, simply add its Cat to the exports list.
@@ -203,154 +261,157 @@ object InstInterpreterCases {
   }
 
   def checkAddReplacements(
-                                    interpreter: InstInterpreter,
-                                    env: List[(String, BasePres)],
-                                    inst: TheoryInstAddReplacements
-                                  ): Option[String] = {
-    interpreter.interpret(env, inst.theoryinst_).flatMap { basePres =>
-      import scala.jdk.CollectionConverters._
-      val replacements: List[SimpleRepl] =
-        inst.listreplacement_.asScala.toList.collect { case s: SimpleRepl => s }
+                            interpreter: InstInterpreter,
+                            env: List[(String, BasePres)],
+                            inst: TheoryInstAddReplacements
+                          ): Option[String] = {
+    val basePres = interpreter.interpret(env, inst.theoryinst_)
+    import scala.jdk.CollectionConverters._
+    val replacements: List[SimpleRepl] =
+      inst.listreplacement_.asScala.toList.collect { case s: SimpleRepl => s }
 
-      def convertIntList(intList: IntList): List[Int] = intList match {
-        case ints: Ints => ints.listinteger_.asScala.toList.map(_.intValue())
-      }
+    def convertIntList(intList: IntList): List[Int] = intList match {
+      case ints: Ints => ints.listinteger_.asScala.toList.map(_.intValue())
+    }
 
-      // Process each replacement sequentially.
-      replacements.foldLeft[Either[String, BasePres]](Right(basePres)) { (accEither, s) =>
-        accEither.flatMap { currentPres =>
-          // Find the Rule in currentPres whose label matches s.label_.
-          val ruleOpt: Option[Rule] =
-            currentPres.listdef_.asScala.collect { case r: Rule => r }
-              .find(r => labelToString(r.label_) == labelToString(s.label_))
+    // Process each replacement sequentially.
+    val result = replacements.foldLeft[Either[String, BasePres]](Right(basePres)) { (accEither, s) =>
+      accEither.flatMap { currentPres =>
+        // Find the Rule in currentPres whose label matches s.label_.
+        val ruleOpt: Option[Rule] =
+          currentPres.listdef_.asScala.collect { case r: Rule => r }
+            .find(r => labelToString(r.label_) == labelToString(s.label_))
 
-          ruleOpt match {
-            case None =>
-              Left(s"Error: No definition found with label ${PrettyPrinter.print(s.label_)} in theory.")
+        ruleOpt match {
+          case None =>
+            Left(s"Error: No definition found with label ${PrettyPrinter.print(s.label_)} in theory.")
 
-            case Some(rule) =>
-              // 1) Category must match
-              if (!rule.cat_.equals(s.cat_))
-                Left(s"Error: Category mismatch for definition with label ${PrettyPrinter.print(s.label_)}.")
-              else {
-                // s.def_ must be a Rule
-                s.def_ match {
-                  case replRule: Rule =>
-                    // 2) Duplicate-label check: the new rule’s label must not collide
-                    val existingLabels = currentPres.listdef_.asScala.collect { case r: Rule => r.label_ }
-                    val otherLabels    = existingLabels.filterNot(_ == s.label_)
-                    if (otherLabels.contains(replRule.label_))
-                      Left(
-                        s"Error: Replacement rule label " +
+          case Some(rule) =>
+            // 1) Category must match
+            if (!rule.cat_.equals(s.cat_))
+              Left(s"Error: Category mismatch for definition with label ${PrettyPrinter.print(s.label_)}.")
+            else {
+              // s.def_ must be a Rule
+              s.def_ match {
+                case replRule: Rule =>
+                  // 2) Duplicate-label check: the new rule’s label must not collide
+                  val existingLabels = currentPres.listdef_.asScala.collect { case r: Rule => r.label_ }
+                  val otherLabels = existingLabels.filterNot(_ == s.label_)
+                  if (otherLabels.contains(replRule.label_))
+                    Left(
+                      s"Error: Replacement rule label " +
                         s"${PrettyPrinter.print(replRule.label_)} already exists in theory."
+                    )
+                  else {
+                    // 3) Arity check
+                    val origNTs = nonTerminals(rule.listitem_)
+                    val replNTs = nonTerminals(replRule.listitem_)
+                    if (origNTs.size != replNTs.size)
+                      Left(
+                        s"Error: Arity mismatch for definition with label ${s.label_}. " +
+                          s"Expected ${origNTs.size} non-terminal items but got ${replNTs.size}."
                       )
                     else {
-                      // 3) Arity check
-                      val origNTs  = nonTerminals(rule.listitem_)
-                      val replNTs  = nonTerminals(replRule.listitem_)
-                      if (origNTs.size != replNTs.size)
+                      val n = origNTs.size
+                      val perm = convertIntList(s.intlist_)
+                      // 4) Permutation check
+                      if (perm.sorted != (0 until n).toList)
                         Left(
-                          s"Error: Arity mismatch for definition with label ${s.label_}. " +
-                          s"Expected ${origNTs.size} non-terminal items but got ${replNTs.size}."
+                          s"Error: intlist in replacement for label " +
+                            s"${PrettyPrinter.print(s.label_)} is not a permutation of 0 to ${n - 1}."
                         )
                       else {
-                        val n    = origNTs.size
-                        val perm = convertIntList(s.intlist_)
-                        // 4) Permutation check
-                        if (perm.sorted != (0 until n).toList)
+                        // 5) Category-alignment check across each position
+                        val coordsMatch = (0 until n).forall { j =>
+                          origNTs(j) == replNTs(perm(j))
+                        }
+                        if (!coordsMatch)
                           Left(
-                            s"Error: intlist in replacement for label " +
-                            s"${PrettyPrinter.print(s.label_)} is not a permutation of 0 to ${n - 1}."
+                            s"Error: Category mismatch among non-terminal items in replacement " +
+                              s"for label ${PrettyPrinter.print(s.label_)}."
                           )
                         else {
-                          // 5) Category-alignment check across each position
-                          val coordsMatch = (0 until n).forall { j =>
-                            origNTs(j) == replNTs(perm(j))
+                          // Replace the rule in listdef_
+                          val newDefs = currentPres.listdef_.asScala.toList.map {
+                            case r: Rule if labelToString(r.label_) == labelToString(s.label_) => replRule
+                            case other => other
                           }
-                          if (!coordsMatch)
-                            Left(
-                              s"Error: Category mismatch among non-terminal items in replacement " +
-                                s"for label ${PrettyPrinter.print(s.label_)}."
-                            )
-                          else {
-                            val newDefs = currentPres.listdef_.asScala.toList.map {
-                              case r: Rule if labelToString(r.label_) == labelToString(s.label_) => replRule
-                              case other => other
-                            }
 
-                            def updateAST(ast: AST): AST = ast match {
-                              case sexp: ASTSExp => {
-                                // first recurse on args
-                                val newArgs = sexp.listast_.asScala.map(updateAST).toList
-                                // then if the labels match, permute and replace label
-                                if (labelToString(sexp.label_) == labelToString(s.label_)) {
-                                  val permuted = perm.map(newArgs(_))
-                                  val newListAST = new ListAST()
-                                  newListAST.addAll(permuted.asJava)
-                                  new ASTSExp(replRule.label_, newListAST)
-                                } else {
-                                  val newListAST = new ListAST()
-                                  newListAST.addAll(newArgs.asJava)
-                                  new ASTSExp(sexp.label_, newListAST)
-                                }
+                          // Update ASTs in equations and rewrites
+                          def updateAST(ast: AST): AST = ast match {
+                            case sexp: ASTSExp => {
+                              // first recurse on args
+                              val newArgs = sexp.listast_.asScala.map(updateAST).toList
+                              // then if the labels match, permute and replace label
+                              if (labelToString(sexp.label_) == labelToString(s.label_)) {
+                                val permuted = perm.map(newArgs(_))
+                                val newListAST = new ListAST()
+                                newListAST.addAll(permuted.asJava)
+                                new ASTSExp(replRule.label_, newListAST)
+                              } else {
+                                val newListAST = new ListAST()
+                                newListAST.addAll(newArgs.asJava)
+                                new ASTSExp(sexp.label_, newListAST)
                               }
-
-                              case sub: ASTSubst =>
-                                new ASTSubst(updateAST(sub.ast_1), updateAST(sub.ast_2), sub.ident_)
-
-                              case other => other
                             }
 
-                            def updateEquation(eq: Equation): Equation = eq match {
-                              case ef: EquationFresh =>
-                                new EquationFresh(
-                                  ef.ident_1,
-                                  ef.ident_2,
-                                  updateEquation(ef.equation_)
-                                )
-                              case impl: EquationImpl =>
-                                new EquationImpl(updateAST(impl.ast_1), updateAST(impl.ast_2))
-                            }
+                            case sub: ASTSubst =>
+                              new ASTSubst(updateAST(sub.ast_1), updateAST(sub.ast_2), sub.ident_)
 
-                            val newEquations = currentPres.listequation_.asScala.toList.map(updateEquation)
-
-                            def updateRewrite(r: Rewrite): Rewrite = r match {
-                              case rb: RewriteBase =>
-                                new RewriteBase(updateAST(rb.ast_1), updateAST(rb.ast_2))
-
-                              case ctx: RewriteContext =>
-                                new RewriteContext(ctx.hypothesis_, updateRewrite(ctx.rewrite_))
-
-                              case other => other
-                            }
-
-                            val newRewrites = currentPres.listrewritedecl_.asScala.toList.map { rd =>
-                              val rdecl = rd.asInstanceOf[RDecl]
-                              new RDecl(rdecl.ident_, updateRewrite(rdecl.rewrite_))
-                            }
-
-                            // Return the updated BasePres with definitions, equations AND rewrites replaced
-                            Right(BasePresOps.copyPres(
-                              currentPres,
-                              listdef        = Some(newDefs),
-                              listequation   = Some(newEquations),
-                              listrewritedecl= Some(newRewrites)
-                            ))
+                            case other => other
                           }
+
+                          def updateEquation(eq: Equation): Equation = eq match {
+                            case ef: EquationFresh =>
+                              new EquationFresh(
+                                ef.ident_1,
+                                ef.ident_2,
+                                updateEquation(ef.equation_)
+                              )
+                            case impl: EquationImpl =>
+                              new EquationImpl(updateAST(impl.ast_1), updateAST(impl.ast_2))
+                          }
+
+                          val newEquations = currentPres.listequation_.asScala.toList.map(updateEquation)
+
+                          def updateRewrite(r: Rewrite): Rewrite = r match {
+                            case rb: RewriteBase =>
+                              new RewriteBase(updateAST(rb.ast_1), updateAST(rb.ast_2))
+
+                            case ctx: RewriteContext =>
+                              new RewriteContext(ctx.hypothesis_, updateRewrite(ctx.rewrite_))
+
+                            case other => other
+                          }
+
+                          val newRewrites = currentPres.listrewritedecl_.asScala.toList.map { rd =>
+                            val rdecl = rd.asInstanceOf[RDecl]
+                            new RDecl(rdecl.ident_, updateRewrite(rdecl.rewrite_))
+                          }
+
+                          // Return the updated BasePres with definitions, equations AND rewrites replaced
+                          Right(BasePresOps.copyPres(
+                            currentPres,
+                            listdef = Some(newDefs),
+                            listequation = Some(newEquations),
+                            listrewritedecl = Some(newRewrites)
+                          ))
                         }
                       }
                     }
+                  }
 
-                  case _ =>
-                    Left(
-                      s"Error: Replacement definition for label ${PrettyPrinter.print(s.label_)} is not a Rule."
-                    )
-                }
+                case _ =>
+                  Left(
+                    s"Error: Replacement definition for label ${PrettyPrinter.print(s.label_)} is not a Rule."
+                  )
               }
-          }
+            }
         }
       }
-    }.left.toOption
+    }
+
+    result.left.toOption
   }
 
   def handleAddReplacements(
@@ -358,9 +419,7 @@ object InstInterpreterCases {
                              env: List[(String, BasePres)],
                              inst: TheoryInstAddReplacements
                            ): BasePres = {
-    interpreter.interpret(env, inst.theoryinst_).right.get
-
-    val basePres = interpreter.interpret(env, inst.theoryinst_).right.get
+    val basePres = interpreter.interpret(env, inst.theoryinst_)
     val replacements: List[SimpleRepl] =
       inst.listreplacement_.asScala.toList.collect { case s: SimpleRepl => s }
 
@@ -379,7 +438,7 @@ object InstInterpreterCases {
       val replRule = s.def_.asInstanceOf[Rule]
 
       // 1) Category must match
-      // 2) Duplicate‐label check: the new rule’s label must not collide
+      // 2) Duplicate-label check: the new rule’s label must not collide
       // 3) Arity check
       val origNTs = nonTerminals(rule.listitem_)
       val replNTs = nonTerminals(replRule.listitem_)
@@ -387,7 +446,7 @@ object InstInterpreterCases {
       val perm    = convertIntList(s.intlist_)
 
       // 4) Permutation check
-      // 5) Category‐alignment check across each position
+      // 5) Category-alignment check across each position
       val newDefs = currentPres.listdef_.asScala.toList.map {
         case r: Rule if labelToString(r.label_) == labelToString(s.label_) => replRule
         case other => other
@@ -454,11 +513,11 @@ object InstInterpreterCases {
   }
 
   def checkAddTerms(
-    interpreter: InstInterpreter,
-    env: List[(String, BasePres)],
-    inst: TheoryInstAddTerms
-  ): Option[String] =
-    interpreter.interpret(env, inst.theoryinst_).flatMap { basePres =>
+                     interpreter: InstInterpreter,
+                     env: List[(String, BasePres)],
+                     inst: TheoryInstAddTerms
+                   ): Option[String] = {
+      val basePres = interpreter.interpret(env, inst.theoryinst_)
       // Extract the incoming list of Defs (only Rules matter here)
       val newTerms: List[Def] = inst.grammar_ match {
         case g: MkGrammar => g.listdef_.iterator.asScala.toList
@@ -468,7 +527,7 @@ object InstInterpreterCases {
       val allowedCats: Set[Cat] = basePres.listcat_.asScala.toSet
 
       // Fold over newTerms, starting with Right(basePres)
-      newTerms.foldLeft[Either[String, BasePres]](Right(basePres)) {
+      val result = newTerms.foldLeft[Either[String, BasePres]](Right(basePres)) {
         case (Left(err), _) => Left(err)  // once an error, keep propagating
         case (Right(bp), term) => term match {
           case rule: Rule =>
@@ -504,7 +563,9 @@ object InstInterpreterCases {
             Right(bp)
         }
       }
-    }.left.toOption
+
+      result.left.toOption
+    }
 
   def handleAddTerms(
                       interpreter: InstInterpreter,
@@ -512,7 +573,7 @@ object InstInterpreterCases {
                       inst: TheoryInstAddTerms
                     ): BasePres = {
     // Interpret the base presentation from the theory instance
-    val basePres = interpreter.interpret(env, inst.theoryinst_).right.get
+    val basePres = interpreter.interpret(env, inst.theoryinst_)
 
     // Extract new term definitions from the grammar
     val newTerms: List[Def] = inst.grammar_ match {
@@ -529,36 +590,37 @@ object InstInterpreterCases {
     copyPres(basePres, listdef = Some(updatedDefs))
   }
 
-  def checkAddEquations(interpreter: InstInterpreter,
-                        env: List[(String, BasePres)],
-                        inst: TheoryInstAddEquations): Option[String] = {
-    interpreter.interpret(env, inst.theoryinst_) match {
-      case Left(err) => Some(err)
-      case Right(basePres) =>
-        val defs: Map[Label, Rule] = listDefToMap(basePres.listdef_)
-        inst.listequation_.asScala.toList.foldLeft[Option[String]](None) {
-          case (Some(err), _) => Some(err) // short-circuit on first error
-          case (None, e) =>
-            val pretty = s"equation ${PrettyPrinter.print(e)}"
-            val eqn = equationImpl(e)
+  def checkAddEquations(
+                         interpreter: InstInterpreter,
+                         env: List[(String, BasePres)],
+                         inst: TheoryInstAddEquations
+                       ): Option[String] = {
+    val basePres = interpreter.interpret(env, inst.theoryinst_)
+    val defs: Map[Label, Rule] = listDefToMap(basePres.listdef_)
+    inst.listequation_.asScala.toList.foldLeft[Option[String]](None) {
+      case (Some(err), _) => Some(err) // short-circuit on first error
+      case (None, e) =>
+        val pretty = s"equation ${PrettyPrinter.print(e)}"
+        val eqn = equationImpl(e)
 
-            for {
-              _ <- sameCategory(catOfAST(eqn.ast_1, defs), catOfAST(eqn.ast_2, defs), pretty).left.toOption
-              m1 <- consistentCategory(eqn.ast_1, defs, pretty).toOption
-              m2 <- consistentCategory(eqn.ast_2, defs, pretty).toOption
-              err <- (m1.keySet ++ m2.keySet).foldLeft[Option[String]](None) {
-                case (Some(e), _) => Some(e)
-                case (None, ident) =>
-                  (m1.get(ident), m2.get(ident)) match {
-                    case (Some(l), Some(r)) if l != r =>
-                      Some(s"Variable ${ident} has category ${PrettyPrinter.print(l)} on the left-" +
-                        s"hand side and category ${PrettyPrinter.print(r)} on the right-hand" +
-                        s" side of $pretty")
-                    case _ => None
-                  }
+        for {
+          _ <- sameCategory(catOfAST(eqn.ast_1, defs), catOfAST(eqn.ast_2, defs), pretty).left.toOption
+          m1 <- consistentCategory(eqn.ast_1, defs, pretty).toOption
+          m2 <- consistentCategory(eqn.ast_2, defs, pretty).toOption
+          err <- (m1.keySet ++ m2.keySet).foldLeft[Option[String]](None) {
+            case (Some(e), _) => Some(e)
+            case (None, ident) =>
+              (m1.get(ident), m2.get(ident)) match {
+                case (Some(l), Some(r)) if l != r =>
+                  Some(
+                    s"Variable $ident has category ${PrettyPrinter.print(l)} on the left-" +
+                      s"hand side and category ${PrettyPrinter.print(r)} on the right-hand" +
+                      s" side of $pretty"
+                  )
+                case _ => None
               }
-            } yield err
-        }
+          }
+        } yield err
     }
   }
 
@@ -567,7 +629,7 @@ object InstInterpreterCases {
                           env: List[(String, BasePres)],
                           inst: TheoryInstAddEquations
                         ): BasePres = {
-    val basePres = interpreter.interpret(env, inst.theoryinst_).right.get
+    val basePres = interpreter.interpret(env, inst.theoryinst_)
     val defs: Map[Label, Rule] = listDefToMap(basePres.listdef_)
 
     inst.listequation_.asScala.toList.foldLeft(basePres) { (bp, e) =>
@@ -593,55 +655,56 @@ object InstInterpreterCases {
     }
   }
 
-  def checkAddRewrites(interpreter: InstInterpreter,
-                       env: List[(String, BasePres)],
-                       inst: TheoryInstAddRewrites): Option[String] = {
-    interpreter.interpret(env, inst.theoryinst_) match {
-      case Left(err) => Some(err)
-      case Right(basePres) =>
-        val defs: Map[Label, Rule] = listDefToMap(basePres.listdef_)
-        inst.listrewritedecl_.asScala.foldLeft[Option[String]](None) {
-          case (Some(err), _) => Some(err) // short-circuit on first error
-          case (None, rewriteDecl) =>
-            val rw = rewrite(rewriteDecl)
-            val rb = rewriteBase(rw)
-            val pretty = s"rewrite ${PrettyPrinter.print(rewriteDecl)}"
-            // Check validity of rewrites as follows
-            for {
-              // The two sides of the rewrite have the same category
-              // OR one has a category and the other is a top-level variable.
-              _ <- sameCategory(catOfAST(rb.ast_1, defs), catOfAST(rb.ast_2, defs), pretty).left.toOption
-              // Check that each variable has a consistent category
-              // Check that the vars on the left are consistent.
-              m1 <- consistentCategory(rb.ast_1, defs, pretty).toOption
-              // Check that the vars on the right are consistent.
-              m2 <- consistentCategory(rb.ast_2, defs, pretty).toOption
-              _ <- (m1.keySet ++ m2.keySet).foldLeft[Option[String]](None) {
-                case (Some(e), _) => Some(e)
-                case (None, ident) =>
-                  (m1.get(ident), m2.get(ident)) match {
-                    case (Some(l), Some(r)) if l != r =>
-                      Some(s"Variable ${ident} has category ${PrettyPrinter.print(l)} on the left-" +
-                        s"hand side and category ${PrettyPrinter.print(r)} on the right-hand" +
-                        s" side of $pretty")
-                    case _ => None
-                  }
+  def checkAddRewrites(
+                        interpreter: InstInterpreter,
+                        env: List[(String, BasePres)],
+                        inst: TheoryInstAddRewrites
+                      ): Option[String] = {
+    val basePres = interpreter.interpret(env, inst.theoryinst_)
+    val defs: Map[Label, Rule] = listDefToMap(basePres.listdef_)
+    inst.listrewritedecl_.asScala.foldLeft[Option[String]](None) {
+      case (Some(err), _) => Some(err) // short-circuit on first error
+      case (None, rewriteDecl) =>
+        val rw = rewrite(rewriteDecl)
+        val rb = rewriteBase(rw)
+        val pretty = s"rewrite ${PrettyPrinter.print(rewriteDecl)}"
+        // Check validity of rewrites as follows
+        for {
+          // The two sides of the rewrite have the same category
+          // OR one has a category and the other is a top-level variable.
+          _ <- sameCategory(catOfAST(rb.ast_1, defs), catOfAST(rb.ast_2, defs), pretty).left.toOption
+          // Check that each variable has a consistent category
+          // Check that the vars on the left are consistent.
+          m1 <- consistentCategory(rb.ast_1, defs, pretty).toOption
+          // Check that the vars on the right are consistent.
+          m2 <- consistentCategory(rb.ast_2, defs, pretty).toOption
+          _ <- (m1.keySet ++ m2.keySet).foldLeft[Option[String]](None) {
+            case (Some(e), _) => Some(e)
+            case (None, ident) =>
+              (m1.get(ident), m2.get(ident)) match {
+                case (Some(l), Some(r)) if l != r =>
+                  Some(
+                    s"Variable $ident has category ${PrettyPrinter.print(l)} on the left-" +
+                      s"hand side and category ${PrettyPrinter.print(r)} on the right-hand" +
+                      s" side of $pretty"
+                  )
+                case _ => None
               }
-              // Check each rewrite declaration to ensure that
-              // every variable on the right appears on the left.
-              lVars = leftVars(rw)
-              rVars = rightVars(rw)
-              missingVars = rVars diff lVars
-              _ <- Option.when(missingVars.nonEmpty)(
-                "Error: In RewriteDecl, variables on the right-hand side" +
-                  s" not found on the left-hand side: $missingVars"
-              )
-              // When the Rewrite is a RewriteContext let Src ~> Tgt in r,
-              // Src must appear only on the left, Tgt must appear only on the right,
-              // and the category of Src must match the category of Tgt
-              _ <- checkHypotheticals(hypVars(rw), defs, rb).left.toOption
-            } yield pretty // returning the first failing rewrite description
-        }
+          }
+          // Check each rewrite declaration to ensure that
+          // every variable on the right appears on the left.
+          lVars = leftVars(rw)
+          rVars = rightVars(rw)
+          missingVars = rVars diff lVars
+          _ <- Option.when(missingVars.nonEmpty)(
+            "Error: In RewriteDecl, variables on the right-hand side" +
+              s" not found on the left-hand side: $missingVars"
+          )
+          // When the Rewrite is a RewriteContext let Src ~> Tgt in r,
+          // Src must appear only on the left, Tgt must appear only on the right,
+          // and the category of Src must match the category of Tgt
+          _ <- checkHypotheticals(hypVars(rw), defs, rb).left.toOption
+        } yield pretty // returning the first failing rewrite description
     }
   }
 
@@ -650,7 +713,7 @@ object InstInterpreterCases {
                          env: List[(String, BasePres)],
                          inst: TheoryInstAddRewrites
                        ): BasePres = {
-    val basePres = interpreter.interpret(env, inst.theoryinst_).right.get
+    val basePres = interpreter.interpret(env, inst.theoryinst_)
     val defs: Map[Label, Rule] = listDefToMap(basePres.listdef_)
 
     inst.listrewritedecl_.asScala.foldLeft(basePres) { (currentPres, rewriteDecl) =>
@@ -670,14 +733,13 @@ object InstInterpreterCases {
   }
 
   def checkCtor(
-                  interpreter: InstInterpreter,
-                  env: List[(String, BasePres)],
-                  resolvedModules: Map[String, Module],
-                  currentModulePath: String,
-                  ctor: TheoryInstCtor,
-                  moduleProcessor: ModuleProcessor
-                ): Option[String] = {
-
+                 interpreter: InstInterpreter,
+                 env: List[(String, BasePres)],
+                 resolvedModules: Map[String, Module],
+                 currentModulePath: String,
+                 ctor: TheoryInstCtor,
+                 moduleProcessor: ModuleProcessor
+               ): Option[String] = {
     moduleProcessor.resolveDottedPath(resolvedModules, currentModulePath, ctor.dottedpath_) match {
       case Left(error) => Some(error)
       case Right((modulePath, theoryDecl)) => theoryDecl match {
@@ -686,25 +748,23 @@ object InstInterpreterCases {
             Some(s"Mismatch in number of arguments for theory ${PrettyPrinter.print(baseDecl.name_)}")
           else {
             val actuals = ctor.listtheoryinst_.asScala.toList
-            sequence(actuals.map(interpreter.interpret(env, _))) match {
+            val actualPresentations = actuals.map(interpreter.interpret(env, _))
+            val formalsEither = baseDecl.listvariabledecl_.asScala.toList.map {
+              case varDecl: VarDecl => Right(varDecl.ident_.toString)
+              case _ => Left(
+                s"Non-var declaration in formal parameter list for theory ${PrettyPrinter.print(baseDecl.name_)}"
+              )
+            }
+
+            sequence(formalsEither) match {
               case Left(err) => Some(err)
-              case Right(actualPresentations) =>
-                val formalsEither = baseDecl.listvariabledecl_.asScala.toList.map {
-                  case varDecl: VarDecl => Right(varDecl.ident_.toString)
-                  case _ => Left(
-                    s"Non-var declaration in formal parameter list for theory ${PrettyPrinter.print(baseDecl.name_)}"
-                  )
-                }
-                sequence(formalsEither) match {
-                  case Left(err) => Some(err)
-                  case Right(formals) =>
-                    val newBindings = formals.zip(actualPresentations)
-                    new InstInterpreter(
-                      resolvedModules,
-                      modulePath,
-                      moduleProcessor
-                    ).check_interpret(env ++ newBindings, baseDecl.theoryinst_)
-                }
+              case Right(formals) =>
+                val newBindings = formals.zip(actualPresentations)
+                new InstInterpreter(
+                  resolvedModules,
+                  modulePath,
+                  moduleProcessor
+                ).check_interpret(env ++ newBindings, baseDecl.theoryinst_)
             }
           }
         case _ => Some("Resolved theory declaration is not a BaseTheoryDecl")
@@ -721,17 +781,22 @@ object InstInterpreterCases {
                   moduleProcessor: ModuleProcessor
                 ): BasePres = {
     val (modulePath, theoryDecl) =
-      moduleProcessor.resolveDottedPath(resolvedModules, currentModulePath, ctor.dottedpath_).right.get
+      moduleProcessor.resolveDottedPath(resolvedModules, currentModulePath, ctor.dottedpath_) match {
+        case Right(result) => result
+        case Left(msg)     => sys.error(s"Failed to resolve dotted path: $msg")
+      }
+
     val baseDecl = theoryDecl.asInstanceOf[BaseTheoryDecl]
     val actuals = ctor.listtheoryinst_.asScala.toList
-    val actualPresentations = sequence(actuals.map(interpreter.interpret(env, _))).right.get
+    val actualPresentations = actuals.map(interpreter.interpret(env, _))
     val formals = baseDecl.listvariabledecl_.asScala.toList.map(_.asInstanceOf[VarDecl].ident_.toString)
     val newBindings = formals.zip(actualPresentations)
+
     new InstInterpreter(
       resolvedModules,
       modulePath,
       moduleProcessor
-    ).interpret(env ++ newBindings, baseDecl.theoryinst_).right.get
+    ).interpret(env ++ newBindings, baseDecl.theoryinst_)
   }
 
   def checkRef(env: List[(String, BasePres)], ref: TheoryInstRef): Option[String] =
@@ -744,17 +809,13 @@ object InstInterpreterCases {
     env.reverse.find(_._1 == ref.ident_).get._2
   }
 
-  def handleRec(interpreter: InstInterpreter, env: List[(String, BasePres)], rec: TheoryInstRec): BasePres = {
-    val pres1 = interpreter.interpret(env, rec.theoryinst_1) match {
-      case Right(value) => value
-      case Left(msg)    => sys.error(s"Failed to interpret theoryinst_1: $msg")
-    }
-
+  def handleRec(
+                 interpreter: InstInterpreter,
+                 env: List[(String, BasePres)],
+                 rec: TheoryInstRec
+               ): BasePres = {
+    val pres1 = interpreter.interpret(env, rec.theoryinst_1)
     val envUpdated = env :+ (rec.ident_, pres1)
-
-    interpreter.interpret(envUpdated, rec.theoryinst_2) match {
-      case Right(value) => value
-      case Left(msg)    => sys.error(s"Failed to interpret theoryinst_2: $msg")
-    }
+    interpreter.interpret(envUpdated, rec.theoryinst_2)
   }
 }

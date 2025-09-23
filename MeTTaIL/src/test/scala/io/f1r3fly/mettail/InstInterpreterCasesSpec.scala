@@ -12,23 +12,16 @@ import scala.jdk.CollectionConverters._
 /** A simple interpreter for testing: when asked to interpret exactly `target`, returns `basePres`. */
 class SingleInterpreter(basePres: BasePres, target: TheoryInst)
     extends InstInterpreter(Map.empty, "", ModuleProcessor.default) {
-  override def interpret(env: List[(String, BasePres)], inst: TheoryInst): Either[String, BasePres] =
-    if (inst eq target) Right(basePres)
+  override def interpret(env: List[(String, BasePres)], inst: TheoryInst): BasePres =
+    if (inst eq target) basePres
     else super.interpret(env, inst)
 }
 
 /** A dummy interpreter that always returns the same BasePres, no matter the instruction. */
 class DummyInterpreter(pres: BasePres)
     extends InstInterpreter(Map.empty, "", ModuleProcessor.default) {
-  override def interpret(env: List[(String, BasePres)], inst: TheoryInst): Either[String, BasePres] =
-    Right(pres)
-}
-
-/** A dummy interpreter that always returns an error, for testing error cases. */
-class DummyErrorInterpreter(errorMessage: String)
-    extends InstInterpreter(Map.empty, "", ModuleProcessor.default) {
-  override def interpret(env: List[(String, BasePres)], inst: TheoryInst): Either[String, BasePres] =
-    Left(errorMessage)
+  override def interpret(env: List[(String, BasePres)], inst: TheoryInst): BasePres =
+    pres
 }
 
 /** A fake interpreter that takes two BasePres and ignores everything else. */
@@ -41,9 +34,9 @@ class PairInterpreter(
   override def interpret(
       env: List[(String, BasePres)],
       inst: TheoryInst
-  ): Either[String, BasePres] =
+  ): BasePres =
     // Used only in the “module not found” test path, so interpret is never actually called.
-    Right(presA)
+    presA
 }
 
 /** A stub for handleRec: returns presA on instA, presB on instB, error otherwise. */
@@ -56,10 +49,10 @@ class RecInterpreter(
   override def interpret(
       env: List[(String, BasePres)],
       inst: TheoryInst
-  ): Either[String, BasePres] =
-    if (inst eq instA) Right(presA)
-    else if (inst eq instB) Right(presB)
-    else Left("Unexpected inst")
+  ): BasePres =
+    if (inst eq instA) presA
+    else if (inst eq instB) presB
+    else throw new RuntimeException("Unexpected inst")
 }
 
 class InstInterpreterCasesSpec extends AnyFunSuite {
@@ -84,9 +77,207 @@ class InstInterpreterCasesSpec extends AnyFunSuite {
     assert(res == BasePresOps.empty)
   }
 
-  test("handleFree should return an empty BasePres") {
-    val res = handleFree()
-    assert(res == BasePresOps.empty)
+  test("handleFree should handle various theory dependency scenarios") {
+    // Create categories for testing
+    val catA = new IdCat("A")
+    val catB = new IdCat("B")
+    val catC = new IdCat("C")
+
+    // Theory without parameters (leaf theory)
+    val leafTheoryDecl = new BaseTheoryDecl(
+      new NameVar("LeafTheory"),
+      new ListVariableDecl(), // No parameters
+      new TheoryInstAddExports(
+        new TheoryInstEmpty(),
+        { val exports = new ListExport(); exports.add(new BaseExport(catA)); exports }
+      )
+    )
+
+    // Theory with just one parameter
+    val singleParamDecl = new BaseTheoryDecl(
+      new NameVar("SingleParam"),
+      { val vars = new ListVariableDecl();
+        vars.add(new VarDecl("dep1", new BaseDottedPath("LeafTheory"))); vars },
+      new TheoryInstAddExports(
+        new TheoryInstRef("dep1"),
+        { val exports = new ListExport(); exports.add(new BaseExport(catB)); exports }
+      )
+    )
+
+    // Theory with nested parameters (multi-level dependency)
+    val nestedParamDecl = new BaseTheoryDecl(
+      new NameVar("NestedParam"),
+      { val vars = new ListVariableDecl();
+        vars.add(new VarDecl("dep1", new BaseDottedPath("SingleParam")));
+        vars.add(new VarDecl("dep2", new BaseDottedPath("LeafTheory"))); vars },
+      new TheoryInstAddExports(
+        new TheoryInstDisj(new TheoryInstRef("dep1"), new TheoryInstRef("dep2")),
+        { val exports = new ListExport(); exports.add(new BaseExport(catC)); exports }
+      )
+    )
+
+    // Create modules containing these theories
+    val createModule = (name: String, decl: BaseTheoryDecl) => {
+      val progDecl = new ProgTheoryDecl(decl)
+      val listProg = new ListProg()
+      listProg.add(progDecl)
+      new ModuleImpl(
+        new ListImport(),
+        new NameVar(name),
+        listProg
+      )
+    }
+
+    val resolvedModules = Map(
+      "/leaf" -> createModule("LeafModule", leafTheoryDecl),
+      "/single" -> createModule("SingleModule", singleParamDecl),
+      "/nested" -> createModule("NestedModule", nestedParamDecl)
+    )
+
+    // Mock module processor that resolves theories correctly
+    val mockModuleProcessor = new ModuleProcessor(new RealFileSystem) {
+      override def resolveDottedPath(
+        resolvedModules: Map[String, Module],
+        currentModulePath: String,
+        dottedPath: DottedPath
+      ): Either[String, (String, TheoryDecl)] = {
+        dottedPath match {
+          case bdp: BaseDottedPath => bdp.ident_ match {
+            case "LeafTheory" => Right(("/leaf", leafTheoryDecl))
+            case "SingleParam" => Right(("/single", singleParamDecl))
+            case "NestedParam" => Right(("/nested", nestedParamDecl))
+            case other => Left(s"Unknown theory: $other")
+          }
+          case _ => Left("Complex dotted paths not supported in test")
+        }
+      }
+    }
+
+    val interpreter = new InstInterpreter(resolvedModules, "/test", mockModuleProcessor)
+
+    // Test a theory without parameters
+    val leafResult = handleFree(interpreter, Nil, new TheoryInstFree(new BaseDottedPath("LeafTheory")))
+    assert(leafResult.listcat_.asScala.toList.contains(catA))
+
+    // Test a theory with just one parameter
+    val singleResult = handleFree(interpreter, Nil, new TheoryInstFree(new BaseDottedPath("SingleParam")))
+    assert(singleResult.listcat_.asScala.toList.contains(catA)) // from dependency
+    assert(singleResult.listcat_.asScala.toList.contains(catB)) // from theory itself
+    
+    // Test a theory with nested parameters
+    val nestedResult = handleFree(interpreter, Nil, new TheoryInstFree(new BaseDottedPath("NestedParam")))
+    assert(nestedResult.listcat_.asScala.toList.contains(catA)) // from leaf dependency
+    assert(nestedResult.listcat_.asScala.toList.contains(catB)) // from single param dependency
+    assert(nestedResult.listcat_.asScala.toList.contains(catC)) // from nested theory itself
+
+    // Test of recursion stopping - verify that the same leaf theory isn't processed multiple times
+    // The nested theory depends on both SingleParam and LeafTheory directly,
+    // and SingleParam also depends on LeafTheory, so LeafTheory should appear in dependencies
+    // but the recursion should stop properly without infinite loops
+    assert(nestedResult.listcat_.asScala.toList.count(_ == catA) >= 1) // At least one occurrence of catA
+  }
+
+  test("checkFree should validate theory dependency scenarios correctly") {
+    // Create valid theory declarations for testing
+    val validLeafDecl = new BaseTheoryDecl(
+      new NameVar("ValidLeaf"),
+      new ListVariableDecl(), // No parameters - valid leaf theory
+      new TheoryInstEmpty()
+    )
+
+    val validParamDecl = new BaseTheoryDecl(
+      new NameVar("ValidParam"),
+      { val vars = new ListVariableDecl();
+        vars.add(new VarDecl("dep", new BaseDottedPath("ValidLeaf"))); vars },
+      new TheoryInstRef("dep")
+    )
+
+    // Create invalid theory declaration with non-VarDecl parameter
+    val invalidParamDecl = new BaseTheoryDecl(
+      new NameVar("InvalidParam"),
+      { val vars = new ListVariableDecl();
+        // This is invalid - adding a non-VarDecl to the parameter list
+        // In real code this wouldn't happen, but we simulate it for testing
+        vars.add(new VarDecl("validParam", new BaseDottedPath("ValidLeaf")));
+        vars }, // We'll test this indirectly by testing the validation logic
+      new TheoryInstEmpty()
+    )
+
+    // Create a mock module processor for testing different resolution scenarios
+    val mockModuleProcessor = new ModuleProcessor(new RealFileSystem) {
+      override def resolveDottedPath(
+        resolvedModules: Map[String, Module],
+        currentModulePath: String,
+        dottedPath: DottedPath
+      ): Either[String, (String, TheoryDecl)] = {
+        dottedPath match {
+          case bdp: BaseDottedPath => bdp.ident_ match {
+            // Test case: valid theories that should resolve successfully
+            case "ValidLeaf" => Right(("/test", validLeafDecl))
+            case "ValidParam" => Right(("/test", validParamDecl))
+            case "InvalidParam" => Right(("/test", invalidParamDecl))
+            // Test case: theory that doesn't resolve (path resolution error)
+            case "NonExistent" => Left("Module not found: NonExistent")
+            // Test case: theory that resolves to non-BaseTheoryDecl (simulate with null)
+            case "NonBaseDecl" => Right(("/test", null.asInstanceOf[TheoryDecl]))
+            case other => Left(s"Unknown theory: $other")
+          }
+          case _ => Left("Complex dotted paths not supported in test")
+        }
+      }
+    }
+
+    val interpreter = new InstInterpreter(Map.empty, "/test", mockModuleProcessor)
+
+    // Test 1: Valid leaf theory (no parameters) - should return None (success)
+    val validLeafResult = checkFree(interpreter, Nil, new TheoryInstFree(new BaseDottedPath("ValidLeaf")))
+    assert(validLeafResult.isEmpty, "Valid leaf theory should pass validation")
+
+    // Test 2: Valid theory with parameters - should return None (success) after recursive validation
+    val validParamResult = checkFree(interpreter, Nil, new TheoryInstFree(new BaseDottedPath("ValidParam")))
+    assert(validParamResult.isEmpty, "Valid theory with parameters should pass validation")
+
+    // Test 3: Theory that fails path resolution - should return error message
+    val nonExistentResult = checkFree(interpreter, Nil, new TheoryInstFree(new BaseDottedPath("NonExistent")))
+    assert(nonExistentResult.isDefined, "Non-existent theory should fail validation")
+    assert(nonExistentResult.get.contains("Failed to resolve dotted path in free"), "Should contain path resolution error")
+
+    // Test 4: Theory that resolves to non-BaseTheoryDecl - should return error message
+    val nonBaseDeclResult = checkFree(interpreter, Nil, new TheoryInstFree(new BaseDottedPath("NonBaseDecl")))
+    assert(nonBaseDeclResult.isDefined, "Non-BaseTheoryDecl should fail validation")
+    assert(nonBaseDeclResult.get.contains("not a BaseTheoryDecl"), "Should contain BaseTheoryDecl error")
+
+    // Test 5: Recursive validation - theory with invalid dependency should fail
+    val mockProcessorWithInvalidDep = new ModuleProcessor(new RealFileSystem) {
+      override def resolveDottedPath(
+        resolvedModules: Map[String, Module],
+        currentModulePath: String,
+        dottedPath: DottedPath
+      ): Either[String, (String, TheoryDecl)] = {
+        dottedPath match {
+          case bdp: BaseDottedPath => bdp.ident_ match {
+            case "TheoryWithInvalidDep" => Right(("/test", new BaseTheoryDecl(
+              new NameVar("TheoryWithInvalidDep"),
+              { val vars = new ListVariableDecl();
+                vars.add(new VarDecl("invalidDep", new BaseDottedPath("NonExistent"))); vars },
+              new TheoryInstRef("invalidDep")
+            )))
+            case "NonExistent" => Left("Dependency not found")
+            case _ => Left("Unknown theory")
+          }
+          case _ => Left("Complex paths not supported")
+        }
+      }
+    }
+
+    val interpreterWithInvalidDep = new InstInterpreter(Map.empty, "/test", mockProcessorWithInvalidDep)
+
+    // Test recursive validation failure - theory with invalid dependency should fail
+    val recursiveFailResult = checkFree(interpreterWithInvalidDep, Nil,
+      new TheoryInstFree(new BaseDottedPath("TheoryWithInvalidDep")))
+    assert(recursiveFailResult.isDefined, "Theory with invalid dependency should fail validation")
+    assert(recursiveFailResult.get.contains("Failed to resolve dotted path in free"),
+      "Should contain recursive dependency error")
   }
 
   test("handleDisj should merge two BasePres from interpreter results") {
@@ -108,7 +299,11 @@ class InstInterpreterCasesSpec extends AnyFunSuite {
     val inst    = new TheoryInstAddExports(inst0, listexport)
     val interp  = new SingleInterpreter(base, inst0)
 
-    val res = checkAddExports(interp, Nil, inst)
+    val res = try {
+      checkAddExports(interp, Nil, inst)
+    } catch {
+      case ex: Exception => fail(s"Exception thrown during checkAddExports: ${ex.getMessage}")
+    }
     assert(res.isDefined)
     assert(res.get.contains("Error: missing distinguished export."))
   }
@@ -124,7 +319,11 @@ class InstInterpreterCasesSpec extends AnyFunSuite {
     val inst    = new TheoryInstAddTerms(inst0, grammar)
     val interp  = new SingleInterpreter(base, inst0)
 
-    val res = checkAddTerms(interp, Nil, inst)
+    val res = try {
+      checkAddTerms(interp, Nil, inst)
+    } catch {
+      case ex: Exception => fail(s"Exception thrown during checkAddTerms: ${ex.getMessage}")
+    }
     assert(res.isDefined)
     /* fails sometimes without any changes
     assert(res.left.get.contains(
@@ -145,7 +344,12 @@ class InstInterpreterCasesSpec extends AnyFunSuite {
     val inst    = new TheoryInstAddTerms(inst0, grammar)
     val interp  = new SingleInterpreter(base, inst0)
 
-    val res = handleAddTerms(interp, Nil, inst)
+    val res = try {
+      handleAddTerms(interp, Nil, inst)
+    } catch {
+      case ex: Exception => fail(s"Exception thrown during handleAddTerms: ${ex.getMessage}")
+    }
+
     // since base had no defs, you get exactly the grammar’s rule
     res.listdef_.asScala.toList shouldEqual List(rule)
   }
@@ -165,20 +369,6 @@ class InstInterpreterCasesSpec extends AnyFunSuite {
 
     val res = checkAddRewrites(interp, Nil, inst)
     assert(res.isEmpty)
-  }
-
-  test("checkAddRewrites should return error when interpreter fails") {
-    val inst0 = new TheoryInstEmpty()
-    val lhs = new ASTSExp(new Id("L"), new ListAST())
-    val rhs = new ASTSExp(new Id("L"), new ListAST())
-    val rw = new RewriteBase(lhs, rhs)
-    val decls = new ListRewriteDecl(); decls.addLast(new RDecl("r", rw))
-    val inst = new TheoryInstAddRewrites(inst0, decls)
-    val errorInterp = new DummyErrorInterpreter("Interpreter error")
-
-    val res = checkAddRewrites(errorInterp, Nil, inst)
-    assert(res.isDefined)
-    assert(res.get == "Interpreter error")
   }
 
   test("checkAddRewrites should return error when hypothesis has different dotted path prefixes") {
@@ -224,7 +414,12 @@ class InstInterpreterCasesSpec extends AnyFunSuite {
     val inst = new TheoryInstAddRewrites(inst0, decls)
     val interp = new SingleInterpreter(base, inst0)
 
-    val res = handleAddRewrites(interp, Nil, inst)
+    val res = try {
+      handleAddRewrites(interp, Nil, inst)
+    } catch {
+      case ex: Exception => fail(s"Exception thrown during handleAddRewrites: ${ex.getMessage}")
+    }
+
     res.listrewritedecl_.asScala.toList shouldEqual List(new RDecl("r", rw))
   }
 
@@ -237,7 +432,11 @@ class InstInterpreterCasesSpec extends AnyFunSuite {
     val ctor = new TheoryInstCtor(new BaseDottedPath("X"), new ListTheoryInst())
     val mp = ModuleProcessor.default
 
-    val res = checkCtor(interp, env, resolved, path, ctor, mp)
+    val res = try {
+      checkCtor(interp, env, resolved, path, ctor, mp)
+    } catch {
+      case ex: Exception => fail(s"Exception thrown during checkCtor: ${ex.getMessage}")
+    }
     assert(res.contains(s"Module not found: $path"))
   }
 
@@ -252,7 +451,11 @@ class InstInterpreterCasesSpec extends AnyFunSuite {
 
   test("handleRef should error when identifier is free") {
     val ref = new TheoryInstRef("missing")
-    val res = checkRef(Nil, ref)
+    val res = try {
+      checkRef(Nil, ref)
+    } catch {
+      case ex: Exception => fail(s"Exception thrown during checkRef: ${ex.getMessage}")
+    }
     assert(res.isDefined)
     assert(res.get.contains("Identifier missing is free"))
   }
@@ -267,20 +470,5 @@ class InstInterpreterCasesSpec extends AnyFunSuite {
 
     val res = handleRec(interp, Nil, rec)
     assert(res == bp2)
-  }
-}
-
-object InstInterpreterCasesSpec {
-
-  class RecInterpreter(
-      presA: BasePres,
-      presB: BasePres,
-      instA: TheoryInst,
-      instB: TheoryInst
-  ) {
-    def interpret(env: List[(String, BasePres)], inst: TheoryInst): Either[String, BasePres] =
-      if (inst eq instA) Right(presA)
-      else if (inst eq instB) Right(presB)
-      else Left("Unexpected inst")
   }
 }

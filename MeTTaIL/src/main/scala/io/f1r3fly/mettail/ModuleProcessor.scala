@@ -5,15 +5,9 @@ import metta_venus.Absyn._
 import metta_venus.{MettaVenusLexer, MettaVenusParser, PrettyPrinter}
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
+import io.f1r3fly.mettail.DottedPathUtils.dottedPathToString
 
 class ModuleProcessor(fs: FileSystem) {
-
-  def dottedPathToString(dottedPath: DottedPath): String =
-    dottedPath match {
-      case bdp: BaseDottedPath           => bdp.ident_
-      case qdp: QualifiedDottedPath =>
-        s"${qdp.ident_}.${dottedPathToString(qdp.dottedpath_)}"
-    }
 
   def resolveModules(entryPath: String): Map[String, Module] = {
     // A mutable map from canonical file paths to parsed modules.

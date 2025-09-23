@@ -5,6 +5,7 @@ import metta_venus.PrettyPrinter
 import scala.collection.mutable
 import scala.collection.mutable.Map
 import scala.jdk.CollectionConverters._
+import io.f1r3fly.mettail.DottedPathUtils.dottedPathToString
 
 object Hypercube {
 
@@ -225,7 +226,7 @@ object Hypercube {
 
     def helper(node: AST, parent: Option[ASTSExp]): Unit = node match {
       case v: ASTVar =>
-        val name = v.ident_
+        val name = dottedPathToString(v.dottedpath_)
         parent match {
           case Some(p) =>
             // get the existing set (or empty), then add `p`

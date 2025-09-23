@@ -3,6 +3,7 @@ package io.f1r3fly.mettail
 import org.scalatest.funsuite.AnyFunSuite
 import metta_venus.Absyn._
 import io.f1r3fly.mettail.{TheoryEnvBuilder, TheoryEnv}
+import io.f1r3fly.mettail.DottedPathUtils.dottedPathToString
 
 class TheoryEnvSpec extends AnyFunSuite {
   // Use a dummy FileSystem since we're not testing I/O here
@@ -41,7 +42,7 @@ class TheoryEnvSpec extends AnyFunSuite {
 
   test("dottedPathToString should join identifiers with dots") {
     val nested = new QualifiedDottedPath("A", new QualifiedDottedPath("B", new BaseDottedPath("C")))
-    assert(builder.dottedPathToString(nested) == "A.B.C")
+    assert(dottedPathToString(nested) == "A.B.C")
   }
 
   test("prettyPrint should render environment entries as 'path -> declString'") {

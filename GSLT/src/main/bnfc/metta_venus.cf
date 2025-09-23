@@ -304,14 +304,14 @@ separator RewriteDecl ";" ;
 RewriteBase    . Rewrite ::= AST "~>" AST ;
 RewriteContext . Rewrite ::= "let" Hypothesis "in" Rewrite ;
 
-ASTSubst . AST ::= "(" "Subst" AST AST Ident ")";
-ASTVar   . AST ::= Ident ;
+ASTSubst . AST ::= "(" "Subst" AST AST DottedPath ")";
+ASTVar   . AST ::= DottedPath ;
 ASTSExp  . AST ::= "(" Label [AST] ")" ;
 
 []  . [AST] ::= ;
 (:) . [AST] ::= AST [AST] ;
 
-Hyp . Hypothesis ::= Ident "~>" Ident ;
+Hyp . Hypothesis ::= DottedPath "~>" DottedPath ;
 
 -- Literals:
 -- Booleans:

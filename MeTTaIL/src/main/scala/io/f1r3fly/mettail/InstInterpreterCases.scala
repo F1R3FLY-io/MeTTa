@@ -4,7 +4,6 @@ import metta_venus.Absyn._
 import metta_venus.PrettyPrinter
 import scala.jdk.CollectionConverters._
 
-
 object InstInterpreterCases {
 
   import AddEqRwHelpers._
@@ -275,7 +274,7 @@ object InstInterpreterCases {
     }
 
     // Process each replacement sequentially.
-    val result = replacements.foldLeft[Either[String, BasePres]](Right(basePres)) { (accEither, s) =>
+    replacements.foldLeft[Either[String, BasePres]](Right(basePres)) { (accEither, s) =>
       accEither.flatMap { currentPres =>
         // Find the Rule in currentPres whose label matches s.label_.
         val ruleOpt: Option[Rule] =
@@ -296,29 +295,29 @@ object InstInterpreterCases {
                 case replRule: Rule =>
                   // 2) Duplicate-label check: the new rule’s label must not collide
                   val existingLabels = currentPres.listdef_.asScala.collect { case r: Rule => r.label_ }
-                  val otherLabels = existingLabels.filterNot(_ == s.label_)
+                  val otherLabels    = existingLabels.filterNot(_ == s.label_)
                   if (otherLabels.contains(replRule.label_))
                     Left(
                       s"Error: Replacement rule label " +
-                        s"${PrettyPrinter.print(replRule.label_)} already exists in theory."
+                      s"${PrettyPrinter.print(replRule.label_)} already exists in theory."
                     )
                   else {
                     // 3) Arity check
-                    val origNTs = nonTerminals(rule.listitem_)
-                    val replNTs = nonTerminals(replRule.listitem_)
+                    val origNTs  = nonTerminals(rule.listitem_)
+                    val replNTs  = nonTerminals(replRule.listitem_)
                     if (origNTs.size != replNTs.size)
                       Left(
                         s"Error: Arity mismatch for definition with label ${s.label_}. " +
-                          s"Expected ${origNTs.size} non-terminal items but got ${replNTs.size}."
+                        s"Expected ${origNTs.size} non-terminal items but got ${replNTs.size}."
                       )
                     else {
-                      val n = origNTs.size
+                      val n    = origNTs.size
                       val perm = convertIntList(s.intlist_)
                       // 4) Permutation check
                       if (perm.sorted != (0 until n).toList)
                         Left(
                           s"Error: intlist in replacement for label " +
-                            s"${PrettyPrinter.print(s.label_)} is not a permutation of 0 to ${n - 1}."
+                          s"${PrettyPrinter.print(s.label_)} is not a permutation of 0 to ${n - 1}."
                         )
                       else {
                         // 5) Category-alignment check across each position
@@ -356,7 +355,7 @@ object InstInterpreterCases {
                             }
 
                             case sub: ASTSubst =>
-                              new ASTSubst(updateAST(sub.ast_1), updateAST(sub.ast_2), sub.ident_)
+                              new ASTSubst(updateAST(sub.ast_1), updateAST(sub.ast_2), sub.dottedpath_)
 
                             case other => other
                           }
@@ -392,9 +391,9 @@ object InstInterpreterCases {
                           // Return the updated BasePres with definitions, equations AND rewrites replaced
                           Right(BasePresOps.copyPres(
                             currentPres,
-                            listdef = Some(newDefs),
-                            listequation = Some(newEquations),
-                            listrewritedecl = Some(newRewrites)
+                            listdef        = Some(newDefs),
+                            listequation   = Some(newEquations),
+                            listrewritedecl= Some(newRewrites)
                           ))
                         }
                       }
@@ -407,12 +406,10 @@ object InstInterpreterCases {
                   )
               }
             }
+          }
         }
       }
-    }
-
-    result.left.toOption
-  }
+    }.left.toOption
 
   def handleAddReplacements(
                              interpreter: InstInterpreter,
@@ -469,7 +466,7 @@ object InstInterpreterCases {
           }
 
         case sub: ASTSubst =>
-          new ASTSubst(updateAST(sub.ast_1), updateAST(sub.ast_2), sub.ident_)
+          new ASTSubst(updateAST(sub.ast_1), updateAST(sub.ast_2), sub.dottedpath_)
 
         case other => other
       }
@@ -527,7 +524,7 @@ object InstInterpreterCases {
       val allowedCats: Set[Cat] = basePres.listcat_.asScala.toSet
 
       // Fold over newTerms, starting with Right(basePres)
-      val result = newTerms.foldLeft[Either[String, BasePres]](Right(basePres)) {
+      newTerms.foldLeft[Either[String, BasePres]](Right(basePres)) {
         case (Left(err), _) => Left(err)  // once an error, keep propagating
         case (Right(bp), term) => term match {
           case rule: Rule =>
@@ -563,9 +560,7 @@ object InstInterpreterCases {
             Right(bp)
         }
       }
-
-      result.left.toOption
-    }
+    }.left.toOption
 
   def handleAddTerms(
                       interpreter: InstInterpreter,
@@ -655,56 +650,44 @@ object InstInterpreterCases {
     }
   }
 
-  def checkAddRewrites(
-                        interpreter: InstInterpreter,
-                        env: List[(String, BasePres)],
-                        inst: TheoryInstAddRewrites
-                      ): Option[String] = {
+  def checkAddRewrites(interpreter: InstInterpreter,
+                       env: List[(String, BasePres)],
+                       inst: TheoryInstAddRewrites): Option[String] = {
     val basePres = interpreter.interpret(env, inst.theoryinst_)
     val defs: Map[Label, Rule] = listDefToMap(basePres.listdef_)
     inst.listrewritedecl_.asScala.foldLeft[Option[String]](None) {
-      case (Some(err), _) => Some(err) // short-circuit on first error
-      case (None, rewriteDecl) =>
-        val rw = rewrite(rewriteDecl)
-        val rb = rewriteBase(rw)
-        val pretty = s"rewrite ${PrettyPrinter.print(rewriteDecl)}"
-        // Check validity of rewrites as follows
-        for {
-          // The two sides of the rewrite have the same category
-          // OR one has a category and the other is a top-level variable.
-          _ <- sameCategory(catOfAST(rb.ast_1, defs), catOfAST(rb.ast_2, defs), pretty).left.toOption
-          // Check that each variable has a consistent category
-          // Check that the vars on the left are consistent.
-          m1 <- consistentCategory(rb.ast_1, defs, pretty).toOption
-          // Check that the vars on the right are consistent.
-          m2 <- consistentCategory(rb.ast_2, defs, pretty).toOption
-          _ <- (m1.keySet ++ m2.keySet).foldLeft[Option[String]](None) {
-            case (Some(e), _) => Some(e)
-            case (None, ident) =>
-              (m1.get(ident), m2.get(ident)) match {
-                case (Some(l), Some(r)) if l != r =>
-                  Some(
-                    s"Variable $ident has category ${PrettyPrinter.print(l)} on the left-" +
-                      s"hand side and category ${PrettyPrinter.print(r)} on the right-hand" +
-                      s" side of $pretty"
-                  )
-                case _ => None
+          case (Some(err), _) => Some(err) // short-circuit on first error
+          case (None, rewriteDecl) =>
+            val rw = rewrite(rewriteDecl)
+            val rb = rewriteBase(rw)
+            val pretty = s"rewrite ${PrettyPrinter.print(rewriteDecl)}"
+            // Check validity of rewrites as follows
+            val sameCatCheck = sameCategory(catOfAST(rb.ast_1, defs), catOfAST(rb.ast_2, defs), pretty).left.toOption
+            if (sameCatCheck.isDefined) sameCatCheck
+            else {
+              val m1Check = consistentCategory(rb.ast_1, defs, pretty).toOption
+              val m2Check = consistentCategory(rb.ast_2, defs, pretty).toOption
+              if (m1Check.isEmpty) Some(s"Consistent category check failed for left side of $pretty")
+              else if (m2Check.isEmpty) Some(s"Consistent category check failed for right side of $pretty")
+              else {
+                val lVars = leftVars(rw)
+                val rVars = rightVars(rw)
+                val missingVars = rVars diff lVars
+                val missingVarsCheck = Option.when(missingVars.nonEmpty)(
+                  "Error: In RewriteDecl, variables on the right-hand side" +
+                    s" not found on the left-hand side: $missingVars"
+                )
+                if (missingVarsCheck.isDefined) missingVarsCheck
+                else {
+                  val prefixCheck = DottedPathUtils.checkHypothesisPathPrefixes(hypVars(rw)).left.toOption
+                  if (prefixCheck.isDefined) prefixCheck
+                  else {
+                    val hypCheck = checkHypotheticals(hypVars(rw), defs, rb).left.toOption
+                    hypCheck
+                  }
+                }
               }
-          }
-          // Check each rewrite declaration to ensure that
-          // every variable on the right appears on the left.
-          lVars = leftVars(rw)
-          rVars = rightVars(rw)
-          missingVars = rVars diff lVars
-          _ <- Option.when(missingVars.nonEmpty)(
-            "Error: In RewriteDecl, variables on the right-hand side" +
-              s" not found on the left-hand side: $missingVars"
-          )
-          // When the Rewrite is a RewriteContext let Src ~> Tgt in r,
-          // Src must appear only on the left, Tgt must appear only on the right,
-          // and the category of Src must match the category of Tgt
-          _ <- checkHypotheticals(hypVars(rw), defs, rb).left.toOption
-        } yield pretty // returning the first failing rewrite description
+            }
     }
   }
 

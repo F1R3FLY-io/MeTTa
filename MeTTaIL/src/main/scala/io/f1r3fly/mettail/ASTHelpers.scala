@@ -3,6 +3,7 @@ package io.f1r3fly.mettail
 import metta_venus.Absyn._
 import scala.annotation.tailrec
 import scala.jdk.CollectionConverters._
+import io.f1r3fly.mettail.DottedPathUtils.dottedPathToString
 
 object ASTHelpers {
   
@@ -50,10 +51,10 @@ object ASTHelpers {
   // All vars (as opposed to free vars)
   def varsInAST(ast: AST): Set[String] = ast match {
     case as: ASTSubst =>
-      // Variables appear in as.ast_1, as.ast_2, and as.ident_
-      varsInAST(as.ast_1) ++ varsInAST(as.ast_2) + as.ident_
+      // Variables appear in as.ast_1, as.ast_2, and as.dottedpath_
+      varsInAST(as.ast_1) ++ varsInAST(as.ast_2) + dottedPathToString(as.dottedpath_)
     case av: ASTVar =>
-      Set(av.ident_)
+      Set(dottedPathToString(av.dottedpath_))
     case ase: ASTSExp =>
       ase.listast_.asScala.toSet.flatMap(varsInAST)
     case _ => Set.empty[String]
@@ -63,8 +64,8 @@ object ASTHelpers {
     case rb: RewriteBase    => varsInAST(rb.ast_1)
     case rc: RewriteContext => {
       leftVars(rc.rewrite_) ++
-        Set(rc.hypothesis_ match { case h: Hyp => h.ident_1 }) ++
-        Set(rc.hypothesis_ match { case h: Hyp => h.ident_2 })
+        Set(rc.hypothesis_ match { case h: Hyp => dottedPathToString(h.dottedpath_1) }) ++
+        Set(rc.hypothesis_ match { case h: Hyp => dottedPathToString(h.dottedpath_2) })
     }
     case _                  => Set.empty[String]
   }
@@ -78,7 +79,7 @@ object ASTHelpers {
   def hypVars(rew: Rewrite): Set[(String, String)] = rew match {
     case rc: RewriteContext => {
       hypVars(rc.rewrite_) ++
-        Set(rc.hypothesis_ match { case h: Hyp => (h.ident_1, h.ident_2) })
+        Set(rc.hypothesis_ match { case h: Hyp => (dottedPathToString(h.dottedpath_1), dottedPathToString(h.dottedpath_2)) })
     }
     case _                  => Set.empty[(String, String)]
   }

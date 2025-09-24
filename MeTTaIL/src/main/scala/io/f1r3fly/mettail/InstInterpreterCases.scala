@@ -764,10 +764,7 @@ object InstInterpreterCases {
                   moduleProcessor: ModuleProcessor
                 ): BasePres = {
     val (modulePath, theoryDecl) =
-      moduleProcessor.resolveDottedPath(resolvedModules, currentModulePath, ctor.dottedpath_) match {
-        case Right(result) => result
-        case Left(msg)     => sys.error(s"Failed to resolve dotted path: $msg")
-      }
+      moduleProcessor.resolveDottedPath(resolvedModules, currentModulePath, ctor.dottedpath_).right.get
 
     val baseDecl = theoryDecl.asInstanceOf[BaseTheoryDecl]
     val actuals = ctor.listtheoryinst_.asScala.toList

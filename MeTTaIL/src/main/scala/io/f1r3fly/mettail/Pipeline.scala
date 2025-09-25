@@ -138,7 +138,8 @@ object GenerateBNFC extends Pass[Context] {
       pres.listcat_,
       listDef,
       pres.listequation_,
-      pres.listrewritedecl_
+      pres.listrewritedecl_,
+      pres.listmapentry_
     )))
   }
 }

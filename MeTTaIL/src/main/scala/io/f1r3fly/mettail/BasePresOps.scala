@@ -10,7 +10,8 @@ object BasePresOps {
     val listDef = new metta_venus.Absyn.ListDef()
     val listEquation = new metta_venus.Absyn.ListEquation()
     val listRewriteDecl = new metta_venus.Absyn.ListRewriteDecl()
-    new BasePres(listCat, listDef, listEquation, listRewriteDecl)
+    val listMapEntry = new metta_venus.Absyn.ListMapEntry()
+    new BasePres(listCat, listDef, listEquation, listRewriteDecl, listMapEntry)
   }
 
   // copyPres creates new list instances and adds the updated elements.
@@ -19,12 +20,14 @@ object BasePresOps {
     listcat: Option[List[Cat]] = None,
     listdef: Option[List[Def]] = None,
     listequation: Option[List[Equation]] = None,
-    listrewritedecl: Option[List[RewriteDecl]] = None
+    listrewritedecl: Option[List[RewriteDecl]] = None,
+    listmapentry: Option[List[MapEntry]] = None
   ): BasePres = {
     val newListCat = new metta_venus.Absyn.ListCat()
     val newListDef = new metta_venus.Absyn.ListDef()
     val newListEquation = new metta_venus.Absyn.ListEquation()
     val newListRewriteDecl = new metta_venus.Absyn.ListRewriteDecl()
+    val newListMapEntry = new metta_venus.Absyn.ListMapEntry()
 
     val cats = listcat.getOrElse(pres.listcat_.asScala.toList)
     newListCat.addAll(cats.asJava)
@@ -34,8 +37,10 @@ object BasePresOps {
     newListEquation.addAll(equations.asJava)
     val rewrites = listrewritedecl.getOrElse(pres.listrewritedecl_.asScala.toList)
     newListRewriteDecl.addAll(rewrites.asJava)
+    val mapEntries = listmapentry.getOrElse(pres.listmapentry_.asScala.toList)
+    newListMapEntry.addAll(mapEntries.asJava)
 
-    new BasePres(newListCat, newListDef, newListEquation, newListRewriteDecl)
+    new BasePres(newListCat, newListDef, newListEquation, newListRewriteDecl, newListMapEntry)
   }
   
   // Converts the list of defs in a BasePres to a map.

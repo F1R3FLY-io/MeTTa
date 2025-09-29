@@ -41,7 +41,7 @@ class BNFCRendererSpec extends AnyFlatSpec with Matchers {
     defs.add(arrowRule)
     defs.add(prodRule)
 
-    val basePres = new BasePres(new ListCat(), defs, new ListEquation(), new ListRewriteDecl())
+    val basePres = new BasePres(new ListCat(), defs, new ListEquation(), new ListRewriteDecl(), new ListMapEntry())
 
     val result = BNFCRenderer.render(basePres)
 

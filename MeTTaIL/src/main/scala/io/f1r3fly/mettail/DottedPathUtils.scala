@@ -1,6 +1,8 @@
 package io.f1r3fly.mettail
 
 import metta_venus.Absyn._
+import io.f1r3fly.mettail.ASTHelpers.{hypVars, leftVars, rightVars}
+import scala.jdk.CollectionConverters._
 
 object DottedPathUtils {
 
@@ -34,4 +36,28 @@ object DottedPathUtils {
       }
     }
   }
+
+  // Check that all dotted path prefixes in a rewrite exist in the References section
+  def checkDottedPathPrefixesInReferences(basePres: BasePres, rewrite: Rewrite, context: String): Option[String] = {
+    import DottedPathUtils.extractPrefix
+    // Get all variables from the rewrite (left, right, and hypothesis)
+    val allVars = leftVars(rewrite) ++ rightVars(rewrite) ++
+      hypVars(rewrite).flatMap { case (left, right) => Set(left, right) }
+    // Extract all dotted path prefixes (variables that contain dots)
+    val dottedVars = allVars.filter(_.contains("."))
+    val prefixes = dottedVars.map(extractPrefix)
+    // Get available references from the References section
+    val availableRefs = basePres.listmapentry_.asScala.map {
+      case mapEntry: MakeMapEntry => mapEntry.ident_
+      case _ => ""
+    }.toSet
+    // Find any prefix that doesn't exist in References
+    val missingPrefixes = prefixes -- availableRefs
+    if (missingPrefixes.nonEmpty) {
+      Some(s"Error: In $context, dotted path prefixes not found in References section: ${missingPrefixes.mkString(", ")}")
+    } else {
+      None
+    }
+  }
+
 }

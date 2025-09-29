@@ -72,7 +72,13 @@ TheoryInstDisj . TheoryInst3 ::= TheoryInst3 "\\/" TheoryInst4 ;
 TheoryInstSubtract . TheoryInst2 ::= TheoryInst2 "\\" TheoryInst3 ;
 separator TheoryInst "," ;
 
-BasePres . Pres ::= "Presentation" "Exports" "{" [Cat] "}" "Terms" "{" [Def] "}" "Equations" "{" [Equation] "}" "Rewrites" "{" [RewriteDecl] "}" ;
+-- Map entries for presentation references
+MakeMapEntry . MapEntry ::= Ident "=>" Pres ;
+
+[]  . [MapEntry] ::= ;
+(:) . [MapEntry] ::= MapEntry ";" [MapEntry] ;
+
+BasePres . Pres ::= "Presentation" "Exports" "{" [Cat] "}" "Terms" "{" [Def] "}" "Equations" "{" [Equation] "}" "Rewrites" "{" [RewriteDecl] "}" "References" "{" [MapEntry] "}" ;
 
 BaseSpaceDecl . SpaceDecl ::= "Space" Name "(" [VariableDecl] ")" "{" [Fact] [FactComprehension] "}" ;
 BaseTheoryDecl . TheoryDecl ::= "Theory" Name "(" [VariableDecl] ")" "{" TheoryInst "}" ;

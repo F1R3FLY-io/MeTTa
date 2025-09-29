@@ -423,6 +423,59 @@ class InstInterpreterCasesSpec extends AnyFunSuite {
     res.listrewritedecl_.asScala.toList shouldEqual List(new RDecl("r", rw))
   }
 
+  // Negative: dotted var prefix not declared in References should fail
+  test("checkAddRewrites should error when dotted path prefix is not declared in References") {
+    val cat = new IdCat("C")
+    val listItem = new ListItem(); listItem.addLast(new NTerminal(cat))
+    val rule = new Rule(new Id("L"), cat, listItem)
+    val baseNoRefs = BasePresOps.copyPres(BasePresOps.empty, listdef = Some(List(rule)))
+    val inst0 = new TheoryInstEmpty()
+
+    val sDotQ = new QualifiedDottedPath("s", new BaseDottedPath("q"))
+    val sVar = new ASTVar(sDotQ)
+    val lhsArgs = new ListAST(); lhsArgs.addLast(sVar)
+    val rhsArgs = new ListAST(); rhsArgs.addLast(sVar)
+    val lhs = new ASTSExp(new Id("L"), lhsArgs)
+    val rhs = new ASTSExp(new Id("L"), rhsArgs)
+    val rw = new RewriteBase(lhs, rhs)
+    val decls = new ListRewriteDecl(); decls.addLast(new RDecl("rw", rw))
+    val inst = new TheoryInstAddRewrites(inst0, decls)
+    val interp = new SingleInterpreter(baseNoRefs, inst0)
+
+    val res = checkAddRewrites(interp, Nil, inst)
+    assert(res.isDefined)
+    assert(res.get.contains("dotted path prefixes not found in References section: s"))
+  }
+
+  // Positive: declared dotted var prefix in References should pass
+  test("checkAddRewrites should succeed when dotted path prefix is declared in References") {
+    val cat = new IdCat("C")
+    val listItem = new ListItem(); listItem.addLast(new NTerminal(cat))
+    val rule = new Rule(new Id("L"), cat, listItem)
+
+    val refEntry = new MakeMapEntry("s", BasePresOps.empty)
+    val baseWithRefs = BasePresOps.copyPres(
+      BasePresOps.copyPres(BasePresOps.empty, listdef = Some(List(rule))),
+      listmapentry = Some(List(refEntry))
+    )
+
+    val inst0 = new TheoryInstEmpty()
+
+    val sDotQ = new QualifiedDottedPath("s", new BaseDottedPath("q"))
+    val sVar = new ASTVar(sDotQ)
+    val lhsArgs = new ListAST(); lhsArgs.addLast(sVar)
+    val rhsArgs = new ListAST(); rhsArgs.addLast(sVar)
+    val lhs = new ASTSExp(new Id("L"), lhsArgs)
+    val rhs = new ASTSExp(new Id("L"), rhsArgs)
+    val rw = new RewriteBase(lhs, rhs)
+    val decls = new ListRewriteDecl(); decls.addLast(new RDecl("rw", rw))
+    val inst = new TheoryInstAddRewrites(inst0, decls)
+    val interp = new SingleInterpreter(baseWithRefs, inst0)
+
+    val res = checkAddRewrites(interp, Nil, inst)
+    assert(res.isEmpty)
+  }
+
   // --- handleCtor ---
   test("handleCtor should error when module not found") {
     val interp = new PairInterpreter(BasePresOps.empty, BasePresOps.empty, null, null)

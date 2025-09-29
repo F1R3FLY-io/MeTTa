@@ -682,8 +682,13 @@ object InstInterpreterCases {
                   val prefixCheck = DottedPathUtils.checkHypothesisPathPrefixes(hypVars(rw)).left.toOption
                   if (prefixCheck.isDefined) prefixCheck
                   else {
-                    val hypCheck = checkHypotheticals(hypVars(rw), defs, rb).left.toOption
-                    hypCheck
+                    // Check that all dotted path prefixes exist in the References section
+                    val referencesCheck = DottedPathUtils.checkDottedPathPrefixesInReferences(basePres, rw, pretty)
+                    if (referencesCheck.isDefined) referencesCheck
+                    else {
+                      val hypCheck = checkHypotheticals(hypVars(rw), defs, rb).left.toOption
+                      hypCheck
+                    }
                   }
                 }
               }

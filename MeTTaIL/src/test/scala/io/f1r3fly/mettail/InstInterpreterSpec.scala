@@ -71,6 +71,9 @@ class InstInterpreterSpec extends AnyFlatSpec with Matchers {
       |  RNew : let Src ~> Tgt in (PNew x Src) ~> (PNew x Tgt);
       |  RComm : (PPar (PRecv y x P) (PSend x Q)) ~> (Subst P (NQuote Q) y)
       |}
+      |References
+      |{
+      |}
       """.stripMargin
 
     actual.trim shouldEqual expected.trim
@@ -113,6 +116,9 @@ class InstInterpreterSpec extends AnyFlatSpec with Matchers {
       |Rewrites
       |{
       |}
+      |References
+      |{
+      |}
       """.stripMargin
 
     actual.trim shouldEqual expected.trim
@@ -146,6 +152,9 @@ class InstInterpreterSpec extends AnyFlatSpec with Matchers {
       |Rewrites
       |{
       |  Step : (C) ~> (D)
+      |}
+      |References
+      |{
       |}
       """.stripMargin
 

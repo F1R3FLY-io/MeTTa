@@ -154,60 +154,59 @@ Additionally, we can now send processes as messages! What we send over the chann
 
 \medskip
 
-Recapping, the \code{rho calculus} comprises the following syntactic categories of processes.
-\begin{itemize}
-    \item \code{0}
-    \item \code{x!( P )}
-    \item \code{for( y <- x )P}
-    \item \code{P|Q}
-    \item \code{*x}
-\end{itemize}
+Recapping, the \code{rho calculus} comprises the following syntactic categories of processes and names.
+\begin{align*}
+  \code{P,Q} \;\code{::=}\; \code{0} \mid \code{x!( P )} \mid \code{for( y <- x )P} \mid \code{P|Q} \mid \code{*x} & & \code{x,y} \;\code{::=}\; \code{@P}
+\end{align*}
 
 These, plus a small number of equations and rewrite rules, delivers a Turing complete model of computation that maps efficiently onto many different physical substrates. The equations are just what is necessary to impose alpha-equivalence on the binding operation in for-comprehensions, and make $(P, \parcomp, 0)$ into a commutative monoid. There is one base rewrite rule and two context-dependent rewrite rules.
 
-\begin{align}
-  \msgrecv{x}{y}{P} \parcomp \msgsend{x}{Q} &\rightarrow P\{ @Q / y \} \quad (\tcode{COMM}) \\
-  P \rightarrow P' &\implies P\parcomp Q \rightarrow P'\parcomp Q \quad (\tcode{PAR}) \\
-  P = P', P' \rightarrow Q', Q' = Q &\implies P \rightarrow Q \quad (\tcode{STRUCT})
-\end{align}
+\begin{align*}
+  \code{for( y <- x )P | x!(Q)} &\rightarrow \code{P\{ @Q / y \}} \quad (\tcode{COMM}) \\
+  \code{P} \rightarrow \code{P'} &\implies \code{P|Q} \rightarrow \code{P'|Q} \quad (\tcode{PAR}) \\
+  \code{P} = \code{P'}, \code{P'} \rightarrow \code{Q'}, \code{Q'} = \code{Q} &\implies \code{P} \rightarrow \code{Q} \quad (\tcode{STRUCT})
+\end{align*}
 
 Furthermore, we can see by inspection that the model is compositional and that this composition includes an explicit representation of concurrent execution. It turns out that channels represent space usage and communication events across channels represent time usage. So this logical model has all four properties mentioned above.
 
 \subsubsection{Reasoning about dynamics}
 
-In what follows it will be convenient to write $P\downarrow_{x}$ just when $P = for( y \leftarrow x )P \parcomp x!( Q ) \parcomp \ldots$.
+In what follows it will be convenient to write $\code{P}\downarrow_{\code{x}}$ just when $\code{P} = \code{for( y <- x )P | x!( Q ) | R}$, for some $\code{R}$.
 
 Likewise, it will be convenient to define the collection of contexts for the rho calculus recursively as
 
-$K ::= \square \mid \msgrecv{x}{y}{K} \mid \msgsend{x}{K} \mid P\parcomp K$
+$\code{K} ::= \square \mid \code{for( y <- x )K} \mid \code{x!(K)} \mid \code{P|K}$
 
-We use contexts to characterize and label interactions. For example, when $K = \square \parcomp \msgsend{x}{Q}$ we say $\msgrecv{x}{y}{P}$ transitions via $K$ to $P\{ @Q / y \}$, written $\msgrecv{x}{y}{P} \xrightarrow{K} P\{ @Q / y \}$. Conversely, when $K = \msgrecv{x}{y}{P} \parcomp \square$ we have $\msgsend{x}{Q} \xrightarrow{K} P\{ @Q / y \}$. This is merely a way of repackaging the $\code{COMM}$ rule to get a notion of labelled transition which delivers a bisimulation which is a congruence. See \cite{Wells2025} for more details.
+We use contexts to characterize and label interactions. For example, when $\code{K} = \square\code{|x!(Q)}$ we say $\code{for( y <- x )P}$ transitions via $\code{K}$ to $\code{P\{ @Q / y \}}$, written $\code{for( y <- x )P} \xrightarrow{\code{K}} \code{P\{ @Q / y \}}$. Conversely, when $\code{K} = \code{for( y <- x )P|} \square$ we have $\code{x!(Q)}\xrightarrow{\code{K}} \code{P\{ @Q / y \}}$.
 
-This means we can abuse notation and write $P\downarrow_{K}$ without ambiguity. Note that when we wish to emphasize or call out the name of a context that labels a transition, we write $K(x)$, and hence $P\downarrow_{K(x)}$.
+This is merely a way of repackaging the $\code{COMM}$ rule to get a notion of labelled transition which delivers a bisimulation which is a congruence. See \cite{Wells2025} for more details.
+
+This means we can abuse notation and write $\code{P}\downarrow_{\code{K}}$ without ambiguity. Note that when we wish to emphasize or call out the name of a context that labels a transition, we write $\code{K(x)}$, and hence $\code{P}\downarrow_{\code{K(x)}}$.
 
 \subsection{The (spicy!) lookahead rule}
 
 As mentioned in the introduction, we modify the \code{COMM} rule as follows
-\begin{equation}
-  Q \xrightarrow{n} \{ Q_1, \dots, Q_m \} \implies \msgrecv{x}{y}{P} \parcomp \msgsend{x}{Q}\precog{n} \rightarrow P\{ @\{ Q_1, \dots, Q_m \} / y \} \quad (\tcode{LOOKAHEAD})
-\end{equation}
+\begin{align*}
+  \code{Q} \xrightarrow{n} \code{\{ Q }_1 \code{,} \ldots \code{, Q}_m \code{\}} \implies \code{for( y <- x )P | x!(Q)} &\rightarrow \code{P\{ @\{ Q}_1 \code{,} \ldots \code{, Q}_m \code{\} / y \}} \quad (\tcode{COMM}) \\
+\end{align*}
 
 For this to make sense we need to add a minimal implementation of finite sets. That is, we need to modify the grammar to be
+
 \begin{align*}
-  P, Q &\coloneqq 0 \mid \msgrecv{x}{y}{P} \mid \msgsend{x}{Q} \mid P\parcomp Q \mid *x \mid \{ P* \} \\
-  x, y &\coloneqq @P
+  \code{P,Q} \;\code{::=}\; \code{0} \mid \code{x!( P )} \mid \code{for( y <- x )P} \mid \code{P|Q} \mid \code{*x} \mid \code{\{} \code{P}^{*} \code{\}} & & \code{x,y} \;\code{::=}\; \code{@P}
 \end{align*}
+
 with the additional equations
 \[
-  \{ P, Q \} = \{ Q, P \} \quad \text{and} \quad \{ P, P \} = \{ P \}
+  \code{\{ P, Q \}} = \code{\{ Q, P \}} \quad \text{and} \quad \code{\{ P, P \}} = \code{\{ P \}}
 \]
 Of course, it would be considerably more useful to have a minimal sublanguage for the manipulation of sets. On the other hand, it is not strictly necessary to add sets at all, for we could simply use parallel composition to accumulate the states.
 
-\begin{equation}
-  Q \xrightarrow{n} \{ Q_1, \dots, Q_m \} \implies \msgrecv{x}{y}{P} \parcomp \msgsend{x}{Q}\precog{n} \rightarrow P\{ @\{ Q_1 \parcomp \dots \parcomp Q_m \} / y \} \quad (\tcode{LOOKAHEAD})
-\end{equation}
+\begin{align*}
+  \code{Q} \xrightarrow{n} \code{\{ Q }_1 \code{,} \ldots \code{, Q}_m \code{\}} \implies \code{for( y <- x )P | x!(Q)} &\rightarrow \code{P\{ @\{ Q}_1 \code{|} \ldots \code{| Q}_m \code{\} / y \}} \quad (\tcode{COMM}) \\
+\end{align*}
 
-In \code{rholang} there are builtin primitives for set manipulation as well as pattern-matching for picking apart terms like $Q_1 \parcomp \dots \parcomp Q_m$. Thus, while these design deliberations are of keen interest they are not the focus of the investigation here. We need a mechanism to collect the $n$-step fringe of evolution from $Q$ and to deliver that collection to the continuation of the for-comprehension such that it can access the elements. In the rest of this paper we will simply assume that apparatus. Thus, for example, we will write expressions like $\msgrecv{x}{@\{ \text{pattern}, \dots \}}{P}$ and take it to extract all elements from $S$ that match $\text{pattern}$ when $S$ is communicated on $x$, i.e. $\msgsend{x}{S}$. Readers looking for more detail can see the \code{MeTTaIL} design documentation and the implementation.
+In \code{rholang} there are builtin primitives for set manipulation as well as pattern-matching for picking apart terms like $\code{Q}_1 \code{|} \ldots \code{|  Q}_m$. Thus, while these design deliberations are of keen interest they are not the focus of the investigation here. We need a mechanism to collect the $n$-step fringe of evolution from $\code{Q}$ and to deliver that collection to the continuation of the for-comprehension such that it can access the elements. In the rest of this paper we will simply assume that apparatus. Thus, for example, we will write expressions like $\code{for(@\{ pattern,} \dots \code{ \} <- x )P}$ and take it to extract all elements from $\code{S}$ that match $\text{pattern}$ when $\code{S}$ is communicated on $\code{x}$, i.e. $\code{x!(S)}$. Readers looking for more detail can see the \code{MeTTaIL} design documentation and the implementation.
 
 \subsection{What these means for rho-based agents}
 

@@ -82,11 +82,11 @@ As mentioned above this feature is closely related to the work of Dybvig, Peyton
 
 \medskip
 
-Likewise, operational semantics and rewriting, as opposed to denotational semantics, is emerging as a clear winner not only in implementation of programming languages, but in fields as far ranging as quantum mechanics (see the ZX-Calculus).
+Likewise, operational semantics and rewriting, as opposed to denotational semantics, is emerging as a clear winner not only in implementation of programming languages, but in fields as far ranging as quantum mechanics (see the ZX-Calculus \cite{DBLP:journals/corr/abs-2303-03163}).
 
 \medskip
 
-It should be mentioned that our work on the semantics of the agentic AI language \code{MeTTa} has influenced this work. It was a close analysis of how to compile \code{MeTTa} into \code{rholang} efficiently that led to these discoveries. With this small change, \code{rholang} is able to subsume all the features of \code{MeTTa} and provide significantly more. More on this later, too.
+It should be mentioned that our work on the semantics of the agentic AI language \code{MeTTa} has influenced this work \cite{meredith2023metamettaoperationalsemanticsmetta}. It was a close analysis of how to compile \code{MeTTa} into \code{rholang} efficiently that led to these discoveries. With this small change, \code{rholang} is able to subsume all the features of \code{MeTTa} and provide significantly more. More on this later, too.
 
 \section{Outline of the content}
 
@@ -243,7 +243,10 @@ The whole enterprise of an agent coming to learn its environment is for it to bu
 Equipped with this conceptual framework we can see that the mobile process calculi automatically deliver to an agent a present moment. How so? Let's define the surface of an agent, relative to a given environment, in terms of the following namespace
 \[
   \mathsf{surf}(\text{agent}, \text{environment}) = \{ x \in \mathsf{FN}(\text{agent}) \cap \mathsf{FN}(\text{environment}) : \text{agent} \parcomp \text{environment} \downarrow_{x} \}
-\]
+  \]
+
+  where $\mathsf{FN}$ denotes the free names of an agent (see \cite{DBLP:journals/entcs/MeredithR05}), and $\mathsf{N}$ denotes all the names an agent may interact on.
+  
 Likewise, the agent's interior can be defined recursively. For the agent to have any internal action at all it must decompose as
 \[
   \text{agent} = \text{agent}_1 \parcomp \text{agent}_2
@@ -301,7 +304,7 @@ The primary motivation of \code{MeTTaIL} stems from a desideratum identified by 
 
 \medskip
 
-\code{MeTTaIL} cherrypicks the best of these, notably including Fiore's Higher-Order Abstract Syntax, so that rewrite rules can be expressed over terms with binders, such as we find in the $\lambda$-calculus, the $\pi$-calculus, the \code{rho calculus}, etc. In modern programming languages a programmer may specify a user-defined type. In \code{MeTTaIL} a programmer may specify a user-defined language, where languages without rewrite rules subsumes the traditional notion of user-defined type. We call such specifications \emph{graph-structured $\lambda$-theories} (\code{GSLTs} or sometimes just \emph{theories} when the context makes it clear). This subsumes and replaces merely being able to communicate data from a data user defined data type.
+\code{MeTTaIL} cherrypicks the best of these, notably including Fiore's Higher-Order Abstract Syntax \cite{DBLP:journals/corr/abs-2201-03504}, so that rewrite rules can be expressed over terms with binders, such as we find in the $\lambda$-calculus, the $\pi$-calculus, the \code{rho calculus}, etc. In modern programming languages a programmer may specify a user-defined type. In \code{MeTTaIL} a programmer may specify a user-defined language, where languages without rewrite rules subsumes the traditional notion of user-defined type. We call such specifications \emph{graph-structured $\lambda$-theories} (\code{GSLTs} or sometimes just \emph{theories} when the context makes it clear). This subsumes and replaces merely being able to communicate data from a data user defined data type.
 
 \medskip
 

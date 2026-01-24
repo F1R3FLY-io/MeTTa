@@ -224,7 +224,7 @@ In the first case, when we peer into the future and do not prune the alternative
 
 \subsection{What these means for rho-based agents}
 
-One of the most important developments of the mobile process calculi is to drag the environment of a computation into the computational world. We might understand this in terms of the original motivations of the $\pi$-calculus to address a significant failing of Mealy and Moore machines. In those formalisms the environment is not treated on par (pun intended) with the state machine. As a result the model is not compositional. With the parallel composition operator (\code{par}) we can model the environment of an agent as an agent. That is
+One of the most important developments of the mobile process calculi is to drag the environment of a computation into the computational world. We might understand this in terms of the original motivations of the $\pi$-calculus to address a significant failing of Mealy and Moore machines \cite{enwiki:1325231846}. In those formalisms the environment is not treated on par (pun intended) with the state machine. As a result the model is not compositional. With the parallel composition operator (\code{par}) we can model the environment of an agent as an agent. That is
 \[
 \code{agent|environment}
 \]
@@ -300,7 +300,7 @@ An agent comprises a store of two kinds of things: \emph{recipes} ($\msgrecv{x_i
 
 \section{MeTTaIL and typed communication in the rho calculus}
 
-The primary motivation of \code{MeTTaIL} stems from a desideratum identified by Ben Goertzel. His proposal is that AGI needs to be able to reason about different models of computation to facilitate reasoning about reasoning. At the level of programming language design we have the technology. Since Milner's seminal paper \emph{Functions as Processes} \cite{DBLP:conf/icalp/Milner90} there has been a gold standard for the presentation of operational semantics, which is codified in terms of a grammar, a collection of equations, and a collection of rewrite rules. Several formalisms, from Plotkin's Structured Operational Semantics to GSOS have been presented to capture various aspects.
+The primary motivation of \code{MeTTaIL} stems from a desideratum identified by Ben Goertzel. His proposal is that AGI needs to be able to reason about different models of computation to facilitate reasoning about reasoning. At the level of programming language design we have the technology. Since Milner's seminal paper \emph{Functions as Processes} \cite{DBLP:conf/icalp/Milner90} there has been a gold standard for the presentation of operational semantics, which is codified in terms of a grammar, a collection of equations, and a collection of rewrite rules. Several formalisms, from Plotkin's Structured Operational Semantics \cite{DBLP:journals/jlp/Plotkin04a} to GSOS \cite{DBLP:conf/lics/TuriP97} have been presented to capture various aspects.
 
 \medskip
 
@@ -324,7 +324,7 @@ Let's put this into perspective. A \code{graph-structured $\lambda$-theory} is a
 
 \section{Conclusions and future work}
 
-While this approach to agentic coordination and reasoning is both compact and comprehensive in scope it is not yet as efficient to render to modern hardware as neural nets are. We are exploring different ways to render this model to vector-based computation. In particular we have a translation of \code{GSLTs} to \emph{hypervectors} and hypothesize this reduces the total number of machine instructions relative to our symbolic implementation. Similarly, there is a translation of directed graphs to \emph{upper triangular matrices} that forms the basis of a matrix interpretation of the \code{spice calculus}. None of this work is far enough along yet to confirm or refute whether the model enjoys efficiency gains.
+While this approach to agentic coordination and reasoning is both compact and comprehensive in scope it is not yet as efficient to render to modern hardware as neural nets are. We are exploring different ways to render this model to vector-based computation. In particular we have a translation of \code{GSLTs} to \emph{hypervectors} \cite{DBLP:journals/cogcom/Kanerva09} and hypothesize this reduces the total number of machine instructions relative to our symbolic implementation. Similarly, there is a translation of directed graphs to \emph{upper triangular matrices} that forms the basis of a matrix interpretation of the \code{spice calculus} \cite{DBLP:journals/corr/abs-2301-08181}. None of this work is far enough along yet to confirm or refute whether the model enjoys efficiency gains.
 
 Another important direction is to connect to the physical world the abstraction computation as channel-based communication. One way to approach this is to show how the usual methods of finding signal in time series data sets work quite well. For example, Fourier and wavelet transforms result in natural channel sets. In the first case frequency bands where signals are found are the channels. This is approach is so natural as to be almost uninteresting. What is considerably more interesting is to co-evolve the channel sets (aka namespaces) connecting agents to an environment through a dialogue between the agent and the environment. This dynamic reconfiguration of agentic behavior as the namespace changes is the whole \emph{raison d'etre} of the rho family of calculi.
 

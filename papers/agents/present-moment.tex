@@ -33,7 +33,7 @@
 
 \section{Introduction and motivation}
 
-It's been 21 years since the publication of the first paper on the \code{rho calculus}. In that time a lot has happened to this line of research – not the least of which is that a lean, yet production-ready programming language, \code{rholang}, and execution environment, \code{F1R3FLY}, based on the calculus has been developed and commercially deployed in several projects. This effort has driven the investigation of many variants of the calculus. And, with the resurgence of interest in AI and agentic computation it was only a matter of time before a variant particularly well suited for agentic AI would be discovered. This paper reports on that variant.
+It's been 21 years since the publication of the first paper on the \code{rho calculus} \cite{DBLP:journals/entcs/MeredithR05}. In that time a lot has happened to this line of research – not the least of which is that a lean, yet production-ready programming language, \code{rholang}, and execution environment, \code{F1R3FLY}, based on the calculus has been developed and commercially deployed in several projects. This effort has driven the investigation of many variants of the calculus. And, with the resurgence of interest in AI and agentic computation it was only a matter of time before a variant particularly well suited for agentic AI would be discovered. This paper reports on that variant.
 
 \medskip
 
@@ -78,7 +78,7 @@ That's the idea, really, and, as such, it would be grand to save both the reader
 
 \section{Related work}
 
-As mentioned above this feature is closely related to the work of Dybvig, Peyton-Jones, and Sabry on a monadic account of delimited continuations. Of course, their work is firmly situated in the context of confluent and sequential rather than concurrent computation (the $\lambda$-lambda calculus), and relies heavily on denotational and categorical techniques. The \code{rho calculus}, by contrast, is aimed at capturing computational phenomena more closely aligned with the real world, where people can race to get the last seat on an airline flight and there is a clear winner and a clear loser, where the competition for resources drives evolution in species, and the competition amongst molecules gives rise to a variety of chemical and biological phenomena. In other words, computational phenomena that do not enjoy confluence.
+As mentioned above this feature is closely related to the work of Dybvig, Peyton-Jones, and Sabry on a monadic account of delimited continuations \cite{DBLP:journals/jfp/DybvigJS07}. Of course, their work is firmly situated in the context of confluent and sequential rather than concurrent computation (the $\lambda$-lambda calculus), and relies heavily on denotational and categorical techniques. The \code{rho calculus}, by contrast, is aimed at capturing computational phenomena more closely aligned with the real world, where people can race to get the last seat on an airline flight and there is a clear winner and a clear loser, where the competition for resources drives evolution in species, and the competition amongst molecules gives rise to a variety of chemical and biological phenomena. In other words, computational phenomena that do not enjoy confluence.
 
 \medskip
 
@@ -220,7 +220,7 @@ Note that in either variant, we may express a race condition in one of two forms
   \code{for( y <- x )P}_1 \code{| x!( Q ) | for( y <- x )P}_2 \\
 \end{align*}
 
-In the first case, when we peer into the future and do not prune the alternatives we must track $\code{P\{ @Q}_1 \code{/ y \}}$ and $\code{P\{ @Q}_2 \code{/ y \}}$. This potentially results in large swaths of P being repeated. In the other case, $\code{Q}$ is repeated. This analysis allows us to see just where copies are necessarily introduced. Whenever $\code{n} > 0$ in a communication and we have race conditions we will see copying. And, the larger $\code{n}$ is and the more races there are, the more reduction will incur copying costs. Fortunately, trie-based compression comes to the rescue! It will per force only record the copies once and differentiate them via path information. This means that implementations of the $\code{spice calculus}$ can perform a syntactic analysis to determine when to introduce trie-based representations of terms and execution and otherwise, simply use a hash-based method for finding redexes otherwise.
+In the first case, when we peer into the future and do not prune the alternatives we must track $\code{P\{ @Q}_1 \code{/ y \}}$ and $\code{P\{ @Q}_2 \code{/ y \}}$. This potentially results in large swaths of P being repeated. In the other case, $\code{Q}$ is repeated. This analysis allows us to see just where copies are necessarily introduced. Whenever $\code{n} > 0$ in a communication and we have race conditions we will see copying. And, the larger $\code{n}$ is and the more races there are, the more reduction will incur copying costs. Fortunately, trie-based compression comes to the rescue! It will per force only record the copies once and differentiate them via path information. This means that implementations of the $\code{spice calculus}$ can perform a syntactic analysis to determine when to introduce trie-based representations of terms \cite{DBLP:journals/corr/abs-2302-08775} and execution and otherwise simply use a hash-based method for finding redexes otherwise.
 
 \subsection{What these means for rho-based agents}
 
@@ -326,5 +326,8 @@ While this approach to agentic coordination and reasoning is both compact and co
 Another important direction is to connect to the physical world the abstraction computation as channel-based communication. One way to approach this is to show how the usual methods of finding signal in time series data sets work quite well. For example, Fourier and wavelet transforms result in natural channel sets. In the first case frequency bands where signals are found are the channels. This is approach is so natural as to be almost uninteresting. What is considerably more interesting is to co-evolve the channel sets (aka namespaces) connecting agents to an environment through a dialogue between the agent and the environment. This dynamic reconfiguration of agentic behavior as the namespace changes is the whole \emph{raison d'etre} of the rho family of calculi.
 
 It should not go without remark that this conversion of time series data into channel-based communication is exactly what happens for brains and computer hardware. Neurons and transistors are all about the conversion of the continuous domain of electromagnetic phenomena into channel-based communication.
+
+\bibliographystyle{plain}   
+\bibliography{present-moment.bib}
 
 \end{document}

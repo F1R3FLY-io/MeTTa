@@ -209,7 +209,18 @@ Of course, it would be considerably more useful to have a minimal sublanguage fo
 
 In \code{rholang} there are builtin primitives for set manipulation as well as pattern-matching for picking apart terms like $\code{Q}_1 \code{|} \ldots \code{|  Q}_m$. Thus, while these design deliberations are of keen interest they are not the focus of the investigation here. We need a mechanism to collect the $n$-step fringe of evolution from $\code{Q}$ and to deliver that collection to the continuation of the for-comprehension such that it can access the elements. In the rest of this paper we will simply assume that apparatus. Thus, for example, we will write expressions like $\code{for(@\{ pattern,} \dots \code{ \} <- x )P}$ and take it to extract all elements from $\code{S}$ that match $\text{pattern}$ when $\code{S}$ is communicated on $\code{x}$, i.e. $\code{x!(S)}$. Readers looking for more detail can see the \code{MeTTaIL} design documentation and the implementation.
 
-Lifting our gaze up to take in the whole forest, we see that the $\code{n}$ in the hypothesis of the $\code{spice}$ rule is just what the AI community has been calling the tokenization of inference. As such, this model can slot $\code{LLM}$s directly into agentic computation in the $\code{spice}$ calculus. Such systems are simply (stochastic) rewrite systems. $\code{MeTTaIL}$ accounts for agentic computation over entire rewrite systems. More on this later.
+Lifting our gaze up to take in the whole forest, we see that the $\code{n}$ in the hypothesis of the $\code{spice}$ rule is just what the AI community has been calling the tokenization of inference. As such, this model can slot $\code{LLM}$s directly into agentic computation in the $\code{spice calculus}$. Such systems are simply (stochastic) rewrite systems. $\code{MeTTaIL}$ accounts for agentic computation over entire rewrite systems. More on this later.
+
+\subsubsection{On races and compression}
+
+Note that in either variant, we may express a race condition in one of two forms.
+
+\begin{align*}
+  \code{x!( Q}_1 \code{) | for( y <- x )P | x!( Q}_2 \code{)} \\
+  \code{for( y <- x )P}_1 \code{| x!( Q ) | for( y <- x )P}_2 \\
+\end{align*}
+
+In the first case, when we peer into the future and do not prune the alternatives we must track $\code{P\{ @Q}_1 \code{/ y \}}$ and $\code{P\{ @Q}_2 \code{/ y \}}$. This potentially results in large swaths of P being repeated. In the other case, $\code{Q}$ is repeated. This analysis allows us to see just where copies are necessarily introduced. Whenever $\code{n} > 0$ in a communication and we have race conditions we will see copying. And, the larger $\code{n}$ is and the more races there are, the more reduction will incur copying costs. Fortunately, trie-based compression comes to the rescue! It will per force only record the copies once and differentiate them via path information. This means that implementations of the $\code{spice calculus}$ can perform a syntactic analysis to determine when to introduce trie-based representations of terms and execution and otherwise, simply use a hash-based method for finding redexes otherwise.
 
 \subsection{What these means for rho-based agents}
 
@@ -311,5 +322,9 @@ Let's put this into perspective. A \code{graph-structured $\lambda$-theory} is a
 \section{Conclusions and future work}
 
 While this approach to agentic coordination and reasoning is both compact and comprehensive in scope it is not yet as efficient to render to modern hardware as neural nets are. We are exploring different ways to render this model to vector-based computation. In particular we have a translation of \code{GSLTs} to \emph{hypervectors} and hypothesize this reduces the total number of machine instructions relative to our symbolic implementation. Similarly, there is a translation of directed graphs to \emph{upper triangular matrices} that forms the basis of a matrix interpretation of the \code{spice calculus}. None of this work is far enough along yet to confirm or refute whether the model enjoys efficiency gains.
+
+Another important direction is to connect to the physical world the abstraction computation as channel-based communication. One way to approach this is to show how the usual methods of finding signal in time series data sets work quite well. For example, Fourier and wavelet transforms result in natural channel sets. In the first case frequency bands where signals are found are the channels. This is approach is so natural as to be almost uninteresting. What is considerably more interesting is to co-evolve the channel sets (aka namespaces) connecting agents to an environment through a dialogue between the agent and the environment. This dynamic reconfiguration of agentic behavior as the namespace changes is the whole \emph{raison d'etre} of the rho family of calculi.
+
+It should not go without remark that this conversion of time series data into channel-based communication is exactly what happens for brains and computer hardware. Neurons and transistors are all about the conversion of the continuous domain of electromagnetic phenomena into channel-based communication.
 
 \end{document}

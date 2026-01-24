@@ -33,7 +33,7 @@
 
 \section{Introduction and motivation}
 
-It's been 21 years since the publication of the first paper on the \code{rho calculus}. In that time a lot has happened to this line of research – not the least of which is that a lean, yet production-ready programming language and execution environment based on the calculus has been developed and commercially deployed in several projects. This effort has driven the investigation of many variants of the calculus. And, with the resurgence of interest in AI and agentic computation it was only a matter of time before a variant particularly well suited for agentic AI would be discovered. This paper reports on that variant.
+It's been 21 years since the publication of the first paper on the \code{rho calculus}. In that time a lot has happened to this line of research – not the least of which is that a lean, yet production-ready programming language, \code{rholang}, and execution environment, \code{F1R3FLY}, based on the calculus has been developed and commercially deployed in several projects. This effort has driven the investigation of many variants of the calculus. And, with the resurgence of interest in AI and agentic computation it was only a matter of time before a variant particularly well suited for agentic AI would be discovered. This paper reports on that variant.
 
 \medskip
 
@@ -54,22 +54,23 @@ Now, such a feature, closely related to delimited continuations, could be costly
 \medskip
 
 If you, dear reader, share the author's sensibilities, there's been far too much discussion and not enough math; so, let's render it into symbols. The original core engine of computation in the \code{rho calculus} is known as the \code{comm} (short for communication) rule. It looks like this
-\begin{equation}
-  \msgrecv{x}{y}{P} \parcomp \msgsend{x}{Q} \rightarrow P\{ @Q / y \} \quad (\tcode{COMM})
-\end{equation}
-In English: an agent that will run $P$ after receiving a message $y$ on the channel $x$ running concurrently with an agent that is sending the code of $Q$ on channel $x$ reduces in a single step to an instance of $P$ in which every mention of $y$ has been replaced by the code of $Q$, written $@Q$.
+\begin{align*}
+  \code{for( y <- x )P | x!(Q)} &\rightarrow \code{P\{ @Q / y \}} \quad (\tcode{COMM}) \\
+\end{align*}
+In English: an agent that will run $\code{P}$ after receiving a message $\code{y}$ on the channel $\code{x}$ running concurrently with an agent that is sending the code of $\code{Q}$ on channel $\code{x}$ reduces in a single step to an instance of $\code{P}$ in which every mention of $\code{y}$ has been replaced by the code of $\code{Q}$, written $\code{@Q}$.
 
 \medskip
 
 The variant under consideration modifies the rule as follows
-\begin{equation}
-  Q \xrightarrow{n} \{ Q_1, \dots, Q_m \} \implies \msgrecv{x}{y}{P} \parcomp \msgsend{x}{Q}\precog{n} \rightarrow P\{ @\{ Q_1, \dots, Q_m \} / y \} \quad (\tcode{LOOKAHEAD})
-\end{equation}
-In English: if $Q$ reduces in at most $n$ steps to any of $\{ Q_1, \dots, Q_m \}$, then an agent that will run $P$ after receiving a message $y$ on the channel $x$ running concurrently with an agent that is sending the $n$-step future of the code of $Q$ (i.e. the states reachable in at most $n$ steps from $Q$) on channel $x$ reduces in a single step to an instance of $P$ in which every mention of $y$ has been replaced by the code of the set $\{ Q_1, \dots, Q_m \}$, written $@\{ Q_1, \dots, Q_m \}$.
+\begin{align*}
+  \code{Q} \xrightarrow{n} \code{\{ Q }_1 \code{,} \ldots \code{, Q}_m \code{\}} \implies \code{for( y <- x )P | x!(Q)} &\rightarrow \code{P\{ @\{ Q}_1 \code{,} \ldots \code{, Q}_m \code{\} / y \}} \quad (\tcode{COMM}) \\
+\end{align*}
+
+In English: if $\code{Q}$ reduces in at most $\code{n}$ steps to any of $\code{\{ Q}_1\code{,} \ldots\code{, Q}_m \code{\}}$, then an agent that will run $\code{P}$ after receiving a message $\code{y}$ on the channel $\code{x}$ running concurrently with an agent that is sending the $\code{n}$-step future of the code of $\code{Q}$ (i.e. the states reachable in at most $\code{n}$ steps from $\code{Q}$) on channel $\code{x}$ reduces in a single step to an instance of $\code{P}$ in which every mention of $\code{y}$ has been replaced by the code of the set $\code{\{ Q}_1\code{,} \ldots\code{, Q}_m \code{\}}$, written $\code{@\{ Q}_1\code{,} \dots\code{, Q}_m \code{\}}$.
 
 \medskip
 
-The astute reader will have spotted a potential circularity. In the original rule everything works because the definition of the reduction relation, $\rightarrow$, depends on nothing (apart from the mechanics of substitution and channel equality). In this new rule the definition of the rule seems to depend on the rule! We need to consult how $Q$ evolves, but surely that will appeal to the consequent of the rule. As with many procedures, processes, and algorithms in life $0$ comes to our rescue, for $Q \xrightarrow{0} Q!$ So, as long as we have a way to extract $Q$ from $\{ Q \}$ the recursion in this formulation grounds out in the original rule.
+The astute reader will have spotted a potential circularity. In the original rule everything works because the definition of the reduction relation, $\rightarrow$, depends on nothing (apart from the mechanics of substitution and channel equality). In this new rule the definition of the rule seems to depend on the rule! We need to consult how $\code{Q}$ evolves, but surely that will appeal to the consequent of the rule. As with many procedures, processes, and algorithms in life $\code{0}$ comes to our rescue, for $\code{Q} \xrightarrow{\code{0}} \code{Q}!$ So, as long as we have a way to extract $\code{Q}$ from $\code{\{ Q \}}$ the recursion in this formulation grounds out in the original rule.
 
 \medskip
 
@@ -212,13 +213,13 @@ In \code{rholang} there are builtin primitives for set manipulation as well as p
 
 One of the most important developments of the mobile process calculi is to drag the environment of a computation into the computational world. We might understand this in terms of the original motivations of the $\pi$-calculus to address a significant failing of Mealy and Moore machines. In those formalisms the environment is not treated on par (pun intended) with the state machine. As a result the model is not compositional. With the parallel composition operator (\code{par}) we can model the environment of an agent as an agent. That is
 \[
-  \text{Agent} \parcomp \text{Environment}
+\code{agent|environment}
 \]
-Indeed, from the Environment's perspective, it is the agent and Agent is the environment. That is, if either are capable of entertaining a perspective at all.
+Indeed, from the \code{environment}'s perspective, it is the agent and \code{agent} is the environment. That is, if either are capable of entertaining a perspective at all.
 
 \medskip
 
-This symmetry between environment and agent reflects something crucial about the world of computation. Computations are ontologically isolated. The only way an agent can fruitfully engage with an environment is if the events generated by the environment have a representation in the model of computation the agent is written in. Think about it this way. For a Java program to fruitfully engage the events coming from a sensor the events have to have a representation as a Java data structure. Likewise, for our brains to fruitfully engage the range of electromagnetic events that correspond to what our senses pick up, these events have to be encoded into signals the brain can process.
+This symmetry between environment and agent reflects something crucial about the world of computation. \emph{Computations are ontologically isolated.} The only way an agent can fruitfully engage with an environment is if the events generated by the environment have a representation in the model of computation the agent is written in. Think about it this way. For a \code{Java} program to fruitfully engage the events coming from a sensor the events have to have a representation as a \code{Java} data structure. Likewise, for our brains to fruitfully engage the range of electromagnetic events that correspond to what our senses pick up, these events have to be encoded into signals the brain can process.
 
 \medskip
 

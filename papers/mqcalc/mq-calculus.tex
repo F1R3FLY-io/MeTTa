@@ -31,13 +31,14 @@
 
 We introduce a calculus for processes that involve measurements
 interspersed throughout the computation.  The key intuition is that
-\emph{communication = measurement}.
+\emph{communication = measurement}. In the calculus presented below
+this is represented explicitly in the $\mathsf{COMM}$ rule.
 
 %% ----------------------------------------------------------------
 \section{Related Work}
 %% ----------------------------------------------------------------
 
-The calculus is related to the CQP calculus of Gay and Nagarajan.  The
+The calculus is related to the CQP calculus of Gay and Nagarajan \cite{DBLP:conf/popl/GayN05}.  The
 primary difference is that their calculus has an explicit measurement
 operator, whereas this calculus insists that measurement happens when a
 quantum state is communicated from one agent to another.
@@ -319,7 +320,9 @@ applied unitarily to the joint state before any output, while in the
 Copenhagen version, each $\mathbf{for}(\cdots)$ constitutes a
 measurement: the comm rule fires, the state collapses, and subsequent
 operations act on the post-measurement state.  The MQ-calculus makes
-this difference syntactically explicit.
+this difference syntactically explicit. That is, in the MQ-calculus
+there is no paradox. There are two different programs, and either may
+be executed.
 
 %% ----------------------------------------------------------------
 \section{Alternative Design Options}
@@ -418,5 +421,8 @@ The usual equations hold:
 %% ----------------------------------------------------------------
 \section{Conclusions and Future Work}
 %% ----------------------------------------------------------------
+
+\bibliographystyle{plain}   
+\bibliography{mq-calculus.bib}
 
 \end{document}

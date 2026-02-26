@@ -4,6 +4,7 @@
 \usepackage[T1]{fontenc}
 \usepackage{amsmath, amssymb, amsthm, mathtools}
 \usepackage{braket}
+\usepackage{stmaryrd}
 \usepackage{geometry}
 \usepackage{hyperref}
 \usepackage{enumitem}
@@ -218,28 +219,107 @@ measurement outcome substituted for the bound pattern variables.
 \subsection{Notational Conventions}
 
 \begin{align*}
-  1\; x!\!\left(0\right) \otimes 1\; y!\!\left(0\right)
-    &= 1\; (xy)!\!\left(00\right) \\[6pt]
-  (H \otimes I)\bigl(1\; x!\!\left(0\right) \otimes 1\; y!\!\left(0\right)\bigr)
-    &= \tfrac{1}{\sqrt{2}}\; (xy)!\!\left(00\right)
-     + \tfrac{1}{\sqrt{2}}\; (xy)!\!\left(10\right) \\[6pt]
-  \CNOT\!\left(\tfrac{1}{\sqrt{2}}\; (xy)!\!\left(00\right)
-     + \tfrac{1}{\sqrt{2}}\; (xy)!\!\left(10\right)\right)
-    &= \tfrac{1}{\sqrt{2}}\; (xy)!\!\left(00\right)
-     + \tfrac{1}{\sqrt{2}}\; (xy)!\!\left(11\right) \\[6pt]
-  \CNOT\!\left((H \otimes I)\bigl(1\; x!\!\left(0\right)
-     &\otimes 1\; y!\!\left(0\right)\bigr)\right)
+  1\; x!\!(0) \otimes 1\; y!\!(0)
+    &= 1\; (xy)!\!(00) \\[6pt]
+  (H \otimes I)\bigl(1\; x!\!(0) \otimes 1\; y!\!(0)\bigr)
+    &= \tfrac{1}{\sqrt{2}}\; (xy)!\!(00)
+     + \tfrac{1}{\sqrt{2}}\; (xy)!\!(10) \\[6pt]
+  \CNOT\!\bigl(\tfrac{1}{\sqrt{2}}\; (xy)!\!(00)
+     + \tfrac{1}{\sqrt{2}}\; (xy)!\!(10)\bigr)
+    &= \tfrac{1}{\sqrt{2}}\; (xy)!\!(00)
+     + \tfrac{1}{\sqrt{2}}\; (xy)!\!(11) \\[6pt]
+  \CNOT\!\bigl((H \otimes I)\bigl(1\; x!\!(0)
+     &\otimes 1\; y!\!(0)\bigr)\bigr)
     \;\Big|\;
-    \mathbf{for}\!\left(v \leftarrow x\right)\!\left\{X\right\}
+    \mathbf{for}(v \leftarrow x)\{X\}
     \;\Big|\;
-    \mathbf{for}\!\left(w \leftarrow y\right)\!\left\{Y\right\}
+    \mathbf{for}(w \leftarrow y)\{Y\}
 \end{align*}
 
 %% ----------------------------------------------------------------
 \section{Analysis of Wigner's Friend Paradox}
 %% ----------------------------------------------------------------
 
-TBD
+We model the Wigner's friend thought experiment in the MQ-calculus.
+Three agents---the cat, the friend, and Wigner---each hold one qubit.
+
+\paragraph{Setting up the cat state.}
+\begin{equation*}
+  \mathit{cat}!\!\left(H\ket{0}\right)
+  \qquad\text{// sets up cat state}
+\end{equation*}
+
+\noindent
+Note that in the literature $H\ket{0}\ket{0}\ket{0}$ is also written
+$\ket{+00}$.  Combining the three single-qubit outputs:
+\begin{equation*}
+  \mathit{cat}!\!\left(H\ket{0}\right)
+  \otimes
+  \mathit{friend}!\!\left(\ket{0}\right)
+  \otimes
+  \mathit{wigner}!\!\left(\ket{0}\right)
+  \;=\;
+  (\mathit{cat}{\otimes}\mathit{friend}{\otimes}\mathit{wigner})!\!\left(
+    H\ket{0}\ket{0}\ket{0}
+  \right)
+\end{equation*}
+
+\paragraph{MWI (no collapse).}
+Under a many-worlds interpretation, no measurement occurs and the
+unitary propagates through all three qubits:
+\begin{equation*}
+  (\mathit{cat}{\otimes}\mathit{friend}{\otimes}\mathit{wigner})!\!\left(
+    \CNOT_{\mathit{friend},\mathit{wigner}}\;
+    \CNOT_{\mathit{cat},\mathit{friend}}\;
+    H\ket{0}\ket{0}\ket{0}
+  \right)
+\end{equation*}
+
+\paragraph{Copenhagen (sequential measurement).}
+Under a Copenhagen interpretation, each communication step triggers a
+measurement.  In the MQ-calculus this is expressed as nested
+input/output:
+
+\medskip
+
+\begin{quote}
+\begin{minipage}{\dimexpr\textwidth-2em}
+\begin{tabbing}
+\hspace{2em}\=\hspace{2em}\=\hspace{2em}\=\kill
+$(\mathit{cat}{\otimes}\mathit{friend}{\otimes}\mathit{wigner})!\!\left(
+  H\ket{0}\ket{0}\ket{0}\right)$ \\[4pt]
+$\Big|$ \\[4pt]
+$\mathbf{for}\!\left(
+  \mathit{catState},\, \mathit{friendState}
+  \leftarrow \mathit{cat}{\otimes}\mathit{friend}
+\right)\!\Big\{$ \\[4pt]
+\> $\mathit{friend}!\!\left(
+    \CNOT_{\mathit{cat},\mathit{friend}}\,
+    \ket{\mathit{catState}}\ket{\mathit{friendState}}
+  \right)$ \\[4pt]
+\> $\Big|$ \\[4pt]
+\> $\mathbf{for}\!\left(
+    \mathit{friendState},\, \mathit{wignerState}
+    \leftarrow \mathit{friend}{\otimes}\mathit{wigner}
+  \right)\!\Big\{$ \\[4pt]
+\>\> $\mathit{wigner}!\!\left(
+      \CNOT_{\mathit{friend},\mathit{wigner}}\,
+      \ket{\mathit{friendState}}\ket{\mathit{wignerState}}
+    \right)$ \\[4pt]
+\> $\Big\}$ \\[4pt]
+$\Big\}$
+\end{tabbing}
+\end{minipage}
+\end{quote}
+
+\medskip
+\noindent
+The key distinction is that in the MWI version, the entire circuit is
+applied unitarily to the joint state before any output, while in the
+Copenhagen version, each $\mathbf{for}(\cdots)$ constitutes a
+measurement: the comm rule fires, the state collapses, and subsequent
+operations act on the post-measurement state.  The MQ-calculus makes
+this difference syntactically explicit.
 
 %% ----------------------------------------------------------------
 \section{Alternative Design Options}

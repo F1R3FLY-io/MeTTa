@@ -422,6 +422,26 @@ The usual equations hold:
 \section{Conclusions and Future Work}
 %% ----------------------------------------------------------------
 
+It's uncommon in communications like this to leave the principal
+motivation of the work to the conclusion, and yet because in this case
+it involves future work, this is exactly what we have done. In other
+papers Wells has argued there is a slight refactoring of the
+Leifer-Milner-Sewell constructions that gives a full featured account
+of bisimulation in terms of contexts. That is, given a rewrite system
+we can calculate a set of contexts that label transitions in a
+labelled transition systems where bisimulation is a
+congruence. Colloquially, contexts define the notion of experiment,
+and the bisimulation equivalence classes form the collection of
+entities that are experimentally indistinguishable.
+
+In light of Wells' construction it is natural to ask whether there is
+a rewrite system in which experiments correspond to measurements. The
+mq-calculus is a first step towards answering this in the
+positive. However, Wells' construction does not involve the continuum,
+whereas the mq-calculus clearly does. More work needs to be done to
+fit the notion of context-labelled transitions to the notion of
+physical experiment.
+
 \bibliographystyle{plain}   
 \bibliography{mq-calculus.bib}
 

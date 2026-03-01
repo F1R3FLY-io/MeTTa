@@ -36,6 +36,7 @@ pub mod gillespie;
 pub mod quantum;
 pub mod simulator;
 pub mod language_ext;
+pub mod fuzzer;
 
 // Re-exports for convenient use
 pub use rate_value::RateValue;

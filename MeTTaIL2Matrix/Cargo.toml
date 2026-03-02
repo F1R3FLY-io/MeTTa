@@ -1,0 +1,16 @@
+[package]
+name = "dag-triangular"
+version = "0.1.0"
+edition = "2021"
+description = "Compile directed graphs into upper triangular adjacency matrices via topological sorting"
+license = "MIT"
+keywords = ["graph", "dag", "triangular", "matrix", "topological-sort"]
+categories = ["algorithms", "mathematics", "science"]
+
+[dependencies]
+petgraph = "0.6"
+nalgebra = "0.33"
+thiserror = "2"
+
+[dev-dependencies]
+pretty_assertions = "1"
